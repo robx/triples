@@ -1,6 +1,7 @@
 module SvgSet exposing (..)
 
 import Card exposing (..)
+import D
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
 
@@ -50,7 +51,7 @@ draw c =
                                 Squiggle ->
                                     "url(#squiggle)"
                         , stroke col
-                        , strokeWidth "0.5"
+                        , strokeWidth "0.3"
                         ]
                         [ shades ]
                     ]
@@ -85,7 +86,7 @@ draw c =
 
         sym y =
             g [ transform (trans y) ]
-              (shade ++ [g [ stroke col, fill f ] [ elt ]])
+                (shade ++ [ g [ stroke col, fill f ] [ elt ] ])
     in
     g
         []
@@ -108,12 +109,36 @@ oval =
         []
 
 
+squiggled =
+    String.join " "
+        [ D.dM ( -18, 0 )
+        , D.dC ( -18, -4 ) ( -12, -6 ) ( -10, -6 )
+        , D.dS ( -2, -4 ) ( 0, -3 )
+        , D.dS ( 4, -2 ) ( 6, -2 )
+        , D.dS ( 13, -6 ) ( 15, -6 )
+        , D.dS ( 18, -4 ) ( 18, 0 )
+        , D.dS ( 12, 6 ) ( 10, 6 )
+        , D.dS ( 2, 4 ) ( 0, 3 )
+        , D.dS ( -4, 2 ) ( -6, 2 )
+        , D.dS ( -13, 6 ) ( -15, 6 )
+        , D.dS ( -18, 4 ) ( -18, 0 )
+        , D.dZ
+        ]
+
+
 squiggle =
-    Svg.path [ d "M-18,0 C-18,-4 -12,-6 -10,-6 S-2,-4 0,-3 S 4,-2 6,-2 S13,-6 15,-6 S18,-4 18,0 S12,6 10,6 S2,4 0,3 S-4,2 -6,2 S-13,6 -15,6 S-18,4 -18,0 Z" ] []
+    Svg.path [ d squiggled ] []
 
 
 shades =
-    Svg.path [ d "M-17,6 l0,-12 m2,12 l0,-12 m2,12 l0,-12 m2,12 l0,-12 m2,12 l0,-12 m2,12 l0,-12 m2,12 l0,-12 m2,12 l0,-12 m2,12 l0,-12 m2,12 l0,-12 m2,12 l0,-12 m2,12 l0,-12 m2,12 l0,-12 m2,12 l0,-12 m2,12 l0,-12 m2,12 l0,-12 m2,12 l0,-12 m2,12 l0,-12" ] []
+    let
+        s =
+            String.join " " <|
+                D.dM ( -17, 6 )
+                    :: D.dl ( 0, -12 )
+                    :: List.concat (List.repeat 34 [ D.dm ( 1, 12 ), D.dl ( 0, -12 ) ])
+    in
+    Svg.path [ d s ] []
 
 
 clipPaths =
