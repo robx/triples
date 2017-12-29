@@ -1,6 +1,6 @@
 module Main exposing (..)
 
-import Card
+import Card exposing (..)
 import Html
 import Svg
 import Svg.Attributes as Svg
@@ -17,20 +17,31 @@ main =
 
 
 type alias Model =
-    Card.Card
+    ()
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( Card.sampleCard, Cmd.none )
+    ( (), Cmd.none )
 
 
 view : Model -> Html.Html Msg
 view card =
-    Svg.svg [ Svg.viewBox "0 0 100 100", Svg.width "300px" ]
-        [ Svg.g
-            [ Svg.transform "translate(10,10)" ]
-            [ SvgSet.draw card ]
+    let
+        card1 =
+            { color = Red, count = Three, shape = Oval, fill = Empty }
+
+        card2 =
+            { color = Green, count = One, shape = Diamond, fill = Full }
+
+        card3 =
+            { color = Purple, count = Two, shape = Squiggle, fill = Shaded }
+    in
+    Svg.svg [ Svg.viewBox "-100 -50 200 100", Svg.width "300px" ]
+        [ SvgSet.clipPaths
+        , Svg.g [ Svg.transform "translate(-60,0)" ] [ SvgSet.draw card1 ]
+        , Svg.g [ Svg.transform "translate(  0,0)" ] [ SvgSet.draw card2 ]
+        , Svg.g [ Svg.transform "translate( 60,0)" ] [ SvgSet.draw card3 ]
         ]
 
 

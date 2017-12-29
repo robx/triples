@@ -20,7 +20,7 @@ type Shape
 
 
 type Fill
-    = Solid
+    = Full
     | Shaded
     | Empty
 
@@ -30,13 +30,4 @@ type alias Card =
     , count : Count
     , shape : Shape
     , fill : Fill
-    }
-
-
-sampleCard : Card
-sampleCard =
-    { color = Red
-    , count = Two
-    , shape = Oval
-    , fill = Shaded
     }
