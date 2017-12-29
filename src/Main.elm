@@ -1,6 +1,7 @@
 module Main exposing (..)
 
 import Card exposing (..)
+import Game
 import Html
 import Svg
 import Svg.Attributes as Svg
