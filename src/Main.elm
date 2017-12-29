@@ -38,7 +38,7 @@ view card =
             { color = Purple, count = Two, shape = Squiggle, fill = Shaded }
     in
     Svg.svg [ Svg.viewBox "-100 -50 200 100", Svg.width "300px" ]
-        [ SvgSet.clipPaths
+        [ SvgSet.svgDefs
         , Svg.g [ Svg.transform "translate(-60,0)" ] [ SvgSet.draw card1 ]
         , Svg.g [ Svg.transform "translate(  0,0)" ] [ SvgSet.draw card2 ]
         , Svg.g [ Svg.transform "translate( 60,0)" ] [ SvgSet.draw card3 ]

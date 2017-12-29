@@ -140,11 +140,27 @@ shades =
 
 
 clipPaths =
-    defs []
-        [ Svg.clipPath [ id "diamond" ] [ diamond ]
-        , Svg.clipPath [ id "oval" ] [ oval ]
-        , Svg.clipPath [ id "squiggle" ] [ squiggle ]
+    [ Svg.clipPath [ id "diamond" ] [ diamond ]
+    , Svg.clipPath [ id "oval" ] [ oval ]
+    , Svg.clipPath [ id "squiggle" ] [ squiggle ]
+    ]
+
+
+dropShadow =
+    Svg.filter [ id "dropshadow" ]
+        [ Svg.feGaussianBlur [ in_ "SourceAlpha", stdDeviation "1" ] []
+        , Svg.feOffset [ dx "2", dy "2", result "offsetblur" ] []
+        , Svg.feComponentTransfer []
+            [ Svg.feFuncA [ type_ "linear", slope "0.5" ] [] ]
+        , Svg.feMerge []
+            [ Svg.feMergeNode [] []
+            , Svg.feMergeNode [ in_ "SourceGraphic" ] []
+            ]
         ]
+
+
+svgDefs =
+    defs [] <| dropShadow :: clipPaths
 
 
 card =
@@ -155,8 +171,9 @@ card =
         , height "80"
         , rx "6"
         , ry "6"
-        , stroke "black"
-        , strokeWidth "0.8"
+        , stroke "slategray"
+        , strokeWidth "0.2"
         , fill "white"
+        , Svg.Attributes.style "filter:url(#dropshadow)"
         ]
         []
