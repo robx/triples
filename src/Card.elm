@@ -67,7 +67,6 @@ fromInt x =
 
             _ ->
                 Purple
-            
     , count =
         case a2 of
             0 ->
