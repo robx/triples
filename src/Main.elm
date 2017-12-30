@@ -3,6 +3,7 @@ module Main exposing (..)
 import Card exposing (..)
 import Game exposing (..)
 import Html
+import Random
 import Svg
 import Svg.Attributes as Svg
 import SvgSet
@@ -23,11 +24,7 @@ type alias Model =
 
 init : ( Model, Cmd Msg )
 init =
-    let
-        ( cards, _ ) =
-            deal deck
-    in
-    ( cards, Cmd.none )
+    ( [], Random.generate NewDeck shuffled )
 
 
 view : Model -> Html.Html Msg
@@ -65,10 +62,12 @@ view cards =
         (SvgSet.svgDefs :: gs)
 
 
-type alias Msg =
-    ()
+type Msg
+    = NewDeck (List Card)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update () m =
-    ( m, Cmd.none )
+update msg model =
+    case msg of
+        NewDeck cards ->
+            ( cards, Cmd.none )
