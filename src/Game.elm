@@ -88,3 +88,12 @@ grid =
 gaps : Game -> List Pos
 gaps g =
     List.filter (\p -> not <| Dict.member p g.table) grid
+
+
+set : Game -> List Pos -> Bool
+set g ps =
+    let
+        cs =
+            List.filterMap (flip Dict.get g.table) ps
+    in
+    List.length ps == 3 && Card.set cs

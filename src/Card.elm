@@ -1,5 +1,7 @@
 module Card exposing (..)
 
+import List.Extra
+
 
 type Color
     = Red
@@ -98,3 +100,65 @@ fromInt x =
             _ ->
                 Empty
     }
+
+
+set : List Card -> Bool
+set cards =
+    let
+        colorI c =
+            case c.color of
+                Red ->
+                    0
+
+                Green ->
+                    1
+
+                Purple ->
+                    2
+
+        countI c =
+            case c.count of
+                One ->
+                    0
+
+                Two ->
+                    1
+
+                Three ->
+                    2
+
+        shapeI c =
+            case c.shape of
+                Diamond ->
+                    0
+
+                Oval ->
+                    1
+
+                Squiggle ->
+                    2
+
+        fillI c =
+            case c.fill of
+                Full ->
+                    0
+
+                Shaded ->
+                    1
+
+                Empty ->
+                    2
+
+        test prop =
+            cards
+                |> List.map prop
+                |> List.Extra.unique
+                |> List.length
+                |> flip List.member [ 1, 3 ]
+    in
+    List.length cards
+        == 3
+        && test colorI
+        && test countI
+        && test shapeI
+        && test fillI
