@@ -11,14 +11,36 @@ deck =
     List.map fromInt (List.range 0 80)
 
 
+none : Game
+none =
+    { deck = [], table = Dict.empty }
+
+
+init : Generator Game
+init =
+    shuffled
+        |> Random.map
+            (\d ->
+                { deck = d
+                , table = Dict.empty
+                }
+            )
+        |> Random.map deal
+
+
 shuffled : Generator (List Card)
 shuffled =
     shuffle deck
 
 
-deal : List Card -> ( List Card, List Card )
-deal cs =
-    ( List.take 12 cs, List.drop 12 cs )
+dealAction : Game -> Action
+dealAction g =
+    Deal (gaps g)
+
+
+deal : Game -> Game
+deal g =
+    apply (dealAction g) g
 
 
 type alias Game =
@@ -56,3 +78,13 @@ apply action game =
 
         Set ps ->
             List.foldr (<|) game (List.map remove1 ps)
+
+
+grid : List Pos
+grid =
+    List.range 0 2 |> List.concatMap (\r -> List.range 0 3 |> List.map (\c -> ( r, c )))
+
+
+gaps : Game -> List Pos
+gaps g =
+    List.filter (\p -> not <| Dict.member p g.table) grid

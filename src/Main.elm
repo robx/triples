@@ -1,7 +1,8 @@
 module Main exposing (..)
 
 import Card exposing (..)
-import Game exposing (..)
+import Dict
+import Game exposing (Game)
 import Html
 import Random
 import Svg
@@ -19,27 +20,19 @@ main =
 
 
 type alias Model =
-    List Card
+    Game
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( [], Random.generate NewDeck shuffled )
+    ( Game.none, Random.generate NewGame Game.init )
 
 
 view : Model -> Html.Html Msg
-view cards =
+view game =
     let
-        zipWith f xs ys =
-            case ( xs, ys ) of
-                ( x :: xss, y :: yss ) ->
-                    f x y :: zipWith f xss yss
-
-                _ ->
-                    []
-
-        d t c =
-            Svg.g [ Svg.transform t ] [ SvgSet.draw c ]
+        d ( pos, card ) =
+            Svg.g [ Svg.transform (trans pos) ] [ SvgSet.draw card ]
 
         trans ( r, c ) =
             let
@@ -52,34 +45,18 @@ view cards =
             "translate(" ++ toString x ++ "," ++ toString y ++ ")"
 
         gs =
-            zipWith d
-                (List.map trans
-                    [ ( 0, 0 )
-                    , ( 0, 1 )
-                    , ( 0, 2 )
-                    , ( 0, 3 )
-                    , ( 1, 0 )
-                    , ( 1, 1 )
-                    , ( 1, 2 )
-                    , ( 1, 3 )
-                    , ( 2, 0 )
-                    , ( 2, 1 )
-                    , ( 2, 2 )
-                    , ( 2, 3 )
-                    ]
-                )
-                cards
+            Dict.toList game.table |> List.map d
     in
     Svg.svg [ Svg.viewBox "0 0 300 300", Svg.width "500px" ]
         (SvgSet.svgDefs :: gs)
 
 
 type Msg
-    = NewDeck (List Card)
+    = NewGame Game
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        NewDeck cards ->
-            ( cards, Cmd.none )
+        NewGame game ->
+            ( game, Cmd.none )
