@@ -4,6 +4,7 @@ import Card exposing (..)
 import Dict
 import Game exposing (Game)
 import Html
+import Html.Events as Html
 import List.Extra
 import Random
 import Svg
@@ -55,14 +56,17 @@ view model =
         gs =
             Dict.toList model.game.table |> List.map d
     in
-    Svg.svg [ Svg.viewBox "0 0 300 300", Svg.width "500px" ]
-        (SvgSet.svgDefs :: gs)
+    Html.div []
+      [ Html.button [ Html.onClick DealMore ] [ Html.text "Deal more" ]
+      ,  Svg.svg [ Svg.viewBox "0 0 300 300", Svg.width "500px" ]
+           (SvgSet.svgDefs :: gs)
+      ]
 
 
 type Msg
     = NewGame Game
     | Choose Game.Pos
-
+    | DealMore
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -76,7 +80,7 @@ update msg model =
             else if List.member p model.selected then
                 ( { model | selected = List.Extra.remove p model.selected }, Cmd.none )
             else if List.length model.selected < 2 then
-                ( { model | selected = p :: model.selected } , Cmd.none )
+                ( { model | selected = p :: model.selected }, Cmd.none )
             else
                 let
                     ( set, newgame ) =
@@ -86,3 +90,6 @@ update msg model =
                     ( { model | game = newgame, selected = [] }, Cmd.none )
                 else
                     ( model, Cmd.none )
+
+        DealMore ->
+            ( { model | game = Game.dealMore model.game }, Cmd.none )

@@ -177,7 +177,12 @@ card selected =
              else
                 "slategray"
             )
-        , strokeWidth (if selected then "1" else "0.2")
+        , strokeWidth
+            (if selected then
+                "1"
+             else
+                "0.2"
+            )
         , fill "white"
         , Svg.Attributes.style "filter:url(#dropshadow)"
         ]

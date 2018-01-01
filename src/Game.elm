@@ -48,6 +48,27 @@ deal g =
     apply (dealAction g) g
 
 
+dealMoreAction : Game -> Action
+dealMoreAction g =
+    let
+        cmax =
+            Maybe.withDefault 0 <|
+                List.maximum <|
+                    List.map (\( r, c ) -> c) <|
+                        Dict.keys <|
+                            g.table
+
+        col c =
+            [ ( 0, c ), ( 1, c ), ( 2, c ) ]
+    in
+    Deal <| col <| cmax + 1
+
+
+dealMore : Game -> Game
+dealMore g =
+    apply (dealMoreAction g) g
+
+
 type alias Game =
     { deck : List Card
     , table : Dict Pos Card
