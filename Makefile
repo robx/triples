@@ -1,4 +1,4 @@
-.PHONY: all build format
+.PHONY: all build format test
 
 all: build
 
@@ -7,3 +7,6 @@ build:
 
 format:
 	elm-format --yes src tests
+
+test:
+	elm test

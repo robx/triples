@@ -19,4 +19,9 @@ suite =
                 Expect.equal
                     ({ deck = Game.deck, table = Dict.empty } |> Game.gaps |> List.length)
                     12
+        , test "empty table is empty" <|
+            \() ->
+                Expect.equal
+                    (Game.empty { deck = Game.deck, table = Dict.empty } ( 1, 1 ))
+                    True
         ]

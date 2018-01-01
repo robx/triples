@@ -4,9 +4,11 @@ import Card exposing (..)
 import Dict
 import Game exposing (Game)
 import Html
+import List.Extra
 import Random
 import Svg
 import Svg.Attributes as Svg
+import Svg.Events as Svg
 import SvgSet
 
 
@@ -20,19 +22,25 @@ main =
 
 
 type alias Model =
-    Game
+    { game : Game
+    , selected : List Game.Pos
+    }
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( Game.none, Random.generate NewGame Game.init )
+    ( { game = Game.none, selected = [] }, Random.generate NewGame Game.init )
 
 
 view : Model -> Html.Html Msg
-view game =
+view model =
     let
         d ( pos, card ) =
-            Svg.g [ Svg.transform (trans pos) ] [ SvgSet.draw card ]
+            Svg.g
+                [ Svg.transform (trans pos)
+                , Svg.onClick (Choose pos)
+                ]
+                [ SvgSet.draw (List.member pos model.selected) card ]
 
         trans ( r, c ) =
             let
@@ -45,7 +53,7 @@ view game =
             "translate(" ++ toString x ++ "," ++ toString y ++ ")"
 
         gs =
-            Dict.toList game.table |> List.map d
+            Dict.toList model.game.table |> List.map d
     in
     Svg.svg [ Svg.viewBox "0 0 300 300", Svg.width "500px" ]
         (SvgSet.svgDefs :: gs)
@@ -53,10 +61,28 @@ view game =
 
 type Msg
     = NewGame Game
+    | Choose Game.Pos
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         NewGame game ->
-            ( game, Cmd.none )
+            ( { game = game, selected = [] }, Cmd.none )
+
+        Choose p ->
+            if Game.empty model.game p then
+                ( model, Cmd.none )
+            else if List.member p model.selected then
+                ( { model | selected = List.Extra.remove p model.selected }, Cmd.none )
+            else if List.length model.selected < 2 then
+                ( { model | selected = p :: model.selected } , Cmd.none )
+            else
+                let
+                    ( set, newgame ) =
+                        Game.take model.game (p :: model.selected)
+                in
+                if set then
+                    ( { model | game = newgame, selected = [] }, Cmd.none )
+                else
+                    ( model, Cmd.none )

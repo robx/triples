@@ -19,8 +19,8 @@ color c =
             "rgb(116,44,177)"
 
 
-draw : Card -> Svg msg
-draw c =
+draw : Bool -> Card -> Svg msg
+draw selected c =
     let
         col =
             color c.color
@@ -90,7 +90,7 @@ draw c =
     in
     g
         []
-        ([ card ] ++ List.map sym locs)
+        ([ card selected ] ++ List.map sym locs)
 
 
 diamond =
@@ -163,7 +163,7 @@ svgDefs =
     defs [] <| dropShadow :: clipPaths
 
 
-card =
+card selected =
     rect
         [ x "-25"
         , y "-40"
@@ -171,8 +171,13 @@ card =
         , height "80"
         , rx "6"
         , ry "6"
-        , stroke "slategray"
-        , strokeWidth "0.2"
+        , stroke
+            (if selected then
+                "orange"
+             else
+                "slategray"
+            )
+        , strokeWidth (if selected then "1" else "0.2")
         , fill "white"
         , Svg.Attributes.style "filter:url(#dropshadow)"
         ]

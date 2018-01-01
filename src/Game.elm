@@ -6,6 +6,11 @@ import Random exposing (Generator)
 import Random.List exposing (shuffle)
 
 
+empty : Game -> Pos -> Bool
+empty g p =
+    not <| Dict.member p g.table
+
+
 deck : List Card
 deck =
     List.map fromInt (List.range 0 80)
@@ -97,3 +102,11 @@ set g ps =
             List.filterMap (flip Dict.get g.table) ps
     in
     List.length ps == 3 && Card.set cs
+
+
+take : Game -> List Pos -> ( Bool, Game )
+take g ps =
+    if set g ps then
+        ( True, { g | table = List.foldr (<|) g.table (List.map Dict.remove ps) } )
+    else
+        ( False, g )
