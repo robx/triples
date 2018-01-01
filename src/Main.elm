@@ -43,7 +43,7 @@ view model =
                 ]
                 [ SvgSet.draw (List.member pos model.selected) card ]
 
-        trans ( r, c ) =
+        trans ( c, r ) =
             let
                 x =
                     30 + 60 * c
@@ -57,16 +57,17 @@ view model =
             Dict.toList model.game.table |> List.map d
     in
     Html.div []
-      [ Html.button [ Html.onClick DealMore ] [ Html.text "Deal more" ]
-      ,  Svg.svg [ Svg.viewBox "0 0 300 300", Svg.width "500px" ]
-           (SvgSet.svgDefs :: gs)
-      ]
+        [ Html.button [ Html.onClick DealMore ] [ Html.text "Deal more" ]
+        , Svg.svg [ Svg.viewBox "0 0 300 300", Svg.width "500px" ]
+            (SvgSet.svgDefs :: gs)
+        ]
 
 
 type Msg
     = NewGame Game
     | Choose Game.Pos
     | DealMore
+
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =

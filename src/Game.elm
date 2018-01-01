@@ -49,25 +49,17 @@ deal g =
 
 
 dealMoreAction : Game -> Action
-dealMoreAction g =
+dealMoreAction =
     let
-        cmax =
-            Maybe.withDefault 0 <|
-                List.maximum <|
-                    List.map (\( r, c ) -> c) <|
-                        Dict.keys <|
-                            g.table
-
         col c =
-            [ ( 0, c ), ( 1, c ), ( 2, c ) ]
+            [ ( c, 0 ), ( c, 1 ), ( c, 2 ) ]
     in
-    Deal <| col <| cmax + 1
+    Deal << col << columns
 
 
 dealMore : Game -> Game
 dealMore g =
     apply (dealMoreAction g) g
-
 
 type alias Game =
     { deck : List Card
@@ -106,14 +98,37 @@ apply action game =
             List.foldr (<|) game (List.map remove1 ps)
 
 
-grid : List Pos
-grid =
-    List.range 0 2 |> List.concatMap (\r -> List.range 0 3 |> List.map (\c -> ( r, c )))
+columns : Game -> Int
+columns g =
+    let
+        last =
+            List.reverse >> List.head
+    in
+    (\( x, y ) -> x + 1) <|
+        Maybe.withDefault ( -1, -1 ) <|
+            last <|
+                Dict.keys <|
+                    g.table
+
+
+grid : Int -> List Pos
+grid cols =
+    List.range 0 (cols - 1) |> List.concatMap (\x -> List.range 0 2 |> List.map (\y -> ( x, y )))
+
+
+standardGrid : List Pos
+standardGrid =
+    grid 4
 
 
 gaps : Game -> List Pos
 gaps g =
-    List.filter (\p -> not <| Dict.member p g.table) grid
+    List.filter (\p -> not <| Dict.member p g.table) standardGrid
+
+
+allGaps : Game -> List Pos
+allGaps g =
+    List.filter (\p -> not <| Dict.member p g.table) (grid (columns g))
 
 
 set : Game -> List Pos -> Bool
