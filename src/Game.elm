@@ -61,6 +61,26 @@ dealMore : Game -> Game
 dealMore g =
     apply (dealMoreAction g) g
 
+
+compactAction : Game -> Action
+compactAction g =
+    let
+        f ( gap, pos ) =
+            if gap < pos && pos > ( 3, 2 ) then
+                Just ( pos, gap )
+            else
+                Nothing
+    in
+    Move <|
+        List.filterMap f <|
+            List.map2 (,) (allGaps g) (List.reverse <| Dict.keys <| g.table)
+
+
+compact : Game -> Game
+compact g =
+    apply (compactAction g) g
+
+
 type alias Game =
     { deck : List Card
     , table : Dict Pos Card
@@ -74,6 +94,7 @@ type alias Pos =
 type Action
     = Deal (List Pos)
     | Set (List Pos)
+    | Move (List ( Pos, Pos ))
 
 
 apply : Action -> Game -> Game
@@ -89,6 +110,18 @@ apply action game =
 
         remove1 pos g =
             { g | table = Dict.remove pos g.table }
+
+        move1 ( pos, gap ) g =
+            let
+                move from to dict =
+                    case Dict.get from dict of
+                        Nothing ->
+                            dict
+
+                        Just v ->
+                            Dict.insert to v <| Dict.remove from <| dict
+            in
+            { g | table = move pos gap g.table }
     in
     case action of
         Deal ps ->
@@ -96,6 +129,9 @@ apply action game =
 
         Set ps ->
             List.foldr (<|) game (List.map remove1 ps)
+
+        Move ms ->
+            List.foldr (<|) game (List.map move1 ms)
 
 
 columns : Game -> Int

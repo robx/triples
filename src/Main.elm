@@ -88,7 +88,7 @@ update msg model =
                         Game.take model.game (p :: model.selected)
                 in
                 if set then
-                    ( { model | game = newgame, selected = [] }, Cmd.none )
+                    ( { model | game = (Game.deal << Game.compact) newgame, selected = [] }, Cmd.none )
                 else
                     ( model, Cmd.none )
 
