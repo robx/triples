@@ -196,3 +196,28 @@ take g ps =
         ( True, { g | table = List.foldr (<|) g.table (List.map Dict.remove ps) } )
     else
         ( False, g )
+
+
+countSets : Game -> Int
+countSets g =
+    let
+        cards =
+            Dict.values g.table
+
+        pairs xs =
+            case xs of
+                [] ->
+                    []
+
+                y :: ys ->
+                    List.map (\z -> [ y, z ]) ys ++ pairs ys
+
+        triples xs =
+            case xs of
+                [] ->
+                    []
+
+                y :: ys ->
+                    (List.map ((::) y) <| pairs ys) ++ triples ys
+    in
+    List.length <| List.filter Card.set <| triples cards

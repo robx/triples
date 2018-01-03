@@ -162,7 +162,7 @@ update msg model =
             )
 
         DealMore ->
-            ( { model | game = Game.dealMore model.game }, Cmd.none )
+            ( { model | game = Game.dealMore model.game, answer = Nothing }, Cmd.none )
 
         Ask ->
-            ( model, Cmd.none )
+            ( { model | answer = Just (Game.countSets model.game) }, Cmd.none )
