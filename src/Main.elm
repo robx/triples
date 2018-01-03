@@ -4,13 +4,16 @@ import Card exposing (..)
 import Dict
 import Game exposing (Game)
 import Html
+import Html.Attributes as Html
 import Html.Events as Html
 import List.Extra
+import Process
 import Random
 import Svg
 import Svg.Attributes as Svg
 import Svg.Events as Svg
 import SvgSet
+import Task
 
 
 main =
@@ -25,12 +28,13 @@ main =
 type alias Model =
     { game : Game
     , selected : List Game.Pos
+    , dealing : Bool
     }
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( { game = Game.none, selected = [] }, Random.generate NewGame Game.init )
+    ( { game = Game.none, selected = [], dealing = False }, Random.generate NewGame Game.init )
 
 
 view : Model -> Html.Html Msg
@@ -57,7 +61,11 @@ view model =
             Dict.toList model.game.table |> List.map d
     in
     Html.div []
-        [ Html.button [ Html.onClick DealMore ] [ Html.text "Deal more" ]
+        [ Html.button
+            [ Html.onClick DealMore
+            , Html.disabled <| model.dealing || Game.deckEmpty model.game
+            ]
+            [ Html.text "Deal more" ]
         , Svg.svg [ Svg.viewBox "0 0 300 300", Svg.width "500px" ]
             (SvgSet.svgDefs :: gs)
         ]
@@ -66,17 +74,22 @@ view model =
 type Msg
     = NewGame Game
     | Choose Game.Pos
+    | Deal
     | DealMore
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    let
+        after time msg =
+            Process.sleep time |> Task.perform (always msg)
+    in
     case msg of
         NewGame game ->
-            ( { game = game, selected = [] }, Cmd.none )
+            ( { game = game, selected = [], dealing = False }, Cmd.none )
 
         Choose p ->
-            if Game.empty model.game p then
+            if Game.posEmpty model.game p then
                 ( model, Cmd.none )
             else if List.member p model.selected then
                 ( { model | selected = List.Extra.remove p model.selected }, Cmd.none )
@@ -84,13 +97,16 @@ update msg model =
                 ( { model | selected = p :: model.selected }, Cmd.none )
             else
                 let
-                    ( set, newgame ) =
+                    ( isset, newgame ) =
                         Game.take model.game (p :: model.selected)
                 in
-                if set then
-                    ( { model | game = (Game.deal << Game.compact) newgame, selected = [] }, Cmd.none )
+                if isset then
+                    ( { model | game = newgame, selected = [], dealing = True }, after 1000 Deal )
                 else
                     ( model, Cmd.none )
+
+        Deal ->
+            ( { model | game = (Game.deal << Game.compact) model.game, dealing = False }, Cmd.none )
 
         DealMore ->
             ( { model | game = Game.dealMore model.game }, Cmd.none )

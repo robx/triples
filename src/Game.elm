@@ -6,8 +6,13 @@ import Random exposing (Generator)
 import Random.List exposing (shuffle)
 
 
-empty : Game -> Pos -> Bool
-empty g p =
+deckEmpty : Game -> Bool
+deckEmpty g =
+    List.isEmpty g.deck
+
+
+posEmpty : Game -> Pos -> Bool
+posEmpty g p =
     not <| Dict.member p g.table
 
 
