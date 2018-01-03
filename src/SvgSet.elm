@@ -187,3 +187,32 @@ card selected =
         , Svg.Attributes.style "filter:url(#dropshadow)"
         ]
         []
+
+
+more : Svg msg
+more =
+    let
+        cross a b =
+            [ ( -a, b ), ( -b, b ), ( -b, a ), ( b, a ), ( b, b ), ( a, b ), ( a, -b ), ( b, -b ), ( b, -a ), ( -b, -a ), ( -b, -b ), ( -a, -b ) ]
+
+        toPoints =
+            String.join " " << List.map (\( x, y ) -> toString x ++ "," ++ toString y)
+    in
+    g []
+        [ rect
+            [ x "-25"
+            , y "-40"
+            , width "50"
+            , height "80"
+            , rx "6"
+            , ry "6"
+            , stroke "none"
+            , fill "lightgray"
+            ]
+            []
+        , polygon
+            [ points (toPoints (cross 14 2))
+            , fill "gray"
+            ]
+            []
+        ]

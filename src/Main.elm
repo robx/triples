@@ -60,28 +60,28 @@ view model =
         gs =
             Dict.toList model.game.table |> List.map d
 
+        cols =
+            Game.columns model.game
+
+        more =
+            Svg.g
+                [ Svg.transform (trans ( cols, 0 ))
+                , Svg.onClick DealMore
+                ]
+                [ SvgSet.more ]
+
         viewBox =
             let
-                cols =
-                    Game.columns model.game
-
                 width =
-                    (50 + 10) * cols
+                    (50 + 10) * (cols + 1)
 
                 height =
                     (80 + 10) * 3
             in
             "0 0 " ++ toString width ++ " " ++ toString height
     in
-    Html.div []
-        [ Html.button
-            [ Html.onClick DealMore
-            , Html.disabled <| model.dealing || Game.deckEmpty model.game
-            ]
-            [ Html.text "Deal more" ]
-        , Svg.svg [ Svg.viewBox viewBox ]
-            (SvgSet.svgDefs :: gs)
-        ]
+    Svg.svg [ Svg.viewBox viewBox ]
+        (SvgSet.svgDefs :: more :: gs)
 
 
 type Msg
