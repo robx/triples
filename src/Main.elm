@@ -53,12 +53,25 @@ view model =
                     30 + 60 * c
 
                 y =
-                    50 + 90 * r
+                    45 + 90 * r
             in
             "translate(" ++ toString x ++ "," ++ toString y ++ ")"
 
         gs =
             Dict.toList model.game.table |> List.map d
+
+        viewBox =
+            let
+                cols =
+                    Game.columns model.game
+
+                width =
+                    (50 + 10) * cols
+
+                height =
+                    (80 + 10) * 3
+            in
+            "0 0 " ++ toString width ++ " " ++ toString height
     in
     Html.div []
         [ Html.button
@@ -66,7 +79,7 @@ view model =
             , Html.disabled <| model.dealing || Game.deckEmpty model.game
             ]
             [ Html.text "Deal more" ]
-        , Svg.svg [ Svg.viewBox "0 0 300 300" ]
+        , Svg.svg [ Svg.viewBox viewBox ]
             (SvgSet.svgDefs :: gs)
         ]
 
