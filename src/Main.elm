@@ -66,7 +66,7 @@ view model =
             , Html.disabled <| model.dealing || Game.deckEmpty model.game
             ]
             [ Html.text "Deal more" ]
-        , Svg.svg [ Svg.viewBox "0 0 300 300", Svg.width "500px" ]
+        , Svg.svg [ Svg.viewBox "0 0 300 300" ]
             (SvgSet.svgDefs :: gs)
         ]
 

@@ -1,0 +1,9 @@
+svg {
+    width: 100%;
+}
+
+@media (min-width: 800px) {
+    svg {
+        width: 800px;
+    }
+}
