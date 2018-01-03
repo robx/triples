@@ -29,12 +29,13 @@ type alias Model =
     { game : Game
     , selected : List Game.Pos
     , dealing : Bool
+    , answer : Maybe Int
     }
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( { game = Game.none, selected = [], dealing = False }, Random.generate NewGame Game.init )
+    ( { game = Game.none, selected = [], dealing = False, answer = Nothing }, Random.generate NewGame Game.init )
 
 
 view : Model -> Html.Html Msg
@@ -64,11 +65,38 @@ view model =
             Game.columns model.game
 
         more =
+            let
+                handler =
+                    if model.dealing || Game.deckEmpty model.game then
+                        []
+                    else
+                        [ Svg.onClick DealMore ]
+            in
             Svg.g
-                [ Svg.transform (trans ( cols, 0 ))
-                , Svg.onClick DealMore
-                ]
-                [ SvgSet.more ]
+                (Svg.transform (trans ( cols, 0 )) :: handler)
+                [ SvgSet.letterCard "+" ]
+
+        ask =
+            case model.answer of
+                Nothing ->
+                    let
+                        handler =
+                            if model.dealing then
+                                []
+                            else
+                                [ Svg.onClick Ask ]
+                    in
+                    Svg.g
+                        [ Svg.transform (trans ( cols, 1 ))
+                        , Svg.onClick Ask
+                        ]
+                        [ SvgSet.letterCard "?" ]
+
+                Just n ->
+                    Svg.g
+                        [ Svg.transform (trans ( cols, 1 ))
+                        ]
+                        [ SvgSet.letterCard <| toString n ]
 
         viewBox =
             let
@@ -81,7 +109,7 @@ view model =
             "0 0 " ++ toString width ++ " " ++ toString height
     in
     Svg.svg [ Svg.viewBox viewBox ]
-        (SvgSet.svgDefs :: more :: gs)
+        (SvgSet.svgDefs :: more :: ask :: gs)
 
 
 type Msg
@@ -89,6 +117,7 @@ type Msg
     | Choose Game.Pos
     | Deal
     | DealMore
+    | Ask
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -99,7 +128,7 @@ update msg model =
     in
     case msg of
         NewGame game ->
-            ( { game = game, selected = [], dealing = False }, Cmd.none )
+            ( { game = game, selected = [], dealing = False, answer = Nothing }, Cmd.none )
 
         Choose p ->
             if Game.posEmpty model.game p then
@@ -114,7 +143,7 @@ update msg model =
                         Game.take model.game (p :: model.selected)
                 in
                 if isset then
-                    ( { model | game = newgame, selected = [], dealing = True }, after 1000 Deal )
+                    ( { model | game = newgame, selected = [], dealing = True, answer = Nothing }, after 1000 Deal )
                 else
                     ( model, Cmd.none )
 
@@ -127,9 +156,13 @@ update msg model =
                 | game = Game.deal gamecpct
                 , dealing = False
                 , selected = List.map moves model.selected
+                , answer = Nothing
               }
             , Cmd.none
             )
 
         DealMore ->
             ( { model | game = Game.dealMore model.game }, Cmd.none )
+
+        Ask ->
+            ( model, Cmd.none )

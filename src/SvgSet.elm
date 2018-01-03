@@ -189,15 +189,8 @@ card selected =
         []
 
 
-more : Svg msg
-more =
-    let
-        cross a b =
-            [ ( -a, b ), ( -b, b ), ( -b, a ), ( b, a ), ( b, b ), ( a, b ), ( a, -b ), ( b, -b ), ( b, -a ), ( -b, -a ), ( -b, -b ), ( -a, -b ) ]
-
-        toPoints =
-            String.join " " << List.map (\( x, y ) -> toString x ++ "," ++ toString y)
-    in
+letterCard : String -> Svg msg
+letterCard c =
     g []
         [ rect
             [ x "-25"
@@ -210,9 +203,17 @@ more =
             , fill "lightgray"
             ]
             []
-        , polygon
-            [ points (toPoints (cross 14 2))
+        , text_
+            [ stroke "gray"
             , fill "gray"
+            , textAnchor "middle"
+            , fontSize "50"
+            , Svg.Attributes.style "dominant-baseline: central;"
             ]
-            []
+            [ text c ]
         ]
+
+
+more : Svg msg
+more =
+    letterCard "+"
