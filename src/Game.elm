@@ -67,8 +67,8 @@ dealMore g =
     apply (dealMoreAction g) g
 
 
-compactAction : Game -> Action
-compactAction g =
+compactMoves : Game -> List ( Pos, Pos )
+compactMoves g =
     let
         f ( gap, pos ) =
             if gap < pos && pos > ( 3, 2 ) then
@@ -76,14 +76,23 @@ compactAction g =
             else
                 Nothing
     in
-    Move <|
-        List.filterMap f <|
-            List.map2 (,) (allGaps g) (List.reverse <| Dict.keys <| g.table)
+    List.filterMap f <|
+        List.map2 (,) (allGaps g) (List.reverse <| Dict.keys <| g.table)
 
 
-compact : Game -> Game
+compact : Game -> ( Game, Pos -> Pos )
 compact g =
-    apply (compactAction g) g
+    let
+        ms =
+            compactMoves g
+
+        md =
+            Dict.fromList ms
+
+        move p =
+            Maybe.withDefault p <| Dict.get p md
+    in
+    ( apply (Move ms) g, move )
 
 
 type alias Game =

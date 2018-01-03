@@ -106,7 +106,17 @@ update msg model =
                     ( model, Cmd.none )
 
         Deal ->
-            ( { model | game = (Game.deal << Game.compact) model.game, dealing = False }, Cmd.none )
+            let
+                ( gamecpct, moves ) =
+                    Game.compact model.game
+            in
+            ( { model
+                | game = Game.deal gamecpct
+                , dealing = False
+                , selected = List.map moves model.selected
+              }
+            , Cmd.none
+            )
 
         DealMore ->
             ( { model | game = Game.dealMore model.game }, Cmd.none )
