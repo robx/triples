@@ -12,7 +12,7 @@ suite =
         [ test "grid has size 12" <|
             \() ->
                 Expect.equal
-                    (Game.grid |> List.length)
+                    (Game.standardGrid |> List.length)
                     12
         , test "gaps finds all gaps in an empty table" <|
             \() ->
@@ -22,6 +22,11 @@ suite =
         , test "empty table is empty" <|
             \() ->
                 Expect.equal
-                    (Game.empty { deck = Game.deck, table = Dict.empty } ( 1, 1 ))
+                    (Game.posEmpty { deck = Game.deck, table = Dict.empty } ( 1, 1 ))
                     True
+        , test "full deck has 81 cards" <|
+            \() ->
+                Expect.equal
+                    (List.length Game.deck)
+                    81
         ]
