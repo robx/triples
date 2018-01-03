@@ -143,7 +143,7 @@ update msg model =
                         Game.take model.game (p :: model.selected)
                 in
                 if isset then
-                    ( { model | game = newgame, selected = [], dealing = True, answer = Nothing }, after 1000 Deal )
+                    ( { model | game = newgame, selected = [], dealing = True, answer = Nothing }, after 500 Deal )
                 else
                     ( model, Cmd.none )
 
