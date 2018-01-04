@@ -38,6 +38,10 @@ init =
     ( { game = Game.none, selected = [], dealing = False, answer = Nothing }, Random.generate NewGame Game.init )
 
 
+style =
+    SvgSet.mySet
+
+
 view : Model -> Html.Html Msg
 view model =
     let
@@ -46,7 +50,7 @@ view model =
                 [ Svg.transform (trans pos)
                 , Svg.onClick (Choose pos)
                 ]
-                [ SvgSet.draw SvgSet.standardSet (List.member pos model.selected) card ]
+                [ SvgSet.draw style (List.member pos model.selected) card ]
 
         trans ( c, r ) =
             let
@@ -109,7 +113,7 @@ view model =
             "0 0 " ++ toString width ++ " " ++ toString height
     in
     Svg.svg [ Svg.viewBox viewBox ]
-        (SvgSet.svgDefs SvgSet.standardSet :: more :: ask :: gs)
+        (SvgSet.svgDefs style :: more :: ask :: gs)
 
 
 type Msg

@@ -32,6 +32,13 @@ standardSet =
     }
 
 
+mySet : Style msg
+mySet =
+    { colors = ( "red", "yellow", "blue" )
+    , shapes = ( rectangle, ellipse, lens )
+    }
+
+
 draw : Style msg -> Bool -> Card -> Svg msg
 draw st selected c =
     let
@@ -96,6 +103,43 @@ draw st selected c =
     g
         []
         ([ card selected ] ++ List.map sym locs)
+
+
+rectangle : Svg msg
+rectangle =
+    rect
+        [ x "-18"
+        , y "-6"
+        , width "36"
+        , height "12"
+        ]
+        []
+
+
+ellipse : Svg msg
+ellipse =
+    Svg.ellipse
+        [ cx "0"
+        , cy "0"
+        , rx "18"
+        , ry "6"
+        ]
+        []
+
+
+lens : Svg msg
+lens =
+    Svg.path
+        [ d <|
+            String.join " " <|
+                [ D.dM ( -18, 6 )
+                , D.dA ( 40, 40 ) 0 ( 0, 1 ) ( 18, 6 )
+                , D.dL ( 18, -6 )
+                , D.dA ( 40, 40 ) 0 ( 0, 1 ) ( -18, -6 )
+                , D.dZ
+                ]
+        ]
+        []
 
 
 diamond : Svg msg
