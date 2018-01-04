@@ -6,16 +6,16 @@ import Svg exposing (..)
 import Svg.Attributes exposing (..)
 
 
-color : Color -> String
+color : Int -> String
 color c =
     case c of
-        Red ->
+        0 ->
             "rgb(229,46,37)"
 
-        Green ->
+        1 ->
             "rgb(72,128,52)"
 
-        Purple ->
+        _ ->
             "rgb(116,44,177)"
 
 
@@ -27,29 +27,29 @@ draw selected c =
 
         f =
             case c.fill of
-                Full ->
+                0 ->
                     col
 
-                Shaded ->
+                1 ->
                     "none"
 
-                Empty ->
+                _ ->
                     "none"
 
         shade =
             case c.fill of
-                Shaded ->
+                1 ->
                     [ g
                         [ Svg.Attributes.clipPath <|
                             case c.shape of
-                                Diamond ->
-                                    "url(#diamond)"
+                                0 ->
+                                    "url(#clip0)"
 
-                                Oval ->
-                                    "url(#oval)"
+                                1 ->
+                                    "url(#clip1)"
 
-                                Squiggle ->
-                                    "url(#squiggle)"
+                                _ ->
+                                    "url(#clip2)"
                         , stroke col
                         , strokeWidth "0.3"
                         ]
@@ -61,24 +61,24 @@ draw selected c =
 
         elt =
             case c.shape of
-                Diamond ->
+                0 ->
                     diamond
 
-                Oval ->
+                1 ->
                     oval
 
-                Squiggle ->
+                _ ->
                     squiggle
 
         locs =
             case c.count of
-                One ->
+                0 ->
                     [ 0 ]
 
-                Two ->
+                1 ->
                     [ 10, -10 ]
 
-                Three ->
+                _ ->
                     [ 20, 0, -20 ]
 
         trans y =
@@ -140,9 +140,9 @@ shades =
 
 
 clipPaths =
-    [ Svg.clipPath [ id "diamond" ] [ diamond ]
-    , Svg.clipPath [ id "oval" ] [ oval ]
-    , Svg.clipPath [ id "squiggle" ] [ squiggle ]
+    [ Svg.clipPath [ id "clip0" ] [ diamond ]
+    , Svg.clipPath [ id "clip1" ] [ oval ]
+    , Svg.clipPath [ id "clip2" ] [ squiggle ]
     ]
 
 

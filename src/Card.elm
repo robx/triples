@@ -3,35 +3,11 @@ module Card exposing (..)
 import List.Extra
 
 
-type Color
-    = Red
-    | Green
-    | Purple
-
-
-type Count
-    = One
-    | Two
-    | Three
-
-
-type Shape
-    = Diamond
-    | Oval
-    | Squiggle
-
-
-type Fill
-    = Full
-    | Shaded
-    | Empty
-
-
 type alias Card =
-    { color : Color
-    , count : Count
-    , shape : Shape
-    , fill : Fill
+    { color : Int
+    , count : Int
+    , shape : Int
+    , fill : Int
     }
 
 
@@ -59,96 +35,16 @@ fromInt x =
         a4 =
             b3 % 3
     in
-    { color =
-        case a1 of
-            0 ->
-                Red
-
-            1 ->
-                Green
-
-            _ ->
-                Purple
-    , count =
-        case a2 of
-            0 ->
-                One
-
-            1 ->
-                Two
-
-            _ ->
-                Three
-    , shape =
-        case a3 of
-            0 ->
-                Diamond
-
-            1 ->
-                Oval
-
-            _ ->
-                Squiggle
-    , fill =
-        case a4 of
-            0 ->
-                Full
-
-            1 ->
-                Shaded
-
-            _ ->
-                Empty
+    { color = a1
+    , count = a2
+    , shape = a3
+    , fill = a4
     }
 
 
 set : List Card -> Bool
 set cards =
     let
-        colorI c =
-            case c.color of
-                Red ->
-                    0
-
-                Green ->
-                    1
-
-                Purple ->
-                    2
-
-        countI c =
-            case c.count of
-                One ->
-                    0
-
-                Two ->
-                    1
-
-                Three ->
-                    2
-
-        shapeI c =
-            case c.shape of
-                Diamond ->
-                    0
-
-                Oval ->
-                    1
-
-                Squiggle ->
-                    2
-
-        fillI c =
-            case c.fill of
-                Full ->
-                    0
-
-                Shaded ->
-                    1
-
-                Empty ->
-                    2
-
         test prop =
             cards
                 |> List.map prop
@@ -158,7 +54,7 @@ set cards =
     in
     List.length cards
         == 3
-        && test colorI
-        && test countI
-        && test shapeI
-        && test fillI
+        && test .color
+        && test .count
+        && test .shape
+        && test .fill
