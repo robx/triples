@@ -46,7 +46,7 @@ view model =
                 [ Svg.transform (trans pos)
                 , Svg.onClick (Choose pos)
                 ]
-                [ SvgSet.draw (List.member pos model.selected) card ]
+                [ SvgSet.draw SvgSet.standardSet (List.member pos model.selected) card ]
 
         trans ( c, r ) =
             let
@@ -109,7 +109,7 @@ view model =
             "0 0 " ++ toString width ++ " " ++ toString height
     in
     Svg.svg [ Svg.viewBox viewBox ]
-        (SvgSet.svgDefs :: more :: ask :: gs)
+        (SvgSet.svgDefs SvgSet.standardSet :: more :: ask :: gs)
 
 
 type Msg

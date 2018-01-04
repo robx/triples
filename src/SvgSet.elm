@@ -6,24 +6,37 @@ import Svg exposing (..)
 import Svg.Attributes exposing (..)
 
 
-color : Int -> String
-color c =
-    case c of
+type alias Style msg =
+    { colors : ( String, String, String )
+    , shapes : ( Svg msg, Svg msg, Svg msg )
+    }
+
+
+lookup : ( a, a, a ) -> Int -> a
+lookup ( x, y, z ) p =
+    case p of
         0 ->
-            "rgb(229,46,37)"
+            x
 
         1 ->
-            "rgb(72,128,52)"
+            y
 
         _ ->
-            "rgb(116,44,177)"
+            z
 
 
-draw : Bool -> Card -> Svg msg
-draw selected c =
+standardSet : Style msg
+standardSet =
+    { colors = ( "rgb(229,46,37)", "rgb(72,128,52)", "rgb(116,44,177)" )
+    , shapes = ( diamond, oval, squiggle )
+    }
+
+
+draw : Style msg -> Bool -> Card -> Svg msg
+draw st selected c =
     let
         col =
-            color c.color
+            lookup st.colors c.color
 
         f =
             case c.fill of
@@ -60,15 +73,7 @@ draw selected c =
                     []
 
         elt =
-            case c.shape of
-                0 ->
-                    diamond
-
-                1 ->
-                    oval
-
-                _ ->
-                    squiggle
+            lookup st.shapes c.shape
 
         locs =
             case c.count of
@@ -93,10 +98,12 @@ draw selected c =
         ([ card selected ] ++ List.map sym locs)
 
 
+diamond : Svg msg
 diamond =
     polygon [ points "-18,0 0,6 18,0 0,-6" ] []
 
 
+oval : Svg msg
 oval =
     rect
         [ x "-18"
@@ -124,10 +131,12 @@ squiggled =
         ]
 
 
+squiggle : Svg msg
 squiggle =
     Svg.path [ d squiggled ] []
 
 
+shades : Svg msg
 shades =
     let
         s =
@@ -139,11 +148,14 @@ shades =
     Svg.path [ d s ] []
 
 
-clipPaths =
-    [ Svg.clipPath [ id "clip0" ] [ diamond ]
-    , Svg.clipPath [ id "clip1" ] [ oval ]
-    , Svg.clipPath [ id "clip2" ] [ squiggle ]
-    ]
+clipPaths : Style msg -> List (Svg msg)
+clipPaths st =
+    let
+        cp d =
+            Svg.clipPath [ id <| "clip" ++ toString d ]
+                [ lookup st.shapes d ]
+    in
+    List.map cp [ 0, 1, 2 ]
 
 
 dropShadow =
@@ -159,10 +171,12 @@ dropShadow =
         ]
 
 
-svgDefs =
-    defs [] <| dropShadow :: clipPaths
+svgDefs : Style msg -> Svg msg
+svgDefs st =
+    defs [] <| dropShadow :: clipPaths st
 
 
+card : Bool -> Svg msg
 card selected =
     rect
         [ x "-25"
