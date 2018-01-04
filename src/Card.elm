@@ -58,3 +58,29 @@ set cards =
         && test .count
         && test .shape
         && test .fill
+
+
+superset : List Card -> Bool
+superset cards =
+    case cards of
+        [ c1, c2, c3, c4 ] ->
+            let
+                miss a b =
+                    (-a - b) % 3
+
+                missingCard a b =
+                    { color = miss a.color b.color
+                    , shape = miss a.shape b.shape
+                    , count = miss a.count b.count
+                    , fill = miss a.fill b.fill
+                    }
+            in
+            missingCard c1 c2
+                == missingCard c3 c4
+                || missingCard c1 c3
+                == missingCard c2 c4
+                || missingCard c1 c4
+                == missingCard c2 c3
+
+        _ ->
+            False

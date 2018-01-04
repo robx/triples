@@ -21,31 +21,32 @@ deck =
     List.map fromInt (List.range 0 80)
 
 
-none : Game
-none =
-    { deck = [], table = Dict.empty }
+type GameType
+    = ClassicSet
+    | SuperSet
 
 
-init : Generator Game
-init =
+setSize : Game -> Int
+setSize g = if g.type_ == ClassicSet then 3 else 4
+
+init : Bool -> Bool -> Generator Game
+init short super =
     shuffled
         |> Random.map
-            (\d ->
-                { deck = d
-                , table = Dict.empty
-                }
+            (if short then
+                List.drop 60
+             else
+                \x -> x
             )
-        |> Random.map deal
-
-
-initShort : Generator Game
-initShort =
-    shuffled
-        |> Random.map (List.drop 60)
         |> Random.map
             (\d ->
                 { deck = d
                 , table = Dict.empty
+                , type_ =
+                    if super then
+                        SuperSet
+                    else
+                        ClassicSet
                 }
             )
         |> Random.map deal
@@ -116,6 +117,7 @@ compact g =
 type alias Game =
     { deck : List Card
     , table : Dict Pos Card
+    , type_ : GameType
     }
 
 
@@ -189,9 +191,19 @@ standardGrid =
     grid 4
 
 
+superGrid : List Pos
+superGrid =
+    grid 3
+
+
 gaps : Game -> List Pos
 gaps g =
-    List.filter (\p -> not <| Dict.member p g.table) standardGrid
+    List.filter (\p -> not <| Dict.member p g.table)
+        (if g.type_ == ClassicSet then
+            standardGrid
+         else
+            superGrid
+        )
 
 
 allGaps : Game -> List Pos
@@ -208,9 +220,25 @@ set g ps =
     List.length ps == 3 && Card.set cs
 
 
+superset : Game -> List Pos -> Bool
+superset g ps =
+    let
+        cs =
+            List.filterMap (flip Dict.get g.table) ps
+    in
+    List.length cs == 4 && Card.superset cs
+
+
 take : Game -> List Pos -> ( Bool, Game )
 take g ps =
-    if set g ps then
+    let
+        s =
+            if g.type_ == SuperSet then
+                superset g ps
+            else
+                set g ps
+    in
+    if s then
         ( True, { g | table = List.foldr (<|) g.table (List.map Dict.remove ps) } )
     else
         ( False, g )
@@ -239,3 +267,36 @@ countSets g =
                     (List.map ((::) y) <| pairs ys) ++ triples ys
     in
     List.length <| List.filter Card.set <| triples cards
+
+
+countSupersets : Game -> Int
+countSupersets g =
+    let
+        cards =
+            Dict.values g.table
+
+        pairs xs =
+            case xs of
+                [] ->
+                    []
+
+                y :: ys ->
+                    List.map (\z -> [ y, z ]) ys ++ pairs ys
+
+        triples xs =
+            case xs of
+                [] ->
+                    []
+
+                y :: ys ->
+                    (List.map ((::) y) <| pairs ys) ++ triples ys
+
+        quads xs =
+            case xs of
+                [] ->
+                    []
+
+                y :: ys ->
+                    (List.map ((::) y) <| triples ys) ++ quads ys
+    in
+    List.length <| List.filter Card.superset <| quads cards

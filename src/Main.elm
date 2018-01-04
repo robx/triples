@@ -167,14 +167,15 @@ viewStart msg =
     in
     Html.div []
         [ Html.div [] [ Html.text m ]
-        , Html.button [ Html.onClick Go ] [ Html.text "Full deck" ]
-        , Html.button [ Html.onClick GoShort ] [ Html.text "Small deck" ]
+        , Html.button [ Html.onClick <| Go False False ] [ Html.text "Full deck" ]
+        , Html.button [ Html.onClick <| Go True False ] [ Html.text "Small deck" ]
+        , Html.button [ Html.onClick <| Go False True ] [ Html.text "Superset (Full)" ]
+        , Html.button [ Html.onClick <| Go True True ] [ Html.text "Superset (Small)" ]
         ]
 
 
 type Msg
-    = Go
-    | GoShort
+    = Go Bool Bool
     | NewGame Game
     | StartGame Time.Time
     | Choose Game.Pos
@@ -186,11 +187,8 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Go ->
-            ( model, Cmd.batch [ Random.generate NewGame Game.init, Task.perform StartGame Time.now ] )
-
-        GoShort ->
-            ( model, Cmd.batch [ Random.generate NewGame Game.initShort, Task.perform StartGame Time.now ] )
+        Go short super ->
+            ( model, Cmd.batch [ Random.generate NewGame (Game.init short super), Task.perform StartGame Time.now ] )
 
         NewGame game ->
             ( Play (initGame game), Cmd.none )
@@ -240,7 +238,7 @@ updateGame msg model =
                 ( model, Cmd.none )
             else if List.member p model.selected then
                 ( { model | selected = List.Extra.remove p model.selected }, Cmd.none )
-            else if List.length model.selected < 2 then
+            else if List.length model.selected < (Game.setSize model.game - 1) then
                 ( { model | selected = p :: model.selected }, Cmd.none )
             else
                 let
