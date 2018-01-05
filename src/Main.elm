@@ -11,6 +11,7 @@ import Process
 import Random
 import Svg
 import Svg.Attributes as Svg
+import Svg.Attributes
 import Svg.Events as Svg
 import SvgSet
 import Task
@@ -61,6 +62,7 @@ view model =
             Svg.g
                 [ Svg.transform (trans pos)
                 , Svg.onClick (Choose pos)
+                , Svg.Attributes.style "cursor: pointer;"
                 ]
                 [ SvgSet.draw style (List.member pos model.selected) card ]
 
@@ -86,7 +88,9 @@ view model =
                     if model.dealing || Game.deckEmpty model.game then
                         []
                     else
-                        [ Svg.onClick DealMore ]
+                        [ Svg.onClick DealMore
+                        , Svg.Attributes.style "cursor: pointer;"
+                        ]
             in
             Svg.g
                 (Svg.transform (trans ( cols, 0 )) :: handler)
@@ -100,18 +104,17 @@ view model =
                             if model.dealing then
                                 []
                             else
-                                [ Svg.onClick Ask ]
+                                [ Svg.onClick Ask
+                                , Svg.Attributes.style "cursor: pointer;"
+                                ]
                     in
                     Svg.g
-                        [ Svg.transform (trans ( cols, 1 ))
-                        , Svg.onClick Ask
-                        ]
+                        (Svg.transform (trans ( cols, 1 )) :: handler)
                         [ SvgSet.letterCard "?" ]
 
                 Just n ->
                     Svg.g
-                        [ Svg.transform (trans ( cols, 1 ))
-                        ]
+                        [ Svg.transform (trans ( cols, 1 )) ]
                         [ SvgSet.letterCard <| toString n ]
 
         viewBox =

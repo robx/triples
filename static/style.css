@@ -24,3 +24,9 @@ html, body, div#main, svg {
     font-size: 10em;
     background: #ddd;
 }
+
+svg {
+    user-select: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+}

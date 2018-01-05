@@ -254,14 +254,15 @@ card st selected =
                 "0.2"
             )
         , fill st.background
-        , Svg.Attributes.style "filter:url(#dropshadow)"
+        , Svg.Attributes.style "filter: url(#dropshadow);"
         ]
         []
 
 
 letterCard : String -> Svg msg
 letterCard c =
-    g []
+    g
+        []
         [ rect
             [ x "-25"
             , y "-40"
