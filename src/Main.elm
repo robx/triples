@@ -222,9 +222,14 @@ update msg model =
             ( { model | answer = Just (Game.countSets model.game), log = EAsk :: model.log }, Cmd.none )
 
         GameOver now ->
-            ( { model | message = Just (score model.log model.start now) }, Cmd.none )
+            let
+                ( secs, msg ) =
+                    score model.log model.start now
+            in
+            ( { model | message = Just msg }, Cmd.none )
 
 
+score : List Event -> Time.Time -> Time.Time -> ( Int, String )
 score log start end =
     let
         secs =
@@ -251,5 +256,10 @@ score log start end =
 
         asksecs =
             asks * 20
+
+        totalsecs =
+            secs + dealsecs + asksecs
     in
-    format (secs + dealsecs + asksecs) ++ " = " ++ format secs ++ " + " ++ format asksecs ++ " + " ++ format dealsecs
+    ( totalsecs
+    , String.join " " [ format totalsecs, "=", format secs, "=", format asksecs, "+", format dealsecs ]
+    )
