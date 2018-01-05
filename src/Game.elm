@@ -38,6 +38,11 @@ init =
         |> Random.map deal
 
 
+over : Game -> Bool
+over g =
+    List.isEmpty g.deck && countSets g == 0
+
+
 shuffled : Generator (List Card)
 shuffled =
     shuffle deck

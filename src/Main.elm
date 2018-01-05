@@ -137,13 +137,23 @@ type Msg
     | Deal
     | DealMore
     | Ask
+    | GameOver Time.Time
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     let
         after time msg =
-            Process.sleep time |> Task.perform (always msg)
+            let
+                task =
+                    Time.now
+                        |> Task.andThen
+                            (\now ->
+                                Process.sleep time
+                                    |> Task.andThen (\_ -> Task.succeed now)
+                            )
+            in
+            Task.perform msg task
     in
     case msg of
         NewGame game ->
@@ -163,9 +173,18 @@ update msg model =
                 let
                     ( isset, newgame ) =
                         Game.take model.game (p :: model.selected)
+
+                    over =
+                        Game.over newgame
                 in
                 if isset then
-                    ( { model | game = newgame, selected = [], dealing = True, answer = Nothing, log = ESet :: model.log }, after 500 Deal )
+                    ( { model | game = newgame, selected = [], dealing = True, answer = Nothing, log = ESet :: model.log }
+                    , after 500 <|
+                        if over then
+                            GameOver
+                        else
+                            always Deal
+                    )
                 else
                     ( model, Cmd.none )
 
@@ -188,3 +207,6 @@ update msg model =
 
         Ask ->
             ( { model | answer = Just (Game.countSets model.game), log = EAsk :: model.log }, Cmd.none )
+
+        GameOver now ->
+            ( model, Cmd.none )
