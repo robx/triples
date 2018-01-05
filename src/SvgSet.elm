@@ -8,6 +8,9 @@ import Svg.Attributes exposing (..)
 
 type alias Style msg =
     { colors : ( String, String, String )
+    , foreground : String
+    , background : String
+    , select : String
     , shapes : ( Svg msg, Svg msg, Svg msg )
     }
 
@@ -28,6 +31,9 @@ lookup ( x, y, z ) p =
 standardSet : Style msg
 standardSet =
     { colors = ( "rgb(229,46,37)", "rgb(72,128,52)", "rgb(116,44,177)" )
+    , foreground = "black"
+    , background = "white"
+    , select = "orange"
     , shapes = ( diamond, oval, squiggle )
     }
 
@@ -35,6 +41,9 @@ standardSet =
 mySet : Style msg
 mySet =
     { colors = ( "red", "yellow", "blue" )
+    , foreground = "black"
+    , background = "white"
+    , select = "orange"
     , shapes = ( rectangle, ellipse, lens )
     }
 
@@ -102,7 +111,7 @@ draw st selected c =
     in
     g
         []
-        ([ card selected ] ++ List.map sym locs)
+        ([ card st selected ] ++ List.map sym locs)
 
 
 rectangle : Svg msg
@@ -220,8 +229,8 @@ svgDefs st =
     defs [] <| dropShadow :: clipPaths st
 
 
-card : Bool -> Svg msg
-card selected =
+card : Style msg -> Bool -> Svg msg
+card st selected =
     rect
         [ x "-25"
         , y "-40"
@@ -231,9 +240,9 @@ card selected =
         , ry "6"
         , stroke
             (if selected then
-                "orange"
+                st.select
              else
-                "slategray"
+                st.foreground
             )
         , strokeWidth
             (if selected then
@@ -241,7 +250,7 @@ card selected =
              else
                 "0.2"
             )
-        , fill "white"
+        , fill st.background
         , Svg.Attributes.style "filter:url(#dropshadow)"
         ]
         []
