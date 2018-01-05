@@ -10,6 +10,7 @@ type alias Style msg =
     { colors : ( String, String, String )
     , foreground : String
     , background : String
+    , table : String
     , select : String
     , shapes : ( Svg msg, Svg msg, Svg msg )
     }
@@ -33,6 +34,7 @@ standardSet =
     { colors = ( "rgb(229,46,37)", "rgb(72,128,52)", "rgb(116,44,177)" )
     , foreground = "black"
     , background = "white"
+    , table = "white"
     , select = "orange"
     , shapes = ( diamond, oval, squiggle )
     }
@@ -40,9 +42,10 @@ standardSet =
 
 mySet : Style msg
 mySet =
-    { colors = ( "red", "yellow", "blue" )
-    , foreground = "black"
-    , background = "white"
+    { colors = ( "rgb(5,135,137)", "rgb(213,75,26)", "rgb(227,167,45)" )
+    , foreground = "rgb(80,61,46)"
+    , background = "rgb(246,242,231)"
+    , table = "rgb(240,236,201)"
     , select = "orange"
     , shapes = ( rectangle, ellipse, lens )
     }

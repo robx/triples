@@ -112,7 +112,10 @@ view model =
             in
             "0 0 " ++ toString width ++ " " ++ toString height
     in
-    Svg.svg [ Svg.viewBox viewBox ]
+    Svg.svg
+        [ Svg.viewBox viewBox
+        , Html.style [ ( "background", style.table ) ]
+        ]
         (SvgSet.svgDefs style :: more :: ask :: gs)
 
 
