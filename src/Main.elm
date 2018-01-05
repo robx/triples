@@ -33,6 +33,7 @@ type alias Model =
     , selected : List Game.Pos
     , dealing : Bool
     , answer : Maybe Int
+    , message : Maybe String
     }
 
 
@@ -44,8 +45,8 @@ type Event
 
 init : ( Model, Cmd Msg )
 init =
-    ( { game = Game.none, selected = [], dealing = False, answer = Nothing, start = 0, log = [] }
-    , Cmd.batch [ Random.generate NewGame Game.init, Task.perform StartGame Time.now ]
+    ( { game = Game.none, selected = [], dealing = False, answer = Nothing, start = 0, log = [], message = Just "Start!" }
+    , Cmd.none
     )
 
 
@@ -123,15 +124,21 @@ view model =
             in
             "0 0 " ++ toString width ++ " " ++ toString height
     in
-    Svg.svg
-        [ Svg.viewBox viewBox
-        , Html.style [ ( "background", style.table ) ]
-        ]
-        (SvgSet.svgDefs style :: more :: ask :: gs)
+    case model.message of
+        Nothing ->
+            Svg.svg
+                [ Svg.viewBox viewBox
+                , Html.style [ ( "background", style.table ) ]
+                ]
+                (SvgSet.svgDefs style :: more :: ask :: gs)
+
+        Just m ->
+            Html.div [ Html.class "message", Html.onClick Go ] [ Html.text m ]
 
 
 type Msg
-    = NewGame Game
+    = Go
+    | NewGame Game
     | StartGame Time.Time
     | Choose Game.Pos
     | Deal
@@ -156,11 +163,14 @@ update msg model =
             Task.perform msg task
     in
     case msg of
+        Go ->
+            ( model, Cmd.batch [ Random.generate NewGame Game.init, Task.perform StartGame Time.now ] )
+
         NewGame game ->
-            ( { game = game, selected = [], dealing = False, answer = Nothing, start = 0, log = [] }, Cmd.none )
+            ( { model | game = game }, Cmd.none )
 
         StartGame start ->
-            ( { model | start = start }, Cmd.none )
+            ( { model | start = start, message = Nothing }, Cmd.none )
 
         Choose p ->
             if Game.posEmpty model.game p then
@@ -209,4 +219,34 @@ update msg model =
             ( { model | answer = Just (Game.countSets model.game), log = EAsk :: model.log }, Cmd.none )
 
         GameOver now ->
-            ( model, Cmd.none )
+            ( { model | message = Just (score model.log model.start now) }, Cmd.none )
+
+
+score log start end =
+    let
+        secs =
+            round <| Time.inSeconds (end - start)
+
+        format secs =
+            let
+                m =
+                    secs // 60
+
+                s =
+                    secs % 60
+            in
+            toString m ++ ":" ++ (String.padLeft 2 '0' <| toString s)
+
+        deals =
+            List.length <| List.filter ((==) EDealMore) <| log
+
+        dealsecs =
+            deals * 60
+
+        asks =
+            List.length <| List.filter ((==) EAsk) <| log
+
+        asksecs =
+            asks * 20
+    in
+    format (secs + dealsecs + asksecs) ++ " = " ++ format secs ++ " + " ++ format asksecs ++ " + " ++ format dealsecs
