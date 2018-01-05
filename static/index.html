@@ -10,5 +10,15 @@
 </body>
 <script src="Main.js"></script>
 <script>
-Elm.Main.embed(document.getElementById('main'));
+  var app = Elm.Main.embed(document.getElementById('main'));
+
+  app.ports.logScore.subscribe(function(score) {
+    const key = "scores";
+    var scores = JSON.parse(localStorage.getItem(key));
+    if (scores === null) {
+      scores = [];
+    }
+    scores.push(score);
+    localStorage.setItem(key, JSON.stringify(scores));
+  });
 </script>

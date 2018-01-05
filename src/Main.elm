@@ -1,4 +1,4 @@
-module Main exposing (..)
+port module Main exposing (..)
 
 import Card exposing (..)
 import Dict
@@ -226,7 +226,10 @@ update msg model =
                 ( secs, msg ) =
                     score model.log model.start now
             in
-            ( { model | message = Just msg }, Cmd.none )
+            ( { model | message = Just msg }, logScore secs )
+
+
+port logScore : Int -> Cmd msg
 
 
 score : List Event -> Time.Time -> Time.Time -> ( Int, String )
