@@ -14,6 +14,7 @@ import Svg.Attributes as Svg
 import Svg.Events as Svg
 import SvgSet
 import Task
+import Time
 
 
 main =
@@ -27,15 +28,25 @@ main =
 
 type alias Model =
     { game : Game
+    , start : Time.Time
+    , log : List Event
     , selected : List Game.Pos
     , dealing : Bool
     , answer : Maybe Int
     }
 
 
+type Event
+    = ESet
+    | EDealMore
+    | EAsk
+
+
 init : ( Model, Cmd Msg )
 init =
-    ( { game = Game.none, selected = [], dealing = False, answer = Nothing }, Random.generate NewGame Game.init )
+    ( { game = Game.none, selected = [], dealing = False, answer = Nothing, start = 0, log = [] }
+    , Cmd.batch [ Random.generate NewGame Game.init, Task.perform StartGame Time.now ]
+    )
 
 
 style =
@@ -121,6 +132,7 @@ view model =
 
 type Msg
     = NewGame Game
+    | StartGame Time.Time
     | Choose Game.Pos
     | Deal
     | DealMore
@@ -135,7 +147,10 @@ update msg model =
     in
     case msg of
         NewGame game ->
-            ( { game = game, selected = [], dealing = False, answer = Nothing }, Cmd.none )
+            ( { game = game, selected = [], dealing = False, answer = Nothing, start = 0, log = [] }, Cmd.none )
+
+        StartGame start ->
+            ( { model | start = start }, Cmd.none )
 
         Choose p ->
             if Game.posEmpty model.game p then
@@ -150,7 +165,7 @@ update msg model =
                         Game.take model.game (p :: model.selected)
                 in
                 if isset then
-                    ( { model | game = newgame, selected = [], dealing = True, answer = Nothing }, after 500 Deal )
+                    ( { model | game = newgame, selected = [], dealing = True, answer = Nothing, log = ESet :: model.log }, after 500 Deal )
                 else
                     ( model, Cmd.none )
 
@@ -169,7 +184,7 @@ update msg model =
             )
 
         DealMore ->
-            ( { model | game = Game.dealMore model.game, answer = Nothing }, Cmd.none )
+            ( { model | game = Game.dealMore model.game, answer = Nothing, log = EDealMore :: model.log }, Cmd.none )
 
         Ask ->
-            ( { model | answer = Just (Game.countSets model.game) }, Cmd.none )
+            ( { model | answer = Just (Game.countSets model.game), log = EAsk :: model.log }, Cmd.none )
