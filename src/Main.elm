@@ -156,11 +156,16 @@ viewStart msg =
         m =
             Maybe.withDefault "Start!" msg
     in
-    Html.div [ Html.class "message", Html.onClick Go ] [ Html.text m ]
+    Html.div []
+        [ Html.text m
+        , Html.button [ Html.onClick Go ] [ Html.text "Go!" ]
+        , Html.button [ Html.onClick GoShort ] [ Html.text "Short!" ]
+        ]
 
 
 type Msg
     = Go
+    | GoShort
     | NewGame Game
     | StartGame Time.Time
     | Choose Game.Pos
@@ -174,6 +179,9 @@ update msg model =
     case msg of
         Go ->
             ( model, Cmd.batch [ Random.generate NewGame Game.init, Task.perform StartGame Time.now ] )
+
+        GoShort ->
+            ( model, Cmd.batch [ Random.generate NewGame Game.initShort, Task.perform StartGame Time.now ] )
 
         NewGame game ->
             ( Play (initGame game), Cmd.none )

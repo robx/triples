@@ -29,6 +29,18 @@ none =
 init : Generator Game
 init =
     shuffled
+        |> Random.map
+            (\d ->
+                { deck = d
+                , table = Dict.empty
+                }
+            )
+        |> Random.map deal
+
+
+initShort : Generator Game
+initShort =
+    shuffled
         |> Random.map (List.drop 60)
         |> Random.map
             (\d ->
