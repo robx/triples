@@ -40,8 +40,8 @@ type alias Model =
 
 type Event
     = ESet
-    | EDealMore
-    | EAsk
+    | EDealMoreZero
+    | EDealMoreNonzero
 
 
 init : ( Model, Cmd Msg )
@@ -84,8 +84,19 @@ view model =
 
         more =
             let
+                text =
+                    case model.answer of
+                        Just n ->
+                            toString n
+
+                        Nothing ->
+                            if Game.deckEmpty model.game then
+                                "."
+                            else
+                                "+"
+
                 handler =
-                    if model.dealing || Game.deckEmpty model.game then
+                    if model.dealing || Game.deckEmpty model.game || model.answer /= Nothing then
                         []
                     else
                         [ Svg.onClick DealMore
@@ -94,28 +105,7 @@ view model =
             in
             Svg.g
                 (Svg.transform (trans ( cols, 0 )) :: handler)
-                [ SvgSet.letterCard "+" ]
-
-        ask =
-            case model.answer of
-                Nothing ->
-                    let
-                        handler =
-                            if model.dealing then
-                                []
-                            else
-                                [ Svg.onClick Ask
-                                , Svg.Attributes.style "cursor: pointer;"
-                                ]
-                    in
-                    Svg.g
-                        (Svg.transform (trans ( cols, 1 )) :: handler)
-                        [ SvgSet.letterCard "?" ]
-
-                Just n ->
-                    Svg.g
-                        [ Svg.transform (trans ( cols, 1 )) ]
-                        [ SvgSet.letterCard <| toString n ]
+                [ SvgSet.letterCard text ]
 
         viewBox =
             let
@@ -133,7 +123,7 @@ view model =
                 [ Svg.viewBox viewBox
                 , Html.style [ ( "background", style.table ) ]
                 ]
-                (SvgSet.svgDefs style :: more :: ask :: gs)
+                (SvgSet.svgDefs style :: more :: gs)
 
         Just m ->
             Html.div [ Html.class "message", Html.onClick Go ] [ Html.text m ]
@@ -146,7 +136,6 @@ type Msg
     | Choose Game.Pos
     | Deal
     | DealMore
-    | Ask
     | GameOver Time.Time
 
 
@@ -216,10 +205,14 @@ update msg model =
             )
 
         DealMore ->
-            ( { model | game = Game.dealMore model.game, answer = Nothing, log = EDealMore :: model.log }, Cmd.none )
-
-        Ask ->
-            ( { model | answer = Just (Game.countSets model.game), log = EAsk :: model.log }, Cmd.none )
+            let
+                nsets =
+                    Game.countSets model.game
+            in
+            if nsets == 0 then
+                ( { model | game = Game.dealMore model.game, answer = Nothing, log = EDealMoreZero :: model.log }, Cmd.none )
+            else
+                ( { model | answer = Just (Game.countSets model.game), log = EDealMoreNonzero :: model.log }, Cmd.none )
 
         GameOver now ->
             let
@@ -249,20 +242,14 @@ score log start end =
             toString m ++ ":" ++ (String.padLeft 2 '0' <| toString s)
 
         deals =
-            List.length <| List.filter ((==) EDealMore) <| log
+            List.length <| List.filter ((==) EDealMoreNonzero) <| log
 
         dealsecs =
             deals * 60
 
-        asks =
-            List.length <| List.filter ((==) EAsk) <| log
-
-        asksecs =
-            asks * 20
-
         totalsecs =
-            secs + dealsecs + asksecs
+            secs + dealsecs
     in
     ( totalsecs
-    , String.join " " [ format totalsecs, "=", format secs, "=", format asksecs, "+", format dealsecs ]
+    , String.join " " [ format totalsecs, "=", format secs, "=", format dealsecs ]
     )
