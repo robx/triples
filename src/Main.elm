@@ -121,8 +121,13 @@ viewGame model =
                             else
                                 "+"
 
+                disabled =
+                    model.dealing
+                        || model.answer
+                        /= Nothing
+
                 handler =
-                    if model.dealing || Game.deckEmpty model.game || model.answer /= Nothing then
+                    if disabled then
                         []
                     else
                         [ Svg.onClick DealMore
@@ -154,12 +159,12 @@ viewStart : Maybe String -> Html.Html Msg
 viewStart msg =
     let
         m =
-            Maybe.withDefault "Start!" msg
+            Maybe.withDefault "Start a game" msg
     in
     Html.div []
-        [ Html.text m
-        , Html.button [ Html.onClick Go ] [ Html.text "Go!" ]
-        , Html.button [ Html.onClick GoShort ] [ Html.text "Short!" ]
+        [ Html.div [] [ Html.text m ]
+        , Html.button [ Html.onClick Go ] [ Html.text "Full deck" ]
+        , Html.button [ Html.onClick GoShort ] [ Html.text "Small deck" ]
         ]
 
 
@@ -209,6 +214,7 @@ update msg model =
 updateGame : Msg -> GameModel -> ( GameModel, Cmd Msg )
 updateGame msg model =
     let
+        after : Time.Time -> (Time.Time -> Msg) -> Cmd Msg
         after time msg =
             let
                 task =
@@ -236,9 +242,6 @@ updateGame msg model =
                 let
                     ( isset, newgame ) =
                         Game.take model.game (p :: model.selected)
-
-                    over =
-                        Game.over newgame
                 in
                 if isset then
                     let
@@ -246,11 +249,7 @@ updateGame msg model =
                             ESet :: model.log
                     in
                     ( { model | game = newgame, selected = [], dealing = True, answer = Nothing, log = log }
-                    , after 500 <|
-                        if over then
-                            GameOver log model.start
-                        else
-                            always Deal
+                    , after 500 <| always Deal
                     )
                 else
                     ( model, Cmd.none )
@@ -271,10 +270,15 @@ updateGame msg model =
 
         DealMore ->
             let
+                over =
+                    Game.over model.game
+
                 nsets =
                     Game.countSets model.game
             in
-            if nsets == 0 then
+            if over then
+                ( model, after 500 (GameOver model.log model.start) )
+            else if nsets == 0 then
                 ( { model | game = Game.dealMore model.game, answer = Nothing, log = EDealMoreZero :: model.log }, Cmd.none )
             else
                 ( { model | answer = Just (Game.countSets model.game), log = EDealMoreNonzero :: model.log }, Cmd.none )
@@ -312,5 +316,5 @@ score log start end =
             secs + dealsecs
     in
     ( totalsecs
-    , String.join " " [ format totalsecs, "=", format secs, "=", format dealsecs ]
+    , String.join " " [ "Your time:", format totalsecs, "=", format secs, "+", format dealsecs ]
     )
