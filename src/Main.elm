@@ -1,6 +1,7 @@
 port module Main exposing (..)
 
 import Card exposing (..)
+import Debug
 import Dict
 import Game exposing (Game)
 import Html
@@ -27,14 +28,24 @@ main =
         }
 
 
-type alias Model =
+type alias GameModel =
     { game : Game
     , start : Time.Time
     , log : List Event
     , selected : List Game.Pos
     , dealing : Bool
     , answer : Maybe Int
-    , message : Maybe String
+    }
+
+
+initGame : Game -> GameModel
+initGame game =
+    { game = game
+    , start = 0
+    , log = []
+    , selected = []
+    , dealing = False
+    , answer = Nothing
     }
 
 
@@ -44,9 +55,14 @@ type Event
     | EDealMoreNonzero
 
 
+type Model
+    = Start (Maybe String)
+    | Play GameModel
+
+
 init : ( Model, Cmd Msg )
 init =
-    ( { game = Game.none, selected = [], dealing = False, answer = Nothing, start = 0, log = [], message = Just "Start!" }
+    ( Start Nothing
     , Cmd.none
     )
 
@@ -57,6 +73,16 @@ style =
 
 view : Model -> Html.Html Msg
 view model =
+    case model of
+        Start msg ->
+            viewStart msg
+
+        Play game ->
+            viewGame game
+
+
+viewGame : GameModel -> Html.Html Msg
+viewGame model =
     let
         d ( pos, card ) =
             Svg.g
@@ -117,16 +143,20 @@ view model =
             in
             "0 0 " ++ toString width ++ " " ++ toString height
     in
-    case model.message of
-        Nothing ->
-            Svg.svg
-                [ Svg.viewBox viewBox
-                , Html.style [ ( "background", style.table ) ]
-                ]
-                (SvgSet.svgDefs style :: more :: gs)
+    Svg.svg
+        [ Svg.viewBox viewBox
+        , Html.style [ ( "background", style.table ) ]
+        ]
+        (SvgSet.svgDefs style :: more :: gs)
 
-        Just m ->
-            Html.div [ Html.class "message", Html.onClick Go ] [ Html.text m ]
+
+viewStart : Maybe String -> Html.Html Msg
+viewStart msg =
+    let
+        m =
+            Maybe.withDefault "Start!" msg
+    in
+    Html.div [ Html.class "message", Html.onClick Go ] [ Html.text m ]
 
 
 type Msg
@@ -136,11 +166,40 @@ type Msg
     | Choose Game.Pos
     | Deal
     | DealMore
-    | GameOver Time.Time
+    | GameOver (List Event) Time.Time Time.Time
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    case msg of
+        Go ->
+            ( model, Cmd.batch [ Random.generate NewGame Game.init, Task.perform StartGame Time.now ] )
+
+        NewGame game ->
+            ( Play (initGame game), Cmd.none )
+
+        GameOver log start now ->
+            let
+                ( secs, msg ) =
+                    score log start now
+            in
+            ( Start (Just msg), logScore secs )
+
+        _ ->
+            case model of
+                Play game ->
+                    let
+                        ( updgame, cmd ) =
+                            updateGame msg game
+                    in
+                    ( Play updgame, cmd )
+
+                _ ->
+                    Debug.crash "bad state"
+
+
+updateGame : Msg -> GameModel -> ( GameModel, Cmd Msg )
+updateGame msg model =
     let
         after time msg =
             let
@@ -155,14 +214,8 @@ update msg model =
             Task.perform msg task
     in
     case msg of
-        Go ->
-            ( model, Cmd.batch [ Random.generate NewGame Game.init, Task.perform StartGame Time.now ] )
-
-        NewGame game ->
-            ( { model | game = game }, Cmd.none )
-
         StartGame start ->
-            ( { model | start = start, message = Nothing }, Cmd.none )
+            ( { model | start = start }, Cmd.none )
 
         Choose p ->
             if Game.posEmpty model.game p then
@@ -180,10 +233,14 @@ update msg model =
                         Game.over newgame
                 in
                 if isset then
-                    ( { model | game = newgame, selected = [], dealing = True, answer = Nothing, log = ESet :: model.log }
+                    let
+                        log =
+                            ESet :: model.log
+                    in
+                    ( { model | game = newgame, selected = [], dealing = True, answer = Nothing, log = log }
                     , after 500 <|
                         if over then
-                            GameOver
+                            GameOver log model.start
                         else
                             always Deal
                     )
@@ -214,12 +271,8 @@ update msg model =
             else
                 ( { model | answer = Just (Game.countSets model.game), log = EDealMoreNonzero :: model.log }, Cmd.none )
 
-        GameOver now ->
-            let
-                ( secs, msg ) =
-                    score model.log model.start now
-            in
-            ( { model | message = Just msg }, logScore secs )
+        _ ->
+            Debug.crash "bad state"
 
 
 port logScore : Int -> Cmd msg
