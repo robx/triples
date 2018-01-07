@@ -121,6 +121,8 @@ type alias Layout msg =
     { locations : Int -> List ( Float, Float )
     , card : Style msg -> Bool -> Svg msg
     , button : String -> Svg msg
+    , w : Float
+    , h : Float
     }
 
 
@@ -129,7 +131,32 @@ cardLayout =
     { locations = rectLocations
     , card = card ( 50, 80 ) 6
     , button = letterCard ( 50, 80 ) 6
+    , w = 50
+    , h = 80
     }
+
+
+squareLayout : Layout msg
+squareLayout =
+    { locations = squareLocations
+    , card = card ( 50, 50 ) 6
+    , button = letterCard ( 50, 50 ) 6
+    , w = 50
+    , h = 50
+    }
+
+
+squareLocations : Int -> List ( Float, Float )
+squareLocations count =
+    case count of
+        0 ->
+            [ ( 0, 0 ) ]
+
+        1 ->
+            [ ( 0, 10 ), ( 0, -10 ) ]
+
+        _ ->
+            [ ( 10.4, -12 ), ( 0, 12 ), ( -10.4, -12 ) ]
 
 
 rectLocations : Int -> List ( Float, Float )
@@ -170,7 +197,7 @@ circle =
 triangle : Svg msg
 triangle =
     Svg.polygon
-        [ points "0.86,-0.5 0,1 -0.86,-0.5"
+        [ points "5.2,-3 0,6 -5.2,-3"
         ]
         []
 

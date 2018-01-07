@@ -68,11 +68,11 @@ init =
 
 
 style =
-    SvgSet.mySet
+    SvgSet.squareSet
 
 
 layout =
-    SvgSet.cardLayout
+    SvgSet.squareLayout
 
 
 view : Model -> Html.Html Msg
@@ -95,16 +95,6 @@ viewGame model =
                 , Svg.Attributes.style "cursor: pointer;"
                 ]
                 [ SvgSet.draw layout style (List.member pos model.selected) card ]
-
-        trans ( c, r ) =
-            let
-                x =
-                    30 + 60 * c
-
-                y =
-                    45 + 90 * r
-            in
-            "translate(" ++ toString x ++ "," ++ toString y ++ ")"
 
         gs =
             Dict.toList model.game.table |> List.map d
@@ -142,13 +132,23 @@ viewGame model =
                 (Svg.transform (trans ( cols, 0 )) :: handler)
                 [ layout.button text ]
 
+        trans ( c, r ) =
+            let
+                x =
+                    (toFloat c + 0.5) * (10 + layout.w)
+
+                y =
+                    (toFloat r + 0.5) * (10 + layout.h)
+            in
+            "translate(" ++ toString x ++ "," ++ toString y ++ ")"
+
         viewBox =
             let
                 width =
-                    (50 + 10) * (cols + 1)
+                    (layout.w + 10) * (toFloat cols + 1)
 
                 height =
-                    (80 + 10) * 3
+                    (layout.h + 10) * 3
             in
             "0 0 " ++ toString width ++ " " ++ toString height
     in
