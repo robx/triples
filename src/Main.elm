@@ -310,15 +310,21 @@ score log start end =
             in
             toString m ++ ":" ++ (String.padLeft 2 '0' <| toString s)
 
-        deals =
+        baddeals =
             List.length <| List.filter ((==) EDealMoreNonzero) <| log
 
-        dealsecs =
-            deals * 60
+        gooddeals =
+            List.length <| List.filter ((==) EDealMoreNonzero) <| log
+
+        baddealsecs =
+            baddeals * 60
+
+        gooddealsecs =
+            gooddeals * 45
 
         totalsecs =
-            secs + dealsecs
+            secs + baddealsecs - gooddealsecs
     in
     ( totalsecs
-    , String.join " " [ "Your time:", format totalsecs, "=", format secs, "+", format dealsecs ]
+    , String.join " " [ "Your time:", format totalsecs, "=", format secs, "+", format baddealsecs, "-", format gooddealsecs ]
     )
