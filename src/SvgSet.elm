@@ -94,27 +94,29 @@ draw st selected c =
         elt =
             lookup st.shapes c.shape
 
-        locs =
-            case c.count of
-                0 ->
-                    [ 0 ]
+        trans ( x, y ) =
+            "translate(" ++ toString x ++ "," ++ toString y ++ ")"
 
-                1 ->
-                    [ 10, -10 ]
-
-                _ ->
-                    [ 20, 0, -20 ]
-
-        trans y =
-            "translate(0," ++ toString y ++ ")"
-
-        sym y =
-            g [ transform (trans y) ]
+        sym p =
+            g [ transform (trans p) ]
                 (shade ++ [ g [ stroke col, fill f ] [ elt ] ])
     in
     g
         []
-        ([ card st selected ] ++ List.map sym locs)
+        ([ card st selected ] ++ List.map sym (locations c.count))
+
+
+locations : Int -> List ( Float, Float )
+locations count =
+    case count of
+        0 ->
+            [ ( 0, 0 ) ]
+
+        1 ->
+            [ ( 0, 10 ), ( 0, -10 ) ]
+
+        _ ->
+            [ ( 0, 20 ), ( 0, 0 ), ( 0, -20 ) ]
 
 
 rectangle : Svg msg
