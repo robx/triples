@@ -312,7 +312,7 @@ score log start end =
             List.length <| List.filter ((==) EDealMoreNonzero) <| log
 
         gooddeals =
-            List.length <| List.filter ((==) EDealMoreNonzero) <| log
+            List.length <| List.filter ((==) EDealMoreZero) <| log
 
         baddealsecs =
             baddeals * 60
