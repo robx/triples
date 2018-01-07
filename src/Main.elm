@@ -71,6 +71,10 @@ style =
     SvgSet.mySet
 
 
+layout =
+    SvgSet.cardLayout
+
+
 view : Model -> Html.Html Msg
 view model =
     case model of
@@ -90,7 +94,7 @@ viewGame model =
                 , Svg.onClick (Choose pos)
                 , Svg.Attributes.style "cursor: pointer;"
                 ]
-                [ SvgSet.draw style (List.member pos model.selected) card ]
+                [ SvgSet.draw layout style (List.member pos model.selected) card ]
 
         trans ( c, r ) =
             let
@@ -136,7 +140,7 @@ viewGame model =
             in
             Svg.g
                 (Svg.transform (trans ( cols, 0 )) :: handler)
-                [ SvgSet.letterCard text ]
+                [ layout.button text ]
 
         viewBox =
             let

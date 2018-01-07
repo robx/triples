@@ -51,8 +51,8 @@ mySet =
     }
 
 
-draw : Style msg -> Bool -> Card -> Svg msg
-draw st selected c =
+draw : Layout msg -> Style msg -> Bool -> Card -> Svg msg
+draw layout st selected c =
     let
         col =
             lookup st.colors c.color
@@ -103,11 +103,26 @@ draw st selected c =
     in
     g
         []
-        ([ card st selected ] ++ List.map sym (locations c.count))
+        ([ layout.card st selected ] ++ List.map sym (layout.locations c.count))
 
 
-locations : Int -> List ( Float, Float )
-locations count =
+type alias Layout msg =
+    { locations : Int -> List ( Float, Float )
+    , card : Style msg -> Bool -> Svg msg
+    , button : String -> Svg msg
+    }
+
+
+cardLayout : Layout msg
+cardLayout =
+    { locations = rectLocations
+    , card = rectCard
+    , button = letterCard
+    }
+
+
+rectLocations : Int -> List ( Float, Float )
+rectLocations count =
     case count of
         0 ->
             [ ( 0, 0 ) ]
@@ -234,8 +249,8 @@ svgDefs st =
     defs [] <| dropShadow :: clipPaths st
 
 
-card : Style msg -> Bool -> Svg msg
-card st selected =
+rectCard : Style msg -> Bool -> Svg msg
+rectCard st selected =
     rect
         [ x "-25"
         , y "-40"
@@ -285,8 +300,3 @@ letterCard c =
             ]
             [ text c ]
         ]
-
-
-more : Svg msg
-more =
-    letterCard "+"
