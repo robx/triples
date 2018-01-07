@@ -51,6 +51,17 @@ mySet =
     }
 
 
+squareSet : Style msg
+squareSet =
+    { colors = ( "rgb(5,135,137)", "rgb(213,75,26)", "rgb(227,167,45)" )
+    , foreground = "rgb(80,61,46)"
+    , background = "rgb(246,242,231)"
+    , table = "rgb(240,236,201)"
+    , select = "orange"
+    , shapes = ( square, triangle, circle )
+    }
+
+
 draw : Layout msg -> Style msg -> Bool -> Card -> Svg msg
 draw layout st selected c =
     let
@@ -116,8 +127,8 @@ type alias Layout msg =
 cardLayout : Layout msg
 cardLayout =
     { locations = rectLocations
-    , card = rectCard
-    , button = letterCard
+    , card = card ( 50, 80 ) 6
+    , button = letterCard ( 50, 80 ) 6
     }
 
 
@@ -132,6 +143,36 @@ rectLocations count =
 
         _ ->
             [ ( 0, 20 ), ( 0, 0 ), ( 0, -20 ) ]
+
+
+square : Svg msg
+square =
+    rect
+        [ x "-6"
+        , y "-6"
+        , width "12"
+        , height "12"
+        ]
+        []
+
+
+circle : Svg msg
+circle =
+    Svg.ellipse
+        [ cx "0"
+        , cy "0"
+        , rx "6"
+        , ry "6"
+        ]
+        []
+
+
+triangle : Svg msg
+triangle =
+    Svg.polygon
+        [ points "0.86,-0.5 0,1 -0.86,-0.5"
+        ]
+        []
 
 
 rectangle : Svg msg
@@ -249,47 +290,50 @@ svgDefs st =
     defs [] <| dropShadow :: clipPaths st
 
 
-rectCard : Style msg -> Bool -> Svg msg
-rectCard st selected =
+rectAttrs : ( Float, Float ) -> Float -> List (Svg.Attribute msg)
+rectAttrs ( w, h ) r =
+    [ x (toString <| -w / 2)
+    , y (toString <| -h / 2)
+    , width (toString w)
+    , height (toString h)
+    , rx (toString r)
+    , ry (toString r)
+    ]
+
+
+card : ( Float, Float ) -> Float -> Style msg -> Bool -> Svg msg
+card ( w, h ) r st selected =
     rect
-        [ x "-25"
-        , y "-40"
-        , width "50"
-        , height "80"
-        , rx "6"
-        , ry "6"
-        , stroke
-            (if selected then
-                st.select
-             else
-                st.foreground
-            )
-        , strokeWidth
-            (if selected then
-                "1"
-             else
-                "0.2"
-            )
-        , fill st.background
-        , Svg.Attributes.style "filter: url(#dropshadow);"
-        ]
+        (rectAttrs ( w, h ) r
+            ++ [ stroke
+                    (if selected then
+                        st.select
+                     else
+                        st.foreground
+                    )
+               , strokeWidth
+                    (if selected then
+                        "1"
+                     else
+                        "0.2"
+                    )
+               , fill st.background
+               , Svg.Attributes.style "filter: url(#dropshadow);"
+               ]
+        )
         []
 
 
-letterCard : String -> Svg msg
-letterCard c =
+letterCard : ( Float, Float ) -> Float -> String -> Svg msg
+letterCard ( w, h ) r c =
     g
         []
         [ rect
-            [ x "-25"
-            , y "-40"
-            , width "50"
-            , height "80"
-            , rx "6"
-            , ry "6"
-            , stroke "none"
-            , fill "lightgray"
-            ]
+            (rectAttrs ( w, h ) r
+                ++ [ stroke "none"
+                   , fill "lightgray"
+                   ]
+            )
             []
         , text_
             [ stroke "gray"
