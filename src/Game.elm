@@ -27,7 +27,12 @@ type GameType
 
 
 setSize : Game -> Int
-setSize g = if g.type_ == ClassicSet then 3 else 4
+setSize g =
+    if g.type_ == ClassicSet then
+        3
+    else
+        4
+
 
 init : Bool -> Bool -> Generator Game
 init short super =
@@ -54,7 +59,7 @@ init short super =
 
 over : Game -> Bool
 over g =
-    List.isEmpty g.deck && countSets g == 0
+    List.isEmpty g.deck && count g == 0
 
 
 shuffled : Generator (List Card)
@@ -242,6 +247,14 @@ take g ps =
         ( True, { g | table = List.foldr (<|) g.table (List.map Dict.remove ps) } )
     else
         ( False, g )
+
+
+count : Game -> Int
+count g =
+    if g.type_ == SuperSet then
+        countSupersets g
+    else
+        countSets g
 
 
 countSets : Game -> Int

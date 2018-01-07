@@ -276,14 +276,14 @@ updateGame msg model =
                     Game.over model.game
 
                 nsets =
-                    Game.countSets model.game
+                    Game.count model.game
             in
             if over then
                 ( model, after 500 (GameOver model.log model.start) )
             else if nsets == 0 then
                 ( { model | game = Game.dealMore model.game, answer = Nothing, log = EDealMoreZero :: model.log }, Cmd.none )
             else
-                ( { model | answer = Just (Game.countSets model.game), log = EDealMoreNonzero :: model.log }, Cmd.none )
+                ( { model | answer = Just (Game.count model.game), log = EDealMoreNonzero :: model.log }, Cmd.none )
 
         _ ->
             Debug.crash "bad state"
