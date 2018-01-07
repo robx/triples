@@ -105,11 +105,8 @@ draw layout st selected c =
         elt =
             lookup st.shapes c.shape
 
-        trans ( x, y ) =
-            "translate(" ++ toString x ++ "," ++ toString y ++ ")"
-
-        sym p =
-            g [ transform (trans p) ]
+        sym t =
+            g [ transform t ]
                 (shade ++ [ g [ stroke col, fill f ] [ elt ] ])
     in
     g
@@ -118,7 +115,7 @@ draw layout st selected c =
 
 
 type alias Layout msg =
-    { locations : Int -> List ( Float, Float )
+    { locations : Int -> List String
     , card : Style msg -> Bool -> Svg msg
     , button : String -> Svg msg
     , w : Float
@@ -146,41 +143,60 @@ squareLayout =
     }
 
 
-squareLocations : Int -> List ( Float, Float )
+trans ( x, y ) =
+    "translate(" ++ toString x ++ "," ++ toString y ++ ")"
+
+
+squareLocations : Int -> List String
 squareLocations count =
-    case count of
-        0 ->
-            [ ( 0, 0 ) ]
+    List.map trans <|
+        case count of
+            0 ->
+                [ ( 0, 0 ) ]
 
-        1 ->
-            [ ( 0, 10 ), ( 0, -10 ) ]
+            1 ->
+                scale 12 <| ngon 2
 
-        _ ->
-            [ ( 10.4, -12 ), ( 0, 12 ), ( -10.4, -12 ) ]
+            _ ->
+                scale 12 <| ngon 3
 
 
-rectLocations : Int -> List ( Float, Float )
+rectLocations : Int -> List String
 rectLocations count =
-    case count of
-        0 ->
-            [ ( 0, 0 ) ]
+    List.map trans <|
+        case count of
+            0 ->
+                [ ( 0, 0 ) ]
 
-        1 ->
-            [ ( 0, 10 ), ( 0, -10 ) ]
+            1 ->
+                [ ( 0, 10 ), ( 0, -10 ) ]
 
-        _ ->
-            [ ( 0, 20 ), ( 0, 0 ), ( 0, -20 ) ]
+            _ ->
+                [ ( 0, 20 ), ( 0, 0 ), ( 0, -20 ) ]
+
+
+ngon : Int -> List ( Float, Float )
+ngon n =
+    let
+        z =
+            2 * pi / toFloat n
+    in
+    List.range 0 (n - 1) |> List.map (\k -> ( cos (toFloat k * z), sin (toFloat k * z) ))
+
+
+scale : Float -> List ( Float, Float ) -> List ( Float, Float )
+scale f =
+    List.map <| \( x, y ) -> ( f * x, f * y )
+
+
+toPoints : List ( Float, Float ) -> String
+toPoints =
+    String.join " " << List.map (\( x, y ) -> toString x ++ "," ++ toString y)
 
 
 square : Svg msg
 square =
-    rect
-        [ x "-6"
-        , y "-6"
-        , width "12"
-        , height "12"
-        ]
-        []
+    polygon [ points <| toPoints <| scale 7 <| ngon 4 ] []
 
 
 circle : Svg msg
@@ -188,18 +204,15 @@ circle =
     Svg.ellipse
         [ cx "0"
         , cy "0"
-        , rx "6"
-        , ry "6"
+        , rx "7"
+        , ry "7"
         ]
         []
 
 
 triangle : Svg msg
 triangle =
-    Svg.polygon
-        [ points "5.2,-3 0,6 -5.2,-3"
-        ]
-        []
+    polygon [ points <| toPoints <| scale 7 <| ngon 3 ] []
 
 
 rectangle : Svg msg
