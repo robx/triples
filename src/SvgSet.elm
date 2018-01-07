@@ -42,7 +42,7 @@ standardSet =
 
 mySet : Style msg
 mySet =
-    { colors = ( "rgb(5,135,137)", "rgb(213,75,26)", "rgb(227,167,45)" )
+    { colors = ( "rgb(5,135,137)", "rgb(213,75,26)", "rgb(233,167,67)" )
     , foreground = "rgb(80,61,46)"
     , background = "rgb(246,242,231)"
     , table = "rgb(240,236,201)"
@@ -53,7 +53,7 @@ mySet =
 
 squareSet : Style msg
 squareSet =
-    { colors = ( "rgb(5,135,137)", "rgb(213,75,26)", "rgb(227,167,45)" )
+    { colors = mySet.colors
     , foreground = "rgb(80,61,46)"
     , background = "rgb(246,242,231)"
     , table = "rgb(240,236,201)"
