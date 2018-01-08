@@ -11,9 +11,8 @@ import List.Extra
 import Process
 import Random
 import Svg
-import Svg.Attributes as Svg
-import Svg.Attributes
-import Svg.Events as Svg
+import Svg.Attributes as SvgA
+import Svg.Events as SvgE
 import SvgSet
 import Task
 import Time
@@ -90,9 +89,9 @@ viewGame model =
     let
         d ( pos, card ) =
             Svg.g
-                [ Svg.transform (trans pos)
-                , Svg.onClick (Choose pos)
-                , Svg.Attributes.style "cursor: pointer;"
+                [ SvgA.transform (trans pos)
+                , SvgE.onClick (Choose pos)
+                , SvgA.style "cursor: pointer;"
                 ]
                 [ SvgSet.draw layout style (List.member pos model.selected) card ]
 
@@ -124,12 +123,12 @@ viewGame model =
                     if disabled then
                         []
                     else
-                        [ Svg.onClick DealMore
-                        , Svg.Attributes.style "cursor: pointer;"
+                        [ SvgE.onClick DealMore
+                        , SvgA.style "cursor: pointer;"
                         ]
             in
             Svg.g
-                (Svg.transform (trans ( cols, 0 )) :: handler)
+                (SvgA.transform (trans ( cols, 0 )) :: handler)
                 [ layout.button text ]
 
         trans ( c, r ) =
@@ -153,7 +152,7 @@ viewGame model =
             "0 0 " ++ toString width ++ " " ++ toString height
     in
     Svg.svg
-        [ Svg.viewBox viewBox
+        [ SvgA.viewBox viewBox
         , Html.style [ ( "background", style.table ) ]
         ]
         (SvgSet.svgDefs style :: more :: gs)
