@@ -173,17 +173,28 @@ apply action game =
             List.foldr (<|) game (List.map move1 ms)
 
 
+defaultColumns : Game -> Int
+defaultColumns g =
+    if g.type_ == ClassicSet then
+        4
+    else
+        3
+
+
 columns : Game -> Int
 columns g =
     let
         last =
             List.reverse >> List.head
+
+        maxcol =
+            (\( x, y ) -> x + 1) <|
+                Maybe.withDefault ( -1, -1 ) <|
+                    last <|
+                        Dict.keys <|
+                            g.table
     in
-    (\( x, y ) -> x + 1) <|
-        Maybe.withDefault ( -1, -1 ) <|
-            last <|
-                Dict.keys <|
-                    g.table
+    max maxcol (defaultColumns g)
 
 
 grid : Int -> List Pos
