@@ -155,10 +155,10 @@ squareLocations count =
                 [ ( 0, 0 ) ]
 
             1 ->
-                scale 12 <| ngon 2
+                rotate -45 <| scale 12 <| ngon 2
 
             _ ->
-                scale 12 <| ngon 3
+                rotate 15 <| scale 12 <| ngon 3
 
 
 rectLocations : Int -> List String
@@ -189,6 +189,15 @@ scale f =
     List.map <| \( x, y ) -> ( f * x, f * y )
 
 
+rotate : Float -> List ( Float, Float ) -> List ( Float, Float )
+rotate a =
+    let
+        r =
+            2 * pi * a / 360
+    in
+    List.map <| \( x, y ) -> ( cos r * x + sin r * y, sin r * x - cos r * y )
+
+
 toPoints : List ( Float, Float ) -> String
 toPoints =
     String.join " " << List.map (\( x, y ) -> toString x ++ "," ++ toString y)
@@ -196,7 +205,7 @@ toPoints =
 
 square : Svg msg
 square =
-    polygon [ points <| toPoints <| scale 7 <| ngon 4 ] []
+    polygon [ points <| toPoints <| scale 8 <| rotate 45 <| ngon 4 ] []
 
 
 circle : Svg msg
@@ -212,7 +221,7 @@ circle =
 
 triangle : Svg msg
 triangle =
-    polygon [ points <| toPoints <| scale 7 <| ngon 3 ] []
+    polygon [ points <| toPoints <| scale 8.5 <| ngon 3 ] []
 
 
 rectangle : Svg msg
