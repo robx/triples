@@ -164,16 +164,33 @@ viewGame model =
 viewStart : Maybe String -> Html.Html Msg
 viewStart msg =
     let
-        m =
-            Maybe.withDefault "Start a game" msg
+        addScore h =
+            case msg of
+                Just m ->
+                    Html.div [ Html.class "msg", Html.style [ ( "background", snd style.colors ) ] ] [ Html.text m ] :: h
+
+                Nothing ->
+                    h
+
+        fst ( x, y, z ) =
+            x
+
+        snd ( x, y, z ) =
+            y
+
+        trd ( x, y, z ) =
+            z
     in
-    Html.div [ Html.id "main" ]
-        [ Html.div [] [ Html.text m ]
-        , Html.button [ Html.onClick <| Go False False ] [ Html.text "Full deck" ]
-        , Html.button [ Html.onClick <| Go True False ] [ Html.text "Small deck" ]
-        , Html.button [ Html.onClick <| Go False True ] [ Html.text "Superset (Full)" ]
-        , Html.button [ Html.onClick <| Go True True ] [ Html.text "Superset (Small)" ]
-        ]
+    Html.div [ Html.id "main" ] <|
+        addScore
+            [ Html.div [ Html.class "msg", Html.style [ ( "background", trd style.colors ) ] ] [ Html.text "Play a game!" ]
+            , Html.div [ Html.class "buttons" ]
+                [ Html.button [ Html.onClick <| Go False False ] [ Html.text "Classic" ]
+                , Html.button [ Html.onClick <| Go True False ] [ Html.text "Classic (short)" ]
+                , Html.button [ Html.onClick <| Go False True ] [ Html.text "Super" ]
+                , Html.button [ Html.onClick <| Go True True ] [ Html.text "Super (short)" ]
+                ]
+            ]
 
 
 type Msg

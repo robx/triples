@@ -16,10 +16,29 @@ html, body, div#container {
     }
 }
 
-div#container, div#main {
+div#container {
     display: flex;
     justify-content: center;
     align-items: center;
+}
+
+div#main {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
+
+div.msg {
+    padding: 5px;
+    margin: 5px;
+    text-align: center;
+    width: 100%;
+}
+
+div.buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
 }
 
 svg {
