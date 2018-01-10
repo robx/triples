@@ -42,7 +42,7 @@ standardSet =
 
 mySet : Style msg
 mySet =
-    { colors = ( "rgb(5,135,137)", "rgb(213,75,26)", "rgb(233,167,67)" )
+    { colors = ( "rgb(5,135,137)", "rgb(200,64,34)", "rgb(233,167,67)" )
     , foreground = "rgb(80,61,46)"
     , background = "rgb(246,242,231)"
     , table = "rgb(240,236,201)"
@@ -56,7 +56,7 @@ squareSet =
     { colors = mySet.colors
     , foreground = "rgb(80,61,46)"
     , background = "rgb(246,242,231)"
-    , table = "rgb(240,236,201)"
+    , table = "slategray"
     , select = "orange"
     , shapes = ( square, triangle, circle )
     }
@@ -387,9 +387,6 @@ letterCard ( w, h ) r c =
         , text_
             [ stroke "gray"
             , fill "gray"
-            , textAnchor "middle"
-            , fontSize "50"
-            , Svg.Attributes.style "dominant-baseline: central;"
             ]
             [ text c ]
         ]

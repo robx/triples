@@ -76,12 +76,14 @@ layout =
 
 view : Model -> Html.Html Msg
 view model =
-    case model of
-        Start msg ->
-            viewStart msg
+    Html.div [ Html.id "container", Html.style [ ( "background", style.table ) ] ]
+        [ case model of
+            Start msg ->
+                viewStart msg
 
-        Play game ->
-            viewGame game
+            Play game ->
+                viewGame game
+        ]
 
 
 viewGame : GameModel -> Html.Html Msg
@@ -153,6 +155,7 @@ viewGame model =
     in
     Svg.svg
         [ SvgA.viewBox viewBox
+        , Html.id "main"
         , Html.style [ ( "background", style.table ) ]
         ]
         (SvgSet.svgDefs style :: more :: gs)
@@ -164,7 +167,7 @@ viewStart msg =
         m =
             Maybe.withDefault "Start a game" msg
     in
-    Html.div []
+    Html.div [ Html.id "main" ]
         [ Html.div [] [ Html.text m ]
         , Html.button [ Html.onClick <| Go False False ] [ Html.text "Full deck" ]
         , Html.button [ Html.onClick <| Go True False ] [ Html.text "Small deck" ]

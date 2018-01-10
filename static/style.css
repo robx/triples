@@ -1,32 +1,37 @@
-html, body, div#main, svg {
+html, body, div#container {
+    width: 100vw;
+    height: 100vh;
+    margin: 0;
+}
+
+#main {
     width: 100vw;
     height: 100vh;
     margin: 0;
 }
 
 @media (min-width: 800px) {
-    html, body, div, svg {
+    #main {
         width: 800px;
     }
 }
 
-#main {
+div#container, div#main {
     display: flex;
     justify-content: center;
     align-items: center;
-    background: #fff;
-}
-
-.message {
-    flex: 1 1 50%;
-    padding: 1em;
-    text-align: center;
-    font-size: 10em;
-    background: #ddd;
 }
 
 svg {
     user-select: none;
     -moz-user-select: none;
     -webkit-user-select: none;
+}
+
+svg text {
+    --font: Arial;
+    font-family: var(--font);
+    text-anchor: middle;
+    font-size: 40px;
+    dominant-baseline: central;
 }
