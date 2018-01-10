@@ -84,16 +84,15 @@ type alias Style msg =
 
 toStyle : StyleTag -> Style msg
 toStyle t =
-    Debug.log (toString t) <|
-        case t of
-            Square ->
-                { style = SvgSet.squareSet, layout = SvgSet.squareLayout }
+    case t of
+        Square ->
+            { style = SvgSet.squareSet, layout = SvgSet.squareLayout }
 
-            Classic ->
-                { style = SvgSet.standardSet, layout = SvgSet.cardLayout }
+        Classic ->
+            { style = SvgSet.standardSet, layout = SvgSet.cardLayout }
 
-            Modified ->
-                { style = SvgSet.mySet, layout = SvgSet.cardLayout }
+        Modified ->
+            { style = SvgSet.mySet, layout = SvgSet.cardLayout }
 
 
 view : Model -> Html.Html Msg
