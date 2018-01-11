@@ -58,6 +58,7 @@ type Event
 
 type alias Model =
     { style : Style Msg
+    , key : Maybe String
     , page : Page
     }
 
@@ -70,6 +71,7 @@ type Page
 init : Navigation.Location -> ( Model, Cmd Msg )
 init loc =
     ( { style = toStyle <| parseStyle loc
+      , key = parseKey loc
       , page = Start Nothing
       }
     , Cmd.none
@@ -399,3 +401,9 @@ parseStyle loc =
 
                         _ ->
                             Square
+
+parseKey : Navigation.Location -> Maybe String
+parseKey loc =
+    case UrlParser.parseHash (UrlParser.top <?> UrlParser.stringParam "key") loc of
+        Nothing -> Nothing
+        Just m -> m
