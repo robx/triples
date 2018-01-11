@@ -1,4 +1,4 @@
-port module Main exposing (..)
+module Main exposing (..)
 
 import Card exposing (..)
 import Debug
@@ -242,7 +242,7 @@ update msg model =
                 ( secs, msg ) =
                     score log start now
             in
-            ( { model | page = Start (Just msg) }, logScore secs )
+            ( { model | page = Start (Just msg) }, Cmd.none )
 
         _ ->
             case model.page of
@@ -331,9 +331,6 @@ updateGame msg model =
 
         _ ->
             Debug.crash "bad state"
-
-
-port logScore : Int -> Cmd msg
 
 
 score : List Event -> Time.Time -> Time.Time -> ( Int, String )

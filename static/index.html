@@ -10,14 +10,4 @@
 <script src="static/Main.js"></script>
 <script>
   var app = Elm.Main.fullscreen();
-
-  app.ports.logScore.subscribe(function(score) {
-    const key = "scores";
-    var scores = JSON.parse(localStorage.getItem(key));
-    if (scores === null) {
-      scores = [];
-    }
-    scores.push(score);
-    localStorage.setItem(key, JSON.stringify(scores));
-  });
 </script>
