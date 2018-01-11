@@ -85,8 +85,10 @@ func runBot(
 type CallbackHandler func(*tgbotapi.CallbackQuery) *tgbotapi.CallbackConfig
 
 type Blob struct {
-	UserID          int    `json:"uid"`
-	ChatID          int    `json:"cid,omitempty"`
+	UserID          int    `json:"uid,omitempty"`
+	FirstName       string `json:"fst,omitempty"`
+	ChatInstance    string `json:"cin,omitempty"`
+	ChatID          int64  `json:"cid,omitempty"`
 	MessageID       int    `json:"mid,omitempty"`
 	InlineMessageID string `json:"iid,omitempty"`
 }
@@ -131,9 +133,20 @@ func decode(s string) (Blob, error) {
 func handleGame(shortname, url string) CallbackHandler {
 	return func(q *tgbotapi.CallbackQuery) *tgbotapi.CallbackConfig {
 		if g := q.GameShortName; g == shortname {
+			b := Blob{
+				UserID:          q.From.ID,
+				FirstName:       q.From.FirstName,
+				InlineMessageID: q.InlineMessageID,
+				ChatInstance:    q.ChatInstance,
+			}
+			if msg := q.Message; msg != nil {
+				b.MessageID = msg.MessageID
+				b.ChatID = msg.Chat.ID
+			}
+			key := encode(b)
 			return &tgbotapi.CallbackConfig{
 				CallbackQueryID: q.ID,
-				URL:             url,
+				URL:             url + "?key=" + key,
 			}
 		}
 		return nil
