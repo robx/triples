@@ -1,12 +1,17 @@
 package main
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"flag"
+	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 
 	"github.com/julienschmidt/httprouter"
+	"golang.org/x/crypto/nacl/secretbox"
 	"gopkg.in/telegram-bot-api.v4"
 )
 
@@ -78,6 +83,50 @@ func runBot(
 }
 
 type CallbackHandler func(*tgbotapi.CallbackQuery) *tgbotapi.CallbackConfig
+
+type Blob struct {
+	UserID          int    `json:"uid"`
+	ChatID          int    `json:"cid,omitempty"`
+	MessageID       int    `json:"mid,omitempty"`
+	InlineMessageID string `json:"iid,omitempty"`
+}
+
+var (
+	key = [32]byte{0x49, 0xf3, 0xae, 0x3f, 0x82, 0x26, 0x72, 0x6d, 0xf4, 0x5c, 0xf4, 0x3c, 0x36, 0x66, 0x12, 0xdf, 0x8a, 0xc1, 0x2b, 0xe9, 0x94, 0x87, 0x92, 0x47, 0x8e, 0xfa, 0xcf, 0xb9, 0xcc, 0x77, 0xf7, 0x3d}
+)
+
+func encode(b Blob) string {
+	js, err := json.Marshal(b)
+	if err != nil {
+		panic(err)
+	}
+	var (
+		nonce [24]byte
+	)
+	_, err = rand.Read(nonce[:])
+	if err != nil {
+		panic(err)
+	}
+	bs := secretbox.Seal(nonce[:], js, &nonce, &key)
+	return base64.URLEncoding.EncodeToString(bs)
+}
+
+func decode(s string) (Blob, error) {
+	bs, err := base64.URLEncoding.DecodeString(s)
+	if err != nil {
+		return Blob{}, err
+	}
+	var nonce [24]byte
+	copy(nonce[:], bs)
+	box := bs[24:]
+	var out []byte
+	js, ok := secretbox.Open(out, box, &nonce, &key)
+	if !ok {
+		return Blob{}, fmt.Errorf("bad blob")
+	}
+	var b Blob
+	return b, json.Unmarshal(js, &b)
+}
 
 func handleGame(shortname, url string) CallbackHandler {
 	return func(q *tgbotapi.CallbackQuery) *tgbotapi.CallbackConfig {
