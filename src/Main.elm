@@ -57,8 +57,7 @@ type Event
 
 
 type alias Model =
-    { style : Style Msg
-    , key : Maybe String
+    { params : Params Msg
     , page : Page
     }
 
@@ -70,42 +69,22 @@ type Page
 
 init : Navigation.Location -> ( Model, Cmd Msg )
 init loc =
-    ( { style = toStyle <| parseStyle loc
-      , key = parseKey loc
+    ( { params = parseParams loc
       , page = Start Nothing
       }
     , Cmd.none
     )
 
 
-type alias Style msg =
-    { style : SvgSet.Style msg
-    , layout : SvgSet.Layout msg
-    }
-
-
-toStyle : StyleTag -> Style msg
-toStyle t =
-    case t of
-        Square ->
-            { style = SvgSet.squareSet, layout = SvgSet.squareLayout }
-
-        Classic ->
-            { style = SvgSet.standardSet, layout = SvgSet.cardLayout }
-
-        Modified ->
-            { style = SvgSet.mySet, layout = SvgSet.cardLayout }
-
-
 view : Model -> Html.Html Msg
 view model =
-    Html.div [ Html.id "container", Html.style [ ( "background", model.style.style.table ) ] ]
+    Html.div [ Html.id "container", Html.style [ ( "background", model.params.style.style.table ) ] ]
         [ case model.page of
             Start msg ->
-                viewStart model.style msg
+                viewStart model.params.style msg
 
             Play game ->
-                viewGame model.style game
+                viewGame model.params.style game
         ]
 
 
@@ -371,39 +350,46 @@ score log start end =
     )
 
 
-type StyleTag
-    = Classic
-    | Modified
-    | Square
+type alias Style msg =
+    { style : SvgSet.Style msg
+    , layout : SvgSet.Layout msg
+    }
 
 
-parseStyle : Navigation.Location -> StyleTag
-parseStyle loc =
-    case UrlParser.parseHash (UrlParser.top <?> UrlParser.stringParam "style") loc of
+type alias Params msg =
+    { style : Style msg
+    , key : Maybe String
+    , name : Maybe String
+    }
+
+
+parseParams : Navigation.Location -> Params msg
+parseParams loc =
+    let
+        parser =
+            UrlParser.top
+                <?> UrlParser.stringParam "style"
+                <?> UrlParser.stringParam "key"
+                <?> UrlParser.stringParam "name"
+
+        f s k n =
+            { style =
+                case Maybe.withDefault "square" s of
+                    "classic" ->
+                        { style = SvgSet.standardSet, layout = SvgSet.cardLayout }
+
+                    "modified" ->
+                        { style = SvgSet.mySet, layout = SvgSet.cardLayout }
+
+                    _ ->
+                        { style = SvgSet.squareSet, layout = SvgSet.squareLayout }
+            , key = k
+            , name = n
+            }
+    in
+    case UrlParser.parseHash (UrlParser.map f parser) loc of
         Nothing ->
-            Square
+            Debug.crash "url parse failure"
 
-        Just m ->
-            case m of
-                Nothing ->
-                    Square
-
-                Just s ->
-                    case s of
-                        "square" ->
-                            Square
-
-                        "classic" ->
-                            Classic
-
-                        "modified" ->
-                            Modified
-
-                        _ ->
-                            Square
-
-parseKey : Navigation.Location -> Maybe String
-parseKey loc =
-    case UrlParser.parseHash (UrlParser.top <?> UrlParser.stringParam "key") loc of
-        Nothing -> Nothing
-        Just m -> m
+        Just p ->
+            p
