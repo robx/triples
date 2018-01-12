@@ -7,6 +7,7 @@ import Game exposing (Game)
 import Html
 import Html.Attributes as Html
 import Html.Events as Html
+import Http
 import List.Extra
 import Navigation
 import Process
@@ -81,7 +82,7 @@ view model =
     Html.div [ Html.id "container", Html.style [ ( "background", model.params.style.style.table ) ] ]
         [ case model.page of
             Start msg ->
-                viewStart model.params.style msg
+                viewStart model.params.name model.params.style msg
 
             Play game ->
                 viewGame model.params.style game
@@ -163,16 +164,26 @@ viewGame style model =
         (SvgSet.svgDefs style.style :: more :: gs)
 
 
-viewStart : Style Msg -> Maybe String -> Html.Html Msg
-viewStart style msg =
+viewStart : Maybe String -> Style Msg -> Maybe String -> Html.Html Msg
+viewStart name style score =
     let
         addScore h =
-            case msg of
+            case score of
                 Just m ->
                     Html.div [ Html.class "msg", Html.style [ ( "background", snd style.style.colors ) ] ] [ Html.text m ] :: h
 
                 Nothing ->
                     h
+
+        prompt =
+            "Choose a game"
+                ++ (case name of
+                        Just n ->
+                            ", " ++ n ++ "!"
+
+                        Nothing ->
+                            "!"
+                   )
 
         fst ( x, y, z ) =
             x
@@ -185,9 +196,11 @@ viewStart style msg =
     in
     Html.div [ Html.id "main" ] <|
         addScore
-            [ Html.div [ Html.class "msg", Html.style [ ( "background", trd style.style.colors ) ] ] [ Html.text "Play a game!" ]
+            [ Html.div
+                [ Html.class "msg", Html.style [ ( "background", trd style.style.colors ) ] ]
+                [ Html.text prompt ]
             , Html.div [ Html.class "buttons" ]
-                [ Html.button [ Html.onClick <| Go False False ] [ Html.text "Classic" ]
+                [ Html.button [ Html.onClick <| Go False False ] [ Html.text "Classic (scored!)" ]
                 , Html.button [ Html.onClick <| Go True False ] [ Html.text "Classic (short)" ]
                 , Html.button [ Html.onClick <| Go False True ] [ Html.text "Super" ]
                 , Html.button [ Html.onClick <| Go True True ] [ Html.text "Super (short)" ]
@@ -204,11 +217,19 @@ type Msg
     | DealMore
     | GameOver (List Event) Time.Time Time.Time
     | Ignore
+    | APIResult (Result Http.Error String)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        APIResult r ->
+            let
+                _ =
+                    Debug.log "api result" r
+            in
+            ( model, Cmd.none )
+
         Ignore ->
             ( model, Cmd.none )
 
@@ -220,10 +241,29 @@ update msg model =
 
         GameOver log start now ->
             let
-                ( secs, msg ) =
+                ( secs, msg, telescore ) =
                     score log start now
+
+                scored =
+                    case model.page of
+                        Start _ ->
+                            False
+
+                        Play g ->
+                            g.game.type_ == Game.ClassicSet && not g.game.short
+
+                send =
+                    if scored then
+                        case model.params.key of
+                            Just k ->
+                                sendScore k telescore
+
+                            _ ->
+                                Cmd.none
+                    else
+                        Cmd.none
             in
-            ( { model | page = Start (Just msg) }, Cmd.none )
+            ( { model | page = Start (Just msg) }, send )
 
         _ ->
             case model.page of
@@ -314,7 +354,7 @@ updateGame msg model =
             Debug.crash "bad state"
 
 
-score : List Event -> Time.Time -> Time.Time -> ( Int, String )
+score : List Event -> Time.Time -> Time.Time -> ( Int, String, Int )
 score log start end =
     let
         secs =
@@ -347,6 +387,7 @@ score log start end =
     in
     ( totalsecs
     , String.join " " [ "Your time:", format totalsecs, "=", format secs, "+", format baddealsecs, "-", format gooddealsecs ]
+    , 10000 // totalsecs
     )
 
 
@@ -393,3 +434,13 @@ parseParams loc =
 
         Just p ->
             p
+
+
+sendScore : String -> Int -> Cmd Msg
+sendScore key score =
+    Http.send APIResult <|
+        Http.getString <|
+            "https://arp.vllmrt.net/triples/api/win?key="
+                ++ key
+                ++ "&score="
+                ++ toString score

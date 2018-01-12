@@ -8,30 +8,35 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"os"
+	"strconv"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/robx/telegram-bot-api"
 	"golang.org/x/crypto/nacl/secretbox"
-	"gopkg.in/telegram-bot-api.v4"
 )
 
 var (
-	baseURL = flag.String("base", "https://arp.vllmrt.net/triples", "base url")
-	game    = flag.String("game", "triples", "Telegram game shortname")
-	listen  = flag.String("listen", ":8080", "http listen")
-	static  = flag.String("static", "./static/", "points to static/")
+	baseURL  = flag.String("base", "https://arp.vllmrt.net/triples/", "base url")
+	game     = flag.String("game", "triples", "Telegram game shortname")
+	listen   = flag.String("listen", ":8080", "http listen")
+	static   = flag.String("static", "./static/", "points to static/")
+	debugbot = flag.Bool("debugbot", false, "debug logs for the Telegram bot")
 )
 
 func main() {
 	flag.Parse()
 
-	go runBot(os.Getenv("TELEGRAM_TOKEN"), handleGame(*game, *baseURL))
+	actions := make(chan BotAction)
+
+	go runBot(os.Getenv("TELEGRAM_TOKEN"), handleGame(*game, *baseURL), actions)
 
 	log.Printf("listening on %s...\n", *listen)
-	log.Fatal(http.ListenAndServe(*listen, mux(*static)))
+	log.Fatal(http.ListenAndServe(*listen, mux(actions, *static)))
 }
 
-func mux(static string) *httprouter.Router {
+func mux(actions chan<- BotAction, static string) *httprouter.Router {
 	r := httprouter.New()
 	if static != "" {
 		r.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -39,19 +44,21 @@ func mux(static string) *httprouter.Router {
 		})
 		r.ServeFiles("/static/*filepath", http.Dir(static))
 	}
+	r.GET("/api/win", winHandler(actions))
 	return r
 }
 
 func runBot(
 	token string,
 	callback CallbackHandler,
+	actions <-chan BotAction,
 ) {
 	bot, err := tgbotapi.NewBotAPI(token)
 	if err != nil {
 		log.Fatalf("creating bot: %s", err)
 	}
 
-	bot.Debug = true
+	bot.Debug = *debugbot
 
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
@@ -60,23 +67,48 @@ func runBot(
 
 	updates, err := bot.GetUpdatesChan(u)
 
-	for update := range updates {
-		if msg := update.Message; msg != nil {
-			log.Printf("message: [%s] %s", msg.From.FirstName, msg.Text)
-			game := tgbotapi.GameConfig{
-				BaseChat: tgbotapi.BaseChat{
-					ChatID:           msg.Chat.ID,
-					ReplyToMessageID: 0,
-				},
-				GameShortName: "triples",
-			}
-			bot.Send(game)
+	for {
+		select {
+		case update := <-updates:
+			handleUpdate(bot, callback, update)
+		case action := <-actions:
+			action(bot)
 		}
-		if q := update.CallbackQuery; q != nil {
-			if cc := callback(q); cc != nil {
-				if _, err := bot.AnswerCallbackQuery(*cc); err != nil {
-					log.Printf("answer callback: %s", err)
-				}
+	}
+}
+
+type BotAction func(*tgbotapi.BotAPI)
+
+func handleUpdate(bot *tgbotapi.BotAPI, callback CallbackHandler, update tgbotapi.Update) {
+	if msg := update.Message; msg != nil {
+		log.Printf("message: [%s] %s", msg.From.FirstName, msg.Text)
+		game := tgbotapi.GameConfig{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID:           msg.Chat.ID,
+				ReplyToMessageID: 0,
+			},
+			GameShortName: "triples",
+		}
+		bot.Send(game)
+	}
+	if q := update.InlineQuery; q != nil {
+		g := tgbotapi.InlineQueryResultGame{
+			Type:          "game",
+			ID:            "0",
+			GameShortName: "triples",
+		}
+		ic := tgbotapi.InlineConfig{
+			InlineQueryID: q.ID,
+			Results: []interface{}{
+				g,
+			},
+		}
+		bot.AnswerInlineQuery(ic)
+	}
+	if q := update.CallbackQuery; q != nil {
+		if cc := callback(q); cc != nil {
+			if _, err := bot.AnswerCallbackQuery(*cc); err != nil {
+				log.Printf("answer callback: %s", err)
 			}
 		}
 	}
@@ -130,7 +162,7 @@ func decode(s string) (Blob, error) {
 	return b, json.Unmarshal(js, &b)
 }
 
-func handleGame(shortname, url string) CallbackHandler {
+func handleGame(shortname, u string) CallbackHandler {
 	return func(q *tgbotapi.CallbackQuery) *tgbotapi.CallbackConfig {
 		if g := q.GameShortName; g == shortname {
 			b := Blob{
@@ -144,11 +176,49 @@ func handleGame(shortname, url string) CallbackHandler {
 				b.ChatID = msg.Chat.ID
 			}
 			key := encode(b)
+			var v = url.Values{}
+			v.Add("key", key)
+			v.Add("name", q.From.FirstName)
 			return &tgbotapi.CallbackConfig{
 				CallbackQueryID: q.ID,
-				URL:             url + "?key=" + key,
+				URL:             u + "?" + v.Encode(),
 			}
 		}
 		return nil
+	}
+}
+
+func sendHighscore(blob Blob, score int) BotAction {
+	sc := tgbotapi.SetGameScoreConfig{
+		UserID:          blob.UserID,
+		Score:           score,
+		ChatID:          blob.ChatID,
+		MessageID:       blob.MessageID,
+		InlineMessageID: blob.InlineMessageID,
+	}
+	return func(bot *tgbotapi.BotAPI) {
+		bot.Send(sc)
+	}
+}
+
+func winHandler(actions chan<- BotAction) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		key := r.FormValue("key")
+		if key == "" {
+			http.Error(w, "missing parameter `key`", http.StatusBadRequest)
+			return
+		}
+		s, err := strconv.Atoi(r.FormValue("score"))
+		if err != nil {
+			http.Error(w, "missing/bad parameter `score`", http.StatusBadRequest)
+			return
+		}
+		blob, err := decode(key)
+		if err != nil {
+			log.Printf("decoding blob %q: %s", key, err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		actions <- sendHighscore(blob, s)
 	}
 }

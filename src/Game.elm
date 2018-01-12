@@ -52,6 +52,7 @@ init short super =
                         SuperSet
                     else
                         ClassicSet
+                , short = short
                 }
             )
         |> Random.map deal
@@ -123,6 +124,7 @@ type alias Game =
     { deck : List Card
     , table : Dict Pos Card
     , type_ : GameType
+    , short : Bool
     }
 
 

@@ -1,4 +1,4 @@
-.PHONY: all build build-elm build-web format test deploy
+.PHONY: all build build-elm build-web format test deploy deploy-elm deploy-web
 
 all: build
 
@@ -21,6 +21,10 @@ test:
 
 DEPLOY_DEST ?= arp:triples/
 
-deploy:
-	rsync -z web/web $(DEPLOY_DEST)
+deploy-elm:
 	rsync -az static $(DEPLOY_DEST)
+
+deploy-web:
+	rsync -z web/web $(DEPLOY_DEST)
+
+deploy: deploy-elm deploy-web
