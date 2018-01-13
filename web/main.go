@@ -200,7 +200,7 @@ func sendHighscore(blob Blob, score int) BotAction {
 	}
 	return func(bot *tgbotapi.BotAPI) {
 		if _, err := bot.Send(sc); err != nil {
-			log.Printf("send highscore: %s", err)
+			log.Printf("send score %s=%d: %s", blob.FirstName, score, err)
 		} else {
 			log.Printf("sent score %s=%d", blob.FirstName, score)
 		}
