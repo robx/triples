@@ -362,7 +362,7 @@ card ( w, h ) r st selected =
                     )
                , strokeWidth
                     (if selected then
-                        "1"
+                        "2.5"
                      else
                         "0.2"
                     )
