@@ -81,7 +81,7 @@ type BotAction func(*tgbotapi.BotAPI)
 
 func handleUpdate(bot *tgbotapi.BotAPI, callback CallbackHandler, update tgbotapi.Update) {
 	if msg := update.Message; msg != nil {
-		log.Printf("message: [%s] %s", msg.From.FirstName, msg.Text)
+		log.Printf("answering message: [%s] %s", msg.From.FirstName, msg.Text)
 		game := tgbotapi.GameConfig{
 			BaseChat: tgbotapi.BaseChat{
 				ChatID:           msg.Chat.ID,
@@ -92,6 +92,7 @@ func handleUpdate(bot *tgbotapi.BotAPI, callback CallbackHandler, update tgbotap
 		bot.Send(game)
 	}
 	if q := update.InlineQuery; q != nil {
+		log.Printf("answering inline query")
 		g := tgbotapi.InlineQueryResultGame{
 			Type:          "game",
 			ID:            "0",
@@ -179,6 +180,7 @@ func handleGame(shortname, u string) CallbackHandler {
 			var v = url.Values{}
 			v.Add("key", key)
 			v.Add("name", q.From.FirstName)
+			log.Printf("game callback: %s", b.FirstName)
 			return &tgbotapi.CallbackConfig{
 				CallbackQueryID: q.ID,
 				URL:             u + "?" + v.Encode(),
@@ -197,7 +199,11 @@ func sendHighscore(blob Blob, score int) BotAction {
 		InlineMessageID: blob.InlineMessageID,
 	}
 	return func(bot *tgbotapi.BotAPI) {
-		bot.Send(sc)
+		if _, err := bot.Send(sc); err != nil {
+			log.Printf("send highscore: %s", err)
+		} else {
+			log.Printf("sent score %s=%d", blob.FirstName, score)
+		}
 	}
 }
 
