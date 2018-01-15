@@ -5,16 +5,10 @@ import Graphics.Colors as Colors
 import Graphics.Layout as Layout
 import Graphics.Lib as Lib
 import Graphics.Shapes as Shapes
+import Graphics.Style as Style
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
 import SvgPath as D
-
-
-type alias Style =
-    { colors : Colors.Scheme
-    , shapes : Shapes.Shapes
-    , layout : Layout.Layout
-    }
 
 
 lookup : ( a, a, a ) -> Int -> a
@@ -30,31 +24,7 @@ lookup ( x, y, z ) p =
             z
 
 
-standardSet : Style
-standardSet =
-    { colors = Colors.classic
-    , shapes = Shapes.classic
-    , layout = Layout.cardLayout
-    }
-
-
-mySet : Style
-mySet =
-    { colors = Colors.play
-    , shapes = Shapes.variant
-    , layout = Layout.cardLayout
-    }
-
-
-squareSet : Style
-squareSet =
-    { colors = Colors.play
-    , shapes = Shapes.squared
-    , layout = Layout.squareLayout
-    }
-
-
-draw : Style -> Bool -> Card -> Svg msg
+draw : Style.Style -> Bool -> Card -> Svg msg
 draw st selected c =
     let
         col =
@@ -106,7 +76,7 @@ draw st selected c =
         ([ card st selected ] ++ List.map sym (st.layout.locations c.count))
 
 
-clipPaths : Style -> List (Svg msg)
+clipPaths : Style.Style -> List (Svg msg)
 clipPaths st =
     let
         cp d =
@@ -116,6 +86,7 @@ clipPaths st =
     List.map cp [ 0, 1, 2 ]
 
 
+dropShadow : Svg msg
 dropShadow =
     Svg.filter [ id "dropshadow" ]
         [ Svg.feGaussianBlur [ in_ "SourceAlpha", stdDeviation "1" ] []
@@ -129,7 +100,7 @@ dropShadow =
         ]
 
 
-svgDefs : Style -> Svg msg
+svgDefs : Style.Style -> Svg msg
 svgDefs st =
     defs [] <| dropShadow :: clipPaths st
 
@@ -150,7 +121,7 @@ cornerRadius =
     6
 
 
-card : Style -> Bool -> Svg msg
+card : Style.Style -> Bool -> Svg msg
 card st selected =
     rect
         (rectAttrs ( st.layout.w, st.layout.h ) cornerRadius
@@ -173,7 +144,7 @@ card st selected =
         []
 
 
-button : Style -> String -> Svg msg
+button : Style.Style -> String -> Svg msg
 button st c =
     g
         []

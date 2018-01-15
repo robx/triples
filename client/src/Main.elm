@@ -5,6 +5,7 @@ import Debug
 import Dict
 import Game exposing (Game)
 import Graphics
+import Graphics.Style as Style
 import Html
 import Html.Attributes as Html
 import Html.Events as Html
@@ -89,7 +90,7 @@ view model =
         ]
 
 
-viewGame : Graphics.Style -> GameModel -> Html.Html Msg
+viewGame : Style.Style -> GameModel -> Html.Html Msg
 viewGame style model =
     let
         d ( pos, card ) =
@@ -164,7 +165,7 @@ viewGame style model =
         (Graphics.svgDefs style :: more :: gs)
 
 
-viewStart : Maybe String -> Graphics.Style -> Maybe String -> Html.Html Msg
+viewStart : Maybe String -> Style.Style -> Maybe String -> Html.Html Msg
 viewStart name style score =
     let
         addScore h =
@@ -392,7 +393,7 @@ score log start end =
 
 
 type alias Params =
-    { style : Graphics.Style
+    { style : Style.Style
     , key : Maybe String
     , name : Maybe String
     }
@@ -411,13 +412,13 @@ parseParams loc =
             { style =
                 case Maybe.withDefault "square" s of
                     "classic" ->
-                        Graphics.standardSet
+                        Style.classic
 
                     "modified" ->
-                        Graphics.mySet
+                        Style.modified
 
                     _ ->
-                        Graphics.squareSet
+                        Style.square
             , key = k
             , name = n
             }
