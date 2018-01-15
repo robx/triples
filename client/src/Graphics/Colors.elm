@@ -23,6 +23,22 @@ colors =
     , white = "white"
     , orange = "orange"
     , slategray = "slategray"
+
+    -- a palette from lolcolors
+    , lolBlue = "#30a9de"
+    , lolYellow = "#efdc05"
+    , lolRed = "#e53a40"
+    , lolBlack = "#090707"
+
+    -- from yeun/open-color
+    , openTeal8 = "rgb(9,146,10)"
+    , openYellow8 = "rgb(232,89,12)"
+    , openGrape8 = "rgb(156,54,181)"
+    , openGray8 = "rgb(52,58,64)"
+    , openGray5 = "rgb(173,181,189)"
+    , openGray2 = "rgb(233,236,239)"
+    , openGray1 = "rgb(241,243,245)"
+    , openLime5 = "rgb(148,216,45)"
     }
 
 
@@ -52,4 +68,24 @@ play =
     , background = colors.lighterPale
     , table = colors.slategray
     , select = colors.orange
+    }
+
+
+lol : Scheme
+lol =
+    { symbols = ( colors.lolBlue, colors.lolRed, colors.lolYellow )
+    , foreground = colors.lolBlack
+    , background = colors.white
+    , table = colors.playPale
+    , select = colors.orange
+    }
+
+
+open : Scheme
+open =
+    { symbols = ( colors.openTeal8, colors.openYellow8, colors.openGrape8 )
+    , foreground = colors.openGray8
+    , background = colors.openGray1
+    , table = colors.openGray5
+    , select = colors.openGray8
     }
