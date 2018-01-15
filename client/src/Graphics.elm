@@ -13,7 +13,6 @@ import Graphics.Shapes as Shapes
 import Graphics.Style as Style
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
-import SvgPath as D
 
 
 lookup : ( a, a, a ) -> Int -> a
