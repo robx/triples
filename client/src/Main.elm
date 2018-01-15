@@ -64,56 +64,12 @@ view : Model -> Html.Html Msg
 view model =
     Html.div [ HtmlA.id "container", HtmlA.style [ ( "background", model.params.style.colors.table ) ] ]
         [ case model.page of
-            Menu msg ->
-                viewStart model.params.name model.params.style msg
+            Menu menu ->
+                Menu.view Go model.params.name model.params.style menu
 
             Play game ->
                 Html.map (\m -> GetTimeAndThen (PlayMsg m)) <| Play.view model.params.style game
         ]
-
-
-viewStart : Maybe String -> Style.Style -> Maybe String -> Html.Html Msg
-viewStart name style score =
-    let
-        addScore h =
-            case score of
-                Just m ->
-                    Html.div [ HtmlA.class "msg", HtmlA.style [ ( "background", snd style.colors.symbols ) ] ] [ Html.text m ] :: h
-
-                Nothing ->
-                    h
-
-        prompt =
-            "Choose a game"
-                ++ (case name of
-                        Just n ->
-                            ", " ++ n ++ "!"
-
-                        Nothing ->
-                            "!"
-                   )
-
-        fst ( x, y, z ) =
-            x
-
-        snd ( x, y, z ) =
-            y
-
-        trd ( x, y, z ) =
-            z
-    in
-    Html.div [ HtmlA.id "main" ] <|
-        addScore
-            [ Html.div
-                [ HtmlA.class "msg", HtmlA.style [ ( "background", trd style.colors.symbols ) ] ]
-                [ Html.text prompt ]
-            , Html.div [ HtmlA.class "buttons" ]
-                [ Html.button [ HtmlE.onClick <| Go False False ] [ Html.text "Classic (scored!)" ]
-                , Html.button [ HtmlE.onClick <| Go True False ] [ Html.text "Classic (short)" ]
-                , Html.button [ HtmlE.onClick <| Go False True ] [ Html.text "Super" ]
-                , Html.button [ HtmlE.onClick <| Go True True ] [ Html.text "Super (short)" ]
-                ]
-            ]
 
 
 after : Time.Time -> (Time.Time -> Msg) -> Cmd Msg
