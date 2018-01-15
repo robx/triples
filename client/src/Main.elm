@@ -58,7 +58,7 @@ type Event
 
 
 type alias Model =
-    { params : Params Msg
+    { params : Params
     , page : Page
     }
 
@@ -79,7 +79,7 @@ init loc =
 
 view : Model -> Html.Html Msg
 view model =
-    Html.div [ Html.id "container", Html.style [ ( "background", model.params.style.style.table ) ] ]
+    Html.div [ Html.id "container", Html.style [ ( "background", model.params.style.colors.table ) ] ]
         [ case model.page of
             Start msg ->
                 viewStart model.params.name model.params.style msg
@@ -89,7 +89,7 @@ view model =
         ]
 
 
-viewGame : Style Msg -> GameModel -> Html.Html Msg
+viewGame : Graphics.Style -> GameModel -> Html.Html Msg
 viewGame style model =
     let
         d ( pos, card ) =
@@ -98,7 +98,7 @@ viewGame style model =
                 , SvgE.onClick (Choose pos)
                 , SvgA.style "cursor: pointer;"
                 ]
-                [ Graphics.draw style.layout style.style (List.member pos model.selected) card ]
+                [ Graphics.draw style (List.member pos model.selected) card ]
 
         gs =
             Dict.toList model.game.table |> List.map d
@@ -134,7 +134,7 @@ viewGame style model =
             in
             Svg.g
                 (SvgA.transform (trans ( cols, 0 )) :: handler)
-                [ style.layout.button text ]
+                [ Graphics.button style text ]
 
         trans ( c, r ) =
             let
@@ -159,18 +159,18 @@ viewGame style model =
     Svg.svg
         [ SvgA.viewBox viewBox
         , Html.id "main"
-        , Html.style [ ( "background", style.style.table ) ]
+        , Html.style [ ( "background", style.colors.table ) ]
         ]
-        (Graphics.svgDefs style.style :: more :: gs)
+        (Graphics.svgDefs style :: more :: gs)
 
 
-viewStart : Maybe String -> Style Msg -> Maybe String -> Html.Html Msg
+viewStart : Maybe String -> Graphics.Style -> Maybe String -> Html.Html Msg
 viewStart name style score =
     let
         addScore h =
             case score of
                 Just m ->
-                    Html.div [ Html.class "msg", Html.style [ ( "background", snd style.style.colors ) ] ] [ Html.text m ] :: h
+                    Html.div [ Html.class "msg", Html.style [ ( "background", snd style.colors.symbols ) ] ] [ Html.text m ] :: h
 
                 Nothing ->
                     h
@@ -197,7 +197,7 @@ viewStart name style score =
     Html.div [ Html.id "main" ] <|
         addScore
             [ Html.div
-                [ Html.class "msg", Html.style [ ( "background", trd style.style.colors ) ] ]
+                [ Html.class "msg", Html.style [ ( "background", trd style.colors.symbols ) ] ]
                 [ Html.text prompt ]
             , Html.div [ Html.class "buttons" ]
                 [ Html.button [ Html.onClick <| Go False False ] [ Html.text "Classic (scored!)" ]
@@ -391,20 +391,14 @@ score log start end =
     )
 
 
-type alias Style msg =
-    { style : Graphics.Style msg
-    , layout : Graphics.Layout msg
-    }
-
-
-type alias Params msg =
-    { style : Style msg
+type alias Params =
+    { style : Graphics.Style
     , key : Maybe String
     , name : Maybe String
     }
 
 
-parseParams : Navigation.Location -> Params msg
+parseParams : Navigation.Location -> Params
 parseParams loc =
     let
         parser =
@@ -417,13 +411,13 @@ parseParams loc =
             { style =
                 case Maybe.withDefault "square" s of
                     "classic" ->
-                        { style = Graphics.standardSet, layout = Graphics.cardLayout }
+                        Graphics.standardSet
 
                     "modified" ->
-                        { style = Graphics.mySet, layout = Graphics.cardLayout }
+                        Graphics.mySet
 
                     _ ->
-                        { style = Graphics.squareSet, layout = Graphics.squareLayout }
+                        Graphics.squareSet
             , key = k
             , name = n
             }
