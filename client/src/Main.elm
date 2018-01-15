@@ -97,36 +97,28 @@ type Msg
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case msg of
-        APIResult r ->
+    case ( msg, model.page ) of
+        ( APIResult r, _ ) ->
             let
                 _ =
                     Debug.log "api result" r
             in
             ( model, Cmd.none )
 
-        Ignore ->
+        ( Ignore, _ ) ->
             ( model, Cmd.none )
 
-        GetTimeAndThen m ->
+        ( GetTimeAndThen m, _ ) ->
             ( model, Task.perform m Time.now )
 
-        Go short super ->
+        ( Go short super, _ ) ->
             ( model, Cmd.batch [ Random.generate NewGame (Game.init short super), Task.perform (PlayMsg Play.StartGame) Time.now ] )
 
-        NewGame game ->
+        ( NewGame game, _ ) ->
             ( { model | page = Play (Play.init game) }, Cmd.none )
 
-        PlayMsg pmsg now ->
+        ( PlayMsg pmsg now, Play pmodel ) ->
             let
-                pmodel =
-                    case model.page of
-                        Play pm ->
-                            pm
-
-                        _ ->
-                            Debug.crash "bad state"
-
                 ( newpmodel, res ) =
                     Play.update now pmsg pmodel
             in
@@ -162,6 +154,9 @@ update msg model =
                                 Cmd.none
                     in
                     ( { model | page = Menu (Just msg) }, send )
+
+        _ ->
+            ( model, Cmd.none )
 
 
 parseParams : Navigation.Location -> Params
