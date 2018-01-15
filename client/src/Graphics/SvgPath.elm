@@ -1,4 +1,4 @@
-module SvgPath
+module Graphics.SvgPath
     exposing
         ( dA
         , dC

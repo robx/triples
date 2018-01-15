@@ -6,9 +6,9 @@ module Graphics.Shapes
         , variant
         )
 
+import Graphics.SvgPath as D
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
-import SvgPath as D
 
 
 type alias Shapes =
