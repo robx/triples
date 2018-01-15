@@ -4,6 +4,7 @@ import Card exposing (..)
 import Debug
 import Dict
 import Game exposing (Game)
+import Graphics
 import Html
 import Html.Attributes as Html
 import Html.Events as Html
@@ -15,7 +16,6 @@ import Random
 import Svg
 import Svg.Attributes as SvgA
 import Svg.Events as SvgE
-import SvgSet
 import Task
 import Time
 import UrlParser exposing ((<?>))
@@ -98,7 +98,7 @@ viewGame style model =
                 , SvgE.onClick (Choose pos)
                 , SvgA.style "cursor: pointer;"
                 ]
-                [ SvgSet.draw style.layout style.style (List.member pos model.selected) card ]
+                [ Graphics.draw style.layout style.style (List.member pos model.selected) card ]
 
         gs =
             Dict.toList model.game.table |> List.map d
@@ -161,7 +161,7 @@ viewGame style model =
         , Html.id "main"
         , Html.style [ ( "background", style.style.table ) ]
         ]
-        (SvgSet.svgDefs style.style :: more :: gs)
+        (Graphics.svgDefs style.style :: more :: gs)
 
 
 viewStart : Maybe String -> Style Msg -> Maybe String -> Html.Html Msg
@@ -392,8 +392,8 @@ score log start end =
 
 
 type alias Style msg =
-    { style : SvgSet.Style msg
-    , layout : SvgSet.Layout msg
+    { style : Graphics.Style msg
+    , layout : Graphics.Layout msg
     }
 
 
@@ -417,13 +417,13 @@ parseParams loc =
             { style =
                 case Maybe.withDefault "square" s of
                     "classic" ->
-                        { style = SvgSet.standardSet, layout = SvgSet.cardLayout }
+                        { style = Graphics.standardSet, layout = Graphics.cardLayout }
 
                     "modified" ->
-                        { style = SvgSet.mySet, layout = SvgSet.cardLayout }
+                        { style = Graphics.mySet, layout = Graphics.cardLayout }
 
                     _ ->
-                        { style = SvgSet.squareSet, layout = SvgSet.squareLayout }
+                        { style = Graphics.squareSet, layout = Graphics.squareLayout }
             , key = k
             , name = n
             }

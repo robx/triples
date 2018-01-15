@@ -1,4 +1,4 @@
-module SvgSet exposing (..)
+module Graphics exposing (..)
 
 import Card exposing (..)
 import D
