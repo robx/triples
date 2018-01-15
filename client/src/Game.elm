@@ -6,6 +6,23 @@ import Random exposing (Generator)
 import Random.List exposing (shuffle)
 
 
+type alias Game =
+    { deck : List Card
+    , table : Dict Pos Card
+    , type_ : GameType
+    , short : Bool
+    }
+
+
+type alias Pos =
+    ( Int, Int )
+
+
+type GameType
+    = ClassicSet
+    | SuperSet
+
+
 deckEmpty : Game -> Bool
 deckEmpty g =
     List.isEmpty g.deck
@@ -16,22 +33,17 @@ posEmpty g p =
     not <| Dict.member p g.table
 
 
-deck : List Card
-deck =
-    List.map fromInt (List.range 0 80)
-
-
-type GameType
-    = ClassicSet
-    | SuperSet
-
-
 setSize : Game -> Int
 setSize g =
     if g.type_ == ClassicSet then
         3
     else
         4
+
+
+deck : List Card
+deck =
+    List.map fromInt (List.range 0 80)
 
 
 init : Bool -> Bool -> Generator Game
@@ -118,18 +130,6 @@ compact g =
             Maybe.withDefault p <| Dict.get p md
     in
     ( apply (Move ms) g, move )
-
-
-type alias Game =
-    { deck : List Card
-    , table : Dict Pos Card
-    , type_ : GameType
-    , short : Bool
-    }
-
-
-type alias Pos =
-    ( Int, Int )
 
 
 type Action

@@ -8,6 +8,13 @@ import Test exposing (..)
 
 suite : Test
 suite =
+    let
+        setGame =
+            { deck = Game.deck, table = Dict.empty, type_ = Game.ClassicSet, short = False }
+
+        supersetGame =
+            { setGame | type_ = Game.SuperSet }
+    in
     describe "tests"
         [ test "grid has size 12" <|
             \() ->
@@ -17,12 +24,17 @@ suite =
         , test "gaps finds all gaps in an empty table" <|
             \() ->
                 Expect.equal
-                    ({ deck = Game.deck, table = Dict.empty } |> Game.gaps |> List.length)
+                    (setGame |> Game.gaps |> List.length)
                     12
+        , test "gaps finds all gaps in an empty superset table" <|
+            \() ->
+                Expect.equal
+                    (supersetGame |> Game.gaps |> List.length)
+                    9
         , test "empty table is empty" <|
             \() ->
                 Expect.equal
-                    (Game.posEmpty { deck = Game.deck, table = Dict.empty } ( 1, 1 ))
+                    (Game.posEmpty setGame ( 1, 1 ))
                     True
         , test "full deck has 81 cards" <|
             \() ->
