@@ -1,4 +1,4 @@
-module D
+module SvgPath
     exposing
         ( dA
         , dC

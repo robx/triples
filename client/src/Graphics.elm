@@ -1,9 +1,9 @@
 module Graphics exposing (..)
 
 import Card exposing (..)
-import D
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
+import SvgPath as D
 
 
 type alias Style msg =
