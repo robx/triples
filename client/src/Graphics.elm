@@ -2,6 +2,7 @@ module Graphics exposing (..)
 
 import Card exposing (..)
 import Graphics.Colors as Colors
+import Graphics.Layout as Layout
 import Graphics.Lib as Lib
 import Graphics.Shapes as Shapes
 import Svg exposing (..)
@@ -12,14 +13,7 @@ import SvgPath as D
 type alias Style =
     { colors : Colors.Scheme
     , shapes : Shapes.Shapes
-    , layout : Layout
-    }
-
-
-type alias Layout =
-    { locations : Int -> List String
-    , w : Float
-    , h : Float
+    , layout : Layout.Layout
     }
 
 
@@ -40,7 +34,7 @@ standardSet : Style
 standardSet =
     { colors = Colors.classic
     , shapes = Shapes.classic
-    , layout = cardLayout
+    , layout = Layout.cardLayout
     }
 
 
@@ -48,7 +42,7 @@ mySet : Style
 mySet =
     { colors = Colors.play
     , shapes = Shapes.variant
-    , layout = cardLayout
+    , layout = Layout.cardLayout
     }
 
 
@@ -56,7 +50,7 @@ squareSet : Style
 squareSet =
     { colors = Colors.play
     , shapes = Shapes.squared
-    , layout = squareLayout
+    , layout = Layout.squareLayout
     }
 
 
@@ -110,54 +104,6 @@ draw st selected c =
     g
         []
         ([ card st selected ] ++ List.map sym (st.layout.locations c.count))
-
-
-cardLayout : Layout
-cardLayout =
-    { locations = rectLocations
-    , w = 50
-    , h = 80
-    }
-
-
-squareLayout : Layout
-squareLayout =
-    { locations = squareLocations
-    , w = 50
-    , h = 50
-    }
-
-
-trans ( x, y ) =
-    "translate(" ++ toString x ++ "," ++ toString y ++ ")"
-
-
-squareLocations : Int -> List String
-squareLocations count =
-    List.map trans <|
-        case count of
-            0 ->
-                [ ( 0, 0 ) ]
-
-            1 ->
-                Lib.rotate -45 <| Lib.scale 12 <| Lib.ngon 2
-
-            _ ->
-                Lib.rotate 15 <| Lib.scale 12 <| Lib.ngon 3
-
-
-rectLocations : Int -> List String
-rectLocations count =
-    List.map trans <|
-        case count of
-            0 ->
-                [ ( 0, 0 ) ]
-
-            1 ->
-                [ ( 0, 10 ), ( 0, -10 ) ]
-
-            _ ->
-                [ ( 0, 20 ), ( 0, 0 ), ( 0, -20 ) ]
 
 
 clipPaths : Style -> List (Svg msg)
