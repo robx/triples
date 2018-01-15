@@ -1,30 +1,22 @@
-.PHONY: all build build-elm build-web format test deploy deploy-elm deploy-web
+.PHONY: all build format test deploy
 
 all: build
 
-build-elm:
-	elm-make src/Main.elm --yes --output ./static/Main.js
-
-build-web:
-	make -C web build-linux
-
-build: build-elm build-web
+build:
+	make -C client build
+	make -C serve build-linux
 
 format:
-	elm-format --yes src tests
-	make -C web format
+	make -C client format
+	make -C serve format
 
 test:
-	elm test
-	make -C web test
+	make -C client test
+	make -C serve test
 
 
 DEPLOY_DEST ?= arp:triples/
 
-deploy-elm:
+deploy:
 	rsync -az static $(DEPLOY_DEST)
-
-deploy-web:
-	rsync -z web/web $(DEPLOY_DEST)
-
-deploy: deploy-elm deploy-web
+	rsync -z serve/serve $(DEPLOY_DEST)
