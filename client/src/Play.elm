@@ -92,9 +92,7 @@ view style model =
                                 "+"
 
                 disabled =
-                    model.dealing
-                        || model.answer
-                        /= Nothing
+                    model.dealing || model.answer /= Nothing
 
                 handler =
                     if disabled then
