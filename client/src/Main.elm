@@ -48,16 +48,31 @@ type alias Params =
     { style : Style.Style
     , key : Maybe String
     , name : Maybe String
+    , telegramGame : Maybe Game.GameType
     }
 
 
 init : Navigation.Location -> ( Model, Cmd Msg )
 init loc =
-    ( { params = parseParams loc
-      , page = Menu Nothing
+    let
+        params =
+            parseParams loc
+    in
+    ( { params = params
+      , page = newMenu params Nothing
       }
     , Cmd.none
     )
+
+
+newMenu : Params -> Maybe String -> Page
+newMenu params msg =
+    Menu
+        { score = msg
+        , name = params.name
+        , telegramGame = params.telegramGame
+        , style = params.style
+        }
 
 
 view : Model -> Html.Html Msg
@@ -65,7 +80,7 @@ view model =
     Html.div [ HtmlA.id "container", HtmlA.style [ ( "background", model.params.style.colors.table ) ] ]
         [ case model.page of
             Menu menu ->
-                Menu.view Go model.params.name model.params.style menu
+                Menu.view Go menu
 
             Play game ->
                 Html.map (\m -> GetTimeAndThen (PlayMsg m)) <| Play.view model.params.style game
@@ -135,12 +150,7 @@ update msg model =
                             score log
 
                         scored =
-                            case model.page of
-                                Menu _ ->
-                                    False
-
-                                Play g ->
-                                    g.game.type_ == Game.ClassicSet && not g.game.short
+                            model.params.telegramGame /= Nothing
 
                         send =
                             if scored then
@@ -153,7 +163,7 @@ update msg model =
                             else
                                 Cmd.none
                     in
-                    ( { model | page = Menu (Just msg) }, send )
+                    ( { model | page = newMenu model.params (Just msg) }, send )
 
         _ ->
             ( model, Cmd.none )
@@ -167,8 +177,9 @@ parseParams loc =
                 <?> UrlParser.stringParam "style"
                 <?> UrlParser.stringParam "key"
                 <?> UrlParser.stringParam "name"
+                <?> UrlParser.stringParam "game"
 
-        f s k n =
+        f s k n g =
             { style =
                 case Maybe.withDefault "square" s of
                     "classic" ->
@@ -181,6 +192,16 @@ parseParams loc =
                         Style.square
             , key = k
             , name = n
+            , telegramGame =
+                case g of
+                    Just "triples" ->
+                        Just Game.ClassicSet
+
+                    Just "quadruples" ->
+                        Just Game.SuperSet
+
+                    _ ->
+                        Nothing
             }
     in
     case UrlParser.parseHash (UrlParser.map f parser) loc of

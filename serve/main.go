@@ -18,8 +18,6 @@ import (
 )
 
 var (
-	baseURL  = flag.String("base", "https://arp.vllmrt.net/triples/", "base url")
-	game     = flag.String("game", "triples", "Telegram game shortname")
 	listen   = flag.String("listen", ":8080", "http listen")
 	static   = flag.String("static", "./static/", "points to static/")
 	debugbot = flag.Bool("debugbot", false, "debug logs for the Telegram bot")
@@ -30,7 +28,13 @@ func main() {
 
 	actions := make(chan BotAction)
 
-	go runBot(os.Getenv("TELEGRAM_TOKEN"), handleGame(*game, *baseURL), actions)
+	go runBot(
+		os.Getenv("TELEGRAM_TOKEN"),
+		[]CallbackHandler{
+			handleGame("triples", "https://arp.vllmrt.net/triples/?game=triples"),
+			handleGame("quadruples", "https://arp.vllmrt.net/triples/?game=quadruples"),
+		},
+		actions)
 
 	log.Printf("listening on %s...\n", *listen)
 	log.Fatal(http.ListenAndServe(*listen, mux(actions, *static)))
@@ -50,7 +54,7 @@ func mux(actions chan<- BotAction, static string) *httprouter.Router {
 
 func runBot(
 	token string,
-	callback CallbackHandler,
+	callbacks []CallbackHandler,
 	actions <-chan BotAction,
 ) {
 	bot, err := tgbotapi.NewBotAPI(token)
@@ -70,7 +74,7 @@ func runBot(
 	for {
 		select {
 		case update := <-updates:
-			handleUpdate(bot, callback, update)
+			handleUpdate(bot, callbacks, update)
 		case action := <-actions:
 			action(bot)
 		}
@@ -79,37 +83,35 @@ func runBot(
 
 type BotAction func(*tgbotapi.BotAPI)
 
-func handleUpdate(bot *tgbotapi.BotAPI, callback CallbackHandler, update tgbotapi.Update) {
-	if msg := update.Message; msg != nil {
-		log.Printf("answering message: [%s] %s", msg.From.FirstName, msg.Text)
-		game := tgbotapi.GameConfig{
-			BaseChat: tgbotapi.BaseChat{
-				ChatID:           msg.Chat.ID,
-				ReplyToMessageID: 0,
-			},
-			GameShortName: "triples",
-		}
-		bot.Send(game)
-	}
+func handleUpdate(bot *tgbotapi.BotAPI, callbacks []CallbackHandler, update tgbotapi.Update) {
 	if q := update.InlineQuery; q != nil {
 		log.Printf("answering inline query")
-		g := tgbotapi.InlineQueryResultGame{
+		g1 := tgbotapi.InlineQueryResultGame{
 			Type:          "game",
 			ID:            "0",
 			GameShortName: "triples",
 		}
+		g2 := tgbotapi.InlineQueryResultGame{
+			Type:          "game",
+			ID:            "1",
+			GameShortName: "quadruples",
+		}
 		ic := tgbotapi.InlineConfig{
 			InlineQueryID: q.ID,
 			Results: []interface{}{
-				g,
+				g1,
+				g2,
 			},
 		}
 		bot.AnswerInlineQuery(ic)
 	}
 	if q := update.CallbackQuery; q != nil {
-		if cc := callback(q); cc != nil {
-			if _, err := bot.AnswerCallbackQuery(*cc); err != nil {
-				log.Printf("answer callback: %s", err)
+		for _, c := range callbacks {
+			if cc := c(q); cc != nil {
+				if _, err := bot.AnswerCallbackQuery(*cc); err != nil {
+					log.Printf("answer callback: %s", err)
+				}
+				break
 			}
 		}
 	}
@@ -183,7 +185,7 @@ func handleGame(shortname, u string) CallbackHandler {
 			log.Printf("game callback: %s", b.FirstName)
 			return &tgbotapi.CallbackConfig{
 				CallbackQueryID: q.ID,
-				URL:             u + "?" + v.Encode(),
+				URL:             u + "&" + v.Encode(),
 			}
 		}
 		return nil
