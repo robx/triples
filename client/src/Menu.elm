@@ -19,7 +19,7 @@ type alias Model =
     }
 
 
-view : (Bool -> Bool -> msg) -> Model -> Html.Html msg
+view : (Game.GameDef -> msg) -> Model -> Html.Html msg
 view go model =
     let
         addScore h =
@@ -48,6 +48,9 @@ view go model =
 
         trd ( x, y, z ) =
             z
+
+        def =
+            { type_ = Game.ClassicSet, short = False, multi = False }
     in
     Html.div [ HtmlA.id "main" ] <|
         addScore
@@ -57,17 +60,17 @@ view go model =
             , case model.telegramGame of
                 Nothing ->
                     Html.div [ HtmlA.class "buttons" ] <|
-                        [ Html.button [ HtmlE.onClick <| go False False ] [ Html.text "Classic (scored!)" ]
-                        , Html.button [ HtmlE.onClick <| go True False ] [ Html.text "Classic (short)" ]
-                        , Html.button [ HtmlE.onClick <| go False True ] [ Html.text "Super" ]
-                        , Html.button [ HtmlE.onClick <| go True True ] [ Html.text "Super (short)" ]
+                        [ Html.button [ HtmlE.onClick <| go def ] [ Html.text "Classic" ]
+                        , Html.button [ HtmlE.onClick <| go { def | short = True } ] [ Html.text "Classic (short)" ]
+                        , Html.button [ HtmlE.onClick <| go { def | type_ = Game.SuperSet } ] [ Html.text "Super" ]
+                        , Html.button [ HtmlE.onClick <| go { def | type_ = Game.SuperSet, short = True } ] [ Html.text "Super (short)" ]
                         ]
 
                 Just Game.ClassicSet ->
                     Html.div [ HtmlA.class "button" ] <|
-                        [ Html.button [ HtmlE.onClick <| go False False ] [ Html.text "Play Triples!" ] ]
+                        [ Html.button [ HtmlE.onClick <| go def ] [ Html.text "Play Triples!" ] ]
 
                 Just Game.SuperSet ->
                     Html.div [ HtmlA.class "button" ] <|
-                        [ Html.button [ HtmlE.onClick <| go False True ] [ Html.text "Play Quadruples!" ] ]
+                        [ Html.button [ HtmlE.onClick <| go { def | type_ = Game.SuperSet } ] [ Html.text "Play Quadruples!" ] ]
             ]

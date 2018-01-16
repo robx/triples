@@ -102,7 +102,7 @@ after time msg =
 
 
 type Msg
-    = Go Bool Bool
+    = Go Game.GameDef
     | NewGame Game
     | GetTimeAndThen (Time.Time -> Msg)
     | PlayMsg Play.Msg Time.Time
@@ -126,8 +126,8 @@ update msg model =
         ( GetTimeAndThen m, _ ) ->
             ( model, Task.perform m Time.now )
 
-        ( Go short super, _ ) ->
-            ( model, Cmd.batch [ Random.generate NewGame (Game.init short super), Task.perform (PlayMsg Play.StartGame) Time.now ] )
+        ( Go def, _ ) ->
+            ( model, Cmd.batch [ Random.generate NewGame (Game.init def), Task.perform (PlayMsg Play.StartGame) Time.now ] )
 
         ( NewGame game, _ ) ->
             ( { model | page = Play (Play.init game) }, Cmd.none )

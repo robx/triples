@@ -40,6 +40,13 @@ type GameType
     | SuperSet
 
 
+type alias GameDef =
+    { type_ : GameType
+    , short : Bool
+    , multi : Bool
+    }
+
+
 deckEmpty : Game -> Bool
 deckEmpty g =
     List.isEmpty g.deck
@@ -63,11 +70,11 @@ deck =
     List.map fromInt (List.range 0 80)
 
 
-init : Bool -> Bool -> Generator Game
-init short super =
+init : GameDef -> Generator Game
+init def =
     shuffled
         |> Random.map
-            (if short then
+            (if def.short then
                 List.drop 60
              else
                 \x -> x
@@ -76,12 +83,8 @@ init short super =
             (\d ->
                 { deck = d
                 , table = Dict.empty
-                , type_ =
-                    if super then
-                        SuperSet
-                    else
-                        ClassicSet
-                , short = short
+                , type_ = def.type_
+                , short = def.short
                 }
             )
         |> Random.map deal
