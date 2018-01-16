@@ -63,18 +63,19 @@ type Result msg
 
 view : Style.Style -> Model -> Html.Html Msg
 view style model =
-    let
-        -- view shouldn't depend on the secret parts of model.game
-        gameView =
-            Game.toView model.game
+    viewGame style (Game.toView model.game) model.selected model.dealing model.answer
 
+
+viewGame : Style.Style -> Game.GameView -> List Game.Pos -> Bool -> Maybe Int -> Html.Html Msg
+viewGame style gameView selected dealing answer =
+    let
         d ( pos, card ) =
             Svg.g
                 [ SvgA.transform (trans pos)
                 , SvgE.onClick (Choose pos)
                 , SvgA.style "cursor: pointer;"
                 ]
-                [ Graphics.draw style (List.member pos model.selected) card ]
+                [ Graphics.draw style (List.member pos selected) card ]
 
         gs =
             Dict.toList gameView.table |> List.map d
@@ -82,7 +83,7 @@ view style model =
         more =
             let
                 text =
-                    case model.answer of
+                    case answer of
                         Just n ->
                             toString n
 
@@ -93,7 +94,7 @@ view style model =
                                 "+"
 
                 disabled =
-                    model.dealing || model.answer /= Nothing
+                    dealing || answer /= Nothing
 
                 handler =
                     if disabled then
