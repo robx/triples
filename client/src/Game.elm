@@ -19,6 +19,7 @@ type alias GameView =
     , rows : Int
     , table : Dict Pos Card
     , deckSize : Int
+    , setSize : Int
     }
 
 
@@ -28,6 +29,7 @@ toView g =
     , rows = 3
     , table = g.table
     , deckSize = List.length g.deck
+    , setSize = gameSetSize g
     }
 
 
@@ -47,6 +49,18 @@ type alias GameDef =
     }
 
 
+defClassic =
+    { type_ = ClassicSet, short = False, multi = False }
+
+
+defSuper =
+    { type_ = SuperSet, short = False, multi = False }
+
+
+defClassicMulti =
+    { type_ = ClassicSet, short = False, multi = True }
+
+
 deckEmpty : Game -> Bool
 deckEmpty g =
     List.isEmpty g.deck
@@ -54,20 +68,52 @@ deckEmpty g =
 
 posEmpty : Game -> Pos -> Bool
 posEmpty g p =
+    viewPosEmpty (toView g) p
+
+
+viewPosEmpty : GameView -> Pos -> Bool
+viewPosEmpty g p =
     not <| Dict.member p g.table
 
 
-setSize : Game -> Int
-setSize g =
-    if g.type_ == ClassicSet then
-        3
-    else
-        4
+defaultColumns : GameType -> Int
+defaultColumns t =
+    case t of
+        ClassicSet ->
+            4
+
+        SuperSet ->
+            3
+
+
+setSize : GameType -> Int
+setSize t =
+    case t of
+        ClassicSet ->
+            3
+
+        SuperSet ->
+            4
+
+
+gameSetSize : Game -> Int
+gameSetSize g =
+    setSize g.type_
 
 
 deck : List Card
 deck =
     List.map fromInt (List.range 0 80)
+
+
+empty : GameDef -> GameView
+empty def =
+    { deckSize = 81
+    , table = Dict.empty
+    , cols = defaultColumns def.type_
+    , rows = 3
+    , setSize = setSize def.type_
+    }
 
 
 init : GameDef -> Generator Game
@@ -195,12 +241,36 @@ apply action game =
             List.foldr (<|) game (List.map move1 ms)
 
 
-defaultColumns : Game -> Int
-defaultColumns g =
-    if g.type_ == ClassicSet then
-        4
-    else
-        3
+viewApply : Action -> GameView -> GameView
+viewApply action game =
+    let
+        deal1 ( pos, c ) g =
+            { g | deckSize = g.deckSize - 1, table = Dict.insert pos c g.table }
+
+        remove1 pos g =
+            { g | table = Dict.remove pos g.table }
+
+        move1 ( pos, gap ) g =
+            let
+                move from to dict =
+                    case Dict.get from dict of
+                        Nothing ->
+                            dict
+
+                        Just v ->
+                            Dict.insert to v <| Dict.remove from <| dict
+            in
+            { g | table = move pos gap g.table }
+    in
+    case action of
+        Deal ps ->
+            List.foldr (<|) game (List.map deal1 ps)
+
+        Set ps ->
+            List.foldr (<|) game (List.map remove1 ps)
+
+        Move ms ->
+            List.foldr (<|) game (List.map move1 ms)
 
 
 columns : Game -> Int
@@ -216,7 +286,7 @@ columns g =
                         Dict.keys <|
                             g.table
     in
-    max maxcol (defaultColumns g)
+    max maxcol (defaultColumns g.type_)
 
 
 grid : Int -> List Pos

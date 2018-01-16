@@ -34,6 +34,7 @@ func main() {
 		[]CallbackHandler{
 			handleGame("triples", "https://arp.vllmrt.net/triples/?game=triples"),
 			handleGame("quadruples", "https://arp.vllmrt.net/triples/?game=quadruples"),
+			handleGame("triplesmulti", "https://arp.vllmrt.net/triples/?game=triplesmulti"),
 		},
 		actions)
 
@@ -50,6 +51,7 @@ func mux(actions chan<- BotAction, static string) *httprouter.Router {
 		r.ServeFiles("/static/*filepath", http.Dir(static))
 	}
 	r.GET("/api/win", winHandler(actions))
+	r.GET("/api/join", multiHandler(newGames()))
 	return r
 }
 
@@ -91,7 +93,7 @@ func handleUpdate(bot *tgbotapi.BotAPI, callbacks []CallbackHandler, update tgbo
 			if len(words) == 2 && words[0] == "/send" {
 				log.Printf("answering /send: %s", words[1])
 				switch words[1] {
-				case "triples", "quadruples":
+				case "triples", "quadruples", "triplesmulti":
 					game := tgbotapi.GameConfig{
 						BaseChat: tgbotapi.BaseChat{
 							ChatID:           m.Chat.ID,
@@ -130,11 +132,26 @@ func handleUpdate(bot *tgbotapi.BotAPI, callbacks []CallbackHandler, update tgbo
 			GameShortName: "quadruples",
 			ReplyMarkup:   &m,
 		}
+		start := tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.InlineKeyboardButton{
+					Text:         "Start multiplayer game",
+					CallbackGame: &tgbotapi.CallbackGame{},
+				},
+			),
+		)
+		g3 := tgbotapi.InlineQueryResultGame{
+			Type:          "game",
+			ID:            "1",
+			GameShortName: "quadruples",
+			ReplyMarkup:   &start,
+		}
 		ic := tgbotapi.InlineConfig{
 			InlineQueryID: q.ID,
 			Results: []interface{}{
 				g1,
 				g2,
+				g3,
 			},
 		}
 		bot.AnswerInlineQuery(ic)
@@ -154,6 +171,7 @@ func handleUpdate(bot *tgbotapi.BotAPI, callbacks []CallbackHandler, update tgbo
 type CallbackHandler func(*tgbotapi.CallbackQuery) *tgbotapi.CallbackConfig
 
 type Blob struct {
+	Game            string `json:"g,omitempty"`
 	UserID          int    `json:"uid,omitempty"`
 	FirstName       string `json:"fst,omitempty"`
 	ChatInstance    string `json:"cin,omitempty"`
@@ -206,6 +224,7 @@ func handleGame(shortname, u string) CallbackHandler {
 		}
 
 		b := Blob{
+			Game:            shortname,
 			UserID:          q.From.ID,
 			FirstName:       q.From.FirstName,
 			InlineMessageID: q.InlineMessageID,
@@ -227,7 +246,7 @@ func handleGame(shortname, u string) CallbackHandler {
 	}
 }
 
-func sendHighscore(blob Blob, score int) BotAction {
+func sendScore(blob Blob, score int) BotAction {
 	sc := tgbotapi.SetGameScoreConfig{
 		UserID:          blob.UserID,
 		Score:           score,
@@ -259,9 +278,26 @@ func winHandler(actions chan<- BotAction) httprouter.Handle {
 		blob, err := decode(key)
 		if err != nil {
 			log.Printf("decoding blob %q: %s", key, err)
-			http.Error(w, "internal error", http.StatusInternalServerError)
+			http.Error(w, "bad key", http.StatusBadRequest)
 			return
 		}
-		actions <- sendHighscore(blob, s)
+		actions <- sendScore(blob, s)
+	}
+}
+
+func multiHandler(games *Games) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		key := r.FormValue("key")
+		if key == "" {
+			http.Error(w, "missing parameter `key`", http.StatusBadRequest)
+			return
+		}
+		blob, err := decode(key)
+		if err != nil {
+			log.Printf("decoding blob %q: %s", key, err)
+			http.Error(w, "bad key", http.StatusBadRequest)
+			return
+		}
+		games.Get(blob).Serve(blob, w, r)
 	}
 }

@@ -3,7 +3,7 @@ module Main exposing (..)
 import Card exposing (..)
 import Debug
 import Dict
-import Game exposing (Game)
+import Game
 import Graphics
 import Graphics.Style as Style
 import Html
@@ -12,6 +12,7 @@ import Html.Events as HtmlE
 import Http
 import List.Extra
 import Menu
+import MultiPlay
 import Navigation
 import Play
 import Process
@@ -29,7 +30,7 @@ main =
         { init = init
         , view = view
         , update = update
-        , subscriptions = \_ -> Sub.none
+        , subscriptions = subscriptions
         }
 
 
@@ -42,13 +43,14 @@ type alias Model =
 type Page
     = Menu Menu.Model
     | Play Play.Model
+    | MultiPlay MultiPlay.Model
 
 
 type alias Params =
     { style : Style.Style
     , key : Maybe String
     , name : Maybe String
-    , telegramGame : Maybe Game.GameType
+    , telegramGame : Maybe Game.GameDef
     }
 
 
@@ -84,6 +86,9 @@ view model =
 
             Play game ->
                 Html.map (\m -> GetTimeAndThen (PlayMsg m)) <| Play.view model.params.style game
+
+            MultiPlay game ->
+                Html.map MultiPlayMsg <| MultiPlay.view model.params.style game
         ]
 
 
@@ -103,9 +108,10 @@ after time msg =
 
 type Msg
     = Go Game.GameDef
-    | NewGame Game
+    | NewGame Game.Game
     | GetTimeAndThen (Time.Time -> Msg)
     | PlayMsg Play.Msg Time.Time
+    | MultiPlayMsg MultiPlay.Msg
     | Ignore
     | APIResult (Result Http.Error String)
 
@@ -127,7 +133,17 @@ update msg model =
             ( model, Task.perform m Time.now )
 
         ( Go def, _ ) ->
-            ( model, Cmd.batch [ Random.generate NewGame (Game.init def), Task.perform (PlayMsg Play.StartGame) Time.now ] )
+            if def.multi then
+                let
+                    k =
+                        Maybe.withDefault "" model.params.key
+
+                    m =
+                        MultiPlay.init (Game.empty def) (joinUrl ++ "?key=" ++ k)
+                in
+                ( { model | page = MultiPlay m }, Cmd.none )
+            else
+                ( model, Cmd.batch [ Random.generate NewGame (Game.init def), Task.perform (PlayMsg Play.StartGame) Time.now ] )
 
         ( NewGame game, _ ) ->
             ( { model | page = Play (Play.init game) }, Cmd.none )
@@ -195,10 +211,13 @@ parseParams loc =
             , telegramGame =
                 case g of
                     Just "triples" ->
-                        Just Game.ClassicSet
+                        Just Game.defClassic
 
                     Just "quadruples" ->
-                        Just Game.SuperSet
+                        Just Game.defSuper
+
+                    Just "triplesmulti" ->
+                        Just Game.defClassicMulti
 
                     _ ->
                         Nothing
@@ -212,11 +231,20 @@ parseParams loc =
             p
 
 
+winUrl =
+    "https://arp.vllmrt.net/triples/api/win"
+
+
+joinUrl =
+    "wss://arp.vllmrt.net/triples/api/join"
+
+
 sendScore : String -> Int -> Cmd Msg
 sendScore key score =
     Http.send APIResult <|
         Http.getString <|
-            "https://arp.vllmrt.net/triples/api/win?key="
+            winUrl
+                ++ "?key="
                 ++ key
                 ++ "&score="
                 ++ toString score
@@ -263,3 +291,13 @@ score log =
     , String.join " " [ "Your time:", format totalsecs, "=", format secs, "+", format baddealsecs, "-", format gooddealsecs ]
     , 10000 // totalsecs
     )
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    case model.page of
+        MultiPlay m ->
+            Sub.map MultiPlayMsg <| MultiPlay.subscriptions m
+
+        _ ->
+            Sub.none

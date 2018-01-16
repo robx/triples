@@ -4,9 +4,11 @@ module Play
         , Model
         , Msg(..)
         , Result(..)
+        , UserMsg(..)
         , init
         , update
         , view
+        , viewGame
         )
 
 import Dict
@@ -51,9 +53,8 @@ type Event
 
 type Msg
     = StartGame
-    | Choose Game.Pos
     | Deal
-    | DealMore
+    | User UserMsg
 
 
 type Result msg
@@ -61,13 +62,23 @@ type Result msg
     | GameOver (List ( Time.Time, Event ))
 
 
+type UserMsg
+    = Choose Game.Pos
+    | DealMore
+
+
 view : Style.Style -> Model -> Html.Html Msg
 view style model =
-    viewGame style (Game.toView model.game) model.selected model.dealing model.answer
+    let
+        disableMore =
+            model.dealing
+    in
+    Html.map User <|
+        viewGame style (Game.toView model.game) model.selected disableMore model.answer
 
 
-viewGame : Style.Style -> Game.GameView -> List Game.Pos -> Bool -> Maybe Int -> Html.Html Msg
-viewGame style gameView selected dealing answer =
+viewGame : Style.Style -> Game.GameView -> List Game.Pos -> Bool -> Maybe Int -> Html.Html UserMsg
+viewGame style gameView selected disableMore answer =
     let
         d ( pos, card ) =
             Svg.g
@@ -94,7 +105,7 @@ viewGame style gameView selected dealing answer =
                                 "+"
 
                 disabled =
-                    dealing || answer /= Nothing
+                    disableMore || answer /= Nothing
 
                 handler =
                     if disabled then
@@ -142,12 +153,26 @@ update now msg model =
         StartGame ->
             ( { model | log = [ ( now, EStart ) ] }, Nothing )
 
-        Choose p ->
+        Deal ->
+            let
+                ( gamecpct, moves ) =
+                    Game.compact model.game
+            in
+            ( { model
+                | game = Game.deal gamecpct
+                , dealing = False
+                , selected = List.map moves model.selected
+                , answer = Nothing
+              }
+            , Nothing
+            )
+
+        User (Choose p) ->
             if Game.posEmpty model.game p then
                 ( model, Nothing )
             else if List.member p model.selected then
                 ( { model | selected = List.Extra.remove p model.selected }, Nothing )
-            else if List.length model.selected < (Game.setSize model.game - 1) then
+            else if List.length model.selected < (Game.gameSetSize model.game - 1) then
                 ( { model | selected = p :: model.selected }, Nothing )
             else
                 let
@@ -165,21 +190,7 @@ update now msg model =
                 else
                     ( model, Nothing )
 
-        Deal ->
-            let
-                ( gamecpct, moves ) =
-                    Game.compact model.game
-            in
-            ( { model
-                | game = Game.deal gamecpct
-                , dealing = False
-                , selected = List.map moves model.selected
-                , answer = Nothing
-              }
-            , Nothing
-            )
-
-        DealMore ->
+        User DealMore ->
             let
                 over =
                     Game.over model.game

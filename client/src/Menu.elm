@@ -13,7 +13,7 @@ import Html.Events as HtmlE
 
 type alias Model =
     { score : Maybe String
-    , telegramGame : Maybe Game.GameType
+    , telegramGame : Maybe Game.GameDef
     , name : Maybe String
     , style : Style.Style
     }
@@ -62,15 +62,13 @@ view go model =
                     Html.div [ HtmlA.class "buttons" ] <|
                         [ Html.button [ HtmlE.onClick <| go def ] [ Html.text "Classic" ]
                         , Html.button [ HtmlE.onClick <| go { def | short = True } ] [ Html.text "Classic (short)" ]
+                        , Html.button [ HtmlE.onClick <| go { def | multi = True } ] [ Html.text "Classic (multiplayer)" ]
                         , Html.button [ HtmlE.onClick <| go { def | type_ = Game.SuperSet } ] [ Html.text "Super" ]
                         , Html.button [ HtmlE.onClick <| go { def | type_ = Game.SuperSet, short = True } ] [ Html.text "Super (short)" ]
+                        , Html.button [ HtmlE.onClick <| go { def | type_ = Game.SuperSet, multi = True } ] [ Html.text "Super (multiplayer)" ]
                         ]
 
-                Just Game.ClassicSet ->
+                Just d ->
                     Html.div [ HtmlA.class "button" ] <|
-                        [ Html.button [ HtmlE.onClick <| go def ] [ Html.text "Play Triples!" ] ]
-
-                Just Game.SuperSet ->
-                    Html.div [ HtmlA.class "button" ] <|
-                        [ Html.button [ HtmlE.onClick <| go { def | type_ = Game.SuperSet } ] [ Html.text "Play Quadruples!" ] ]
+                        [ Html.button [ HtmlE.onClick <| go d ] [ Html.text "Play!" ] ]
             ]
