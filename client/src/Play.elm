@@ -64,6 +64,10 @@ type Result msg
 view : Style.Style -> Model -> Html.Html Msg
 view style model =
     let
+        -- view shouldn't depend on the secret parts of model.game
+        gameView =
+            Game.toView model.game
+
         d ( pos, card ) =
             Svg.g
                 [ SvgA.transform (trans pos)
@@ -73,10 +77,7 @@ view style model =
                 [ Graphics.draw style (List.member pos model.selected) card ]
 
         gs =
-            Dict.toList model.game.table |> List.map d
-
-        cols =
-            Game.columns model.game
+            Dict.toList gameView.table |> List.map d
 
         more =
             let
@@ -86,7 +87,7 @@ view style model =
                             toString n
 
                         Nothing ->
-                            if Game.deckEmpty model.game then
+                            if gameView.deckSize == 0 then
                                 "."
                             else
                                 "+"
@@ -103,7 +104,7 @@ view style model =
                         ]
             in
             Svg.g
-                (SvgA.transform (trans ( cols, 0 )) :: handler)
+                (SvgA.transform (trans ( gameView.cols, 0 )) :: handler)
                 [ Graphics.button style text ]
 
         trans ( c, r ) =
@@ -119,10 +120,10 @@ view style model =
         viewBox =
             let
                 width =
-                    (style.layout.w + 10) * (toFloat cols + 1)
+                    (style.layout.w + 10) * (toFloat gameView.cols + 1)
 
                 height =
-                    (style.layout.h + 10) * 3
+                    (style.layout.h + 10) * toFloat gameView.rows
             in
             "0 0 " ++ toString width ++ " " ++ toString height
     in

@@ -14,6 +14,23 @@ type alias Game =
     }
 
 
+type alias GameView =
+    { cols : Int
+    , rows : Int
+    , table : Dict Pos Card
+    , deckSize : Int
+    }
+
+
+toView : Game -> GameView
+toView g =
+    { cols = columns g
+    , rows = 3
+    , table = g.table
+    , deckSize = List.length g.deck
+    }
+
+
 type alias Pos =
     ( Int, Int )
 
