@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/robx/telegram-bot-api"
@@ -84,6 +85,30 @@ func runBot(
 type BotAction func(*tgbotapi.BotAPI)
 
 func handleUpdate(bot *tgbotapi.BotAPI, callbacks []CallbackHandler, update tgbotapi.Update) {
+	if m := update.Message; m != nil {
+		if t := m.Text; len(t) > 0 && t[0] == '/' {
+			words := strings.Fields(t)
+			if len(words) == 2 && words[0] == "/send" {
+				log.Printf("answering /send: %s", words[1])
+				switch words[1] {
+				case "triples", "quadruples":
+					game := tgbotapi.GameConfig{
+						BaseChat: tgbotapi.BaseChat{
+							ChatID:           m.Chat.ID,
+							ReplyToMessageID: 0,
+						},
+						GameShortName: words[1],
+					}
+					bot.Send(game)
+				default:
+					msg := tgbotapi.NewMessage(m.Chat.ID, "I don't know that game")
+					bot.Send(msg)
+				}
+			}
+		} else {
+			log.Printf("ignoring non-command message: %s", m.Text)
+		}
+	}
 	if q := update.InlineQuery; q != nil {
 		log.Printf("answering inline query")
 		g1 := tgbotapi.InlineQueryResultGame{
@@ -94,7 +119,7 @@ func handleUpdate(bot *tgbotapi.BotAPI, callbacks []CallbackHandler, update tgbo
 		m := tgbotapi.NewInlineKeyboardMarkup(
 			tgbotapi.NewInlineKeyboardRow(
 				tgbotapi.InlineKeyboardButton{
-					Text:         "Try Quadruples!",
+					Text:         "Play Quadruples!",
 					CallbackGame: &tgbotapi.CallbackGame{},
 				},
 			),
@@ -194,7 +219,7 @@ func handleGame(shortname, u string) CallbackHandler {
 		var v = url.Values{}
 		v.Add("key", key)
 		v.Add("name", q.From.FirstName)
-		log.Printf("game callback: %s %s", shortname, b.FirstName)
+		log.Printf("game callback: %s: %+v", shortname, b)
 		return &tgbotapi.CallbackConfig{
 			CallbackQueryID: q.ID,
 			URL:             u + "&" + v.Encode(),
