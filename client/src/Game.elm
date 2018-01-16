@@ -80,9 +80,14 @@ shuffled =
     shuffle deck
 
 
+dealToAction : Game -> List Pos -> Action
+dealToAction g ps =
+    Deal <| List.map2 (,) ps g.deck
+
+
 dealAction : Game -> Action
 dealAction g =
-    Deal (gaps g)
+    dealToAction g (gaps g)
 
 
 deal : Game -> Game
@@ -91,12 +96,12 @@ deal g =
 
 
 dealMoreAction : Game -> Action
-dealMoreAction =
+dealMoreAction g =
     let
         col c =
             [ ( c, 0 ), ( c, 1 ), ( c, 2 ) ]
     in
-    Deal << col << columns
+    dealToAction g <| col <| columns g
 
 
 dealMore : Game -> Game
@@ -133,7 +138,7 @@ compact g =
 
 
 type Action
-    = Deal (List Pos)
+    = Deal (List ( Pos, Card ))
     | Set (List Pos)
     | Move (List ( Pos, Pos ))
 
@@ -141,13 +146,8 @@ type Action
 apply : Action -> Game -> Game
 apply action game =
     let
-        deal1 pos g =
-            case g.deck of
-                d :: ds ->
-                    { g | deck = ds, table = Dict.insert pos d g.table }
-
-                [] ->
-                    g
+        deal1 ( pos, c ) g =
+            { g | deck = List.drop 1 g.deck, table = Dict.insert pos c g.table }
 
         remove1 pos g =
             { g | table = Dict.remove pos g.table }
