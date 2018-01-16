@@ -91,10 +91,19 @@ func handleUpdate(bot *tgbotapi.BotAPI, callbacks []CallbackHandler, update tgbo
 			ID:            "0",
 			GameShortName: "triples",
 		}
+		m := tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.InlineKeyboardButton{
+					Text:         "Try Quadruples!",
+					CallbackGame: &tgbotapi.CallbackGame{},
+				},
+			),
+		)
 		g2 := tgbotapi.InlineQueryResultGame{
 			Type:          "game",
 			ID:            "1",
 			GameShortName: "quadruples",
+			ReplyMarkup:   &m,
 		}
 		ic := tgbotapi.InlineConfig{
 			InlineQueryID: q.ID,
