@@ -182,7 +182,7 @@ func handleGame(shortname, u string) CallbackHandler {
 			var v = url.Values{}
 			v.Add("key", key)
 			v.Add("name", q.From.FirstName)
-			log.Printf("game callback: %s", b.FirstName)
+			log.Printf("game callback: %s %s", shortname, b.FirstName)
 			return &tgbotapi.CallbackConfig{
 				CallbackQueryID: q.ID,
 				URL:             u + "&" + v.Encode(),
