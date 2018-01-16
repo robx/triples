@@ -167,28 +167,29 @@ func decode(s string) (Blob, error) {
 
 func handleGame(shortname, u string) CallbackHandler {
 	return func(q *tgbotapi.CallbackQuery) *tgbotapi.CallbackConfig {
-		if g := q.GameShortName; g == shortname {
-			b := Blob{
-				UserID:          q.From.ID,
-				FirstName:       q.From.FirstName,
-				InlineMessageID: q.InlineMessageID,
-				ChatInstance:    q.ChatInstance,
-			}
-			if msg := q.Message; msg != nil {
-				b.MessageID = msg.MessageID
-				b.ChatID = msg.Chat.ID
-			}
-			key := encode(b)
-			var v = url.Values{}
-			v.Add("key", key)
-			v.Add("name", q.From.FirstName)
-			log.Printf("game callback: %s %s", shortname, b.FirstName)
-			return &tgbotapi.CallbackConfig{
-				CallbackQueryID: q.ID,
-				URL:             u + "&" + v.Encode(),
-			}
+		if g := q.GameShortName; g != shortname {
+			return nil
 		}
-		return nil
+
+		b := Blob{
+			UserID:          q.From.ID,
+			FirstName:       q.From.FirstName,
+			InlineMessageID: q.InlineMessageID,
+			ChatInstance:    q.ChatInstance,
+		}
+		if msg := q.Message; msg != nil {
+			b.MessageID = msg.MessageID
+			b.ChatID = msg.Chat.ID
+		}
+		key := encode(b)
+		var v = url.Values{}
+		v.Add("key", key)
+		v.Add("name", q.From.FirstName)
+		log.Printf("game callback: %s %s", shortname, b.FirstName)
+		return &tgbotapi.CallbackConfig{
+			CallbackQueryID: q.ID,
+			URL:             u + "&" + v.Encode(),
+		}
 	}
 }
 
