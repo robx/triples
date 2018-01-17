@@ -35,7 +35,8 @@ main =
 
 
 type alias Model =
-    { params : Params
+    { location : Navigation.Location
+    , params : Params
     , page : Page
     }
 
@@ -60,7 +61,8 @@ init loc =
         params =
             parseParams loc
     in
-    ( { params = params
+    ( { location = loc
+      , params = params
       , page = newMenu params Nothing
       }
     , Cmd.none
@@ -139,7 +141,7 @@ update msg model =
                         Maybe.withDefault "" model.params.key
 
                     m =
-                        MultiPlay.init (Game.empty def) (joinUrl ++ "?key=" ++ k)
+                        MultiPlay.init (Game.empty def) (joinUrl model.location ++ "?key=" ++ k)
                 in
                 ( { model | page = MultiPlay m }, Cmd.none )
             else
@@ -172,7 +174,7 @@ update msg model =
                             if scored then
                                 case model.params.key of
                                     Just k ->
-                                        sendScore k telescore
+                                        sendScore model.location k telescore
 
                                     _ ->
                                         Cmd.none
@@ -231,19 +233,28 @@ parseParams loc =
             p
 
 
-winUrl =
-    "https://arp.vllmrt.net/triples/api/win"
+winUrl : Navigation.Location -> String
+winUrl loc =
+    loc.protocol ++ "//" ++ loc.host ++ loc.pathname ++ "/api/win"
 
 
-joinUrl =
-    "wss://arp.vllmrt.net/triples/api/join"
+joinUrl : Navigation.Location -> String
+joinUrl loc =
+    let
+        protocol =
+            if loc.protocol == "https:" then
+                "ws:"
+            else
+                "wss:"
+    in
+    protocol ++ "//" ++ loc.host ++ loc.pathname ++ "/api/join"
 
 
-sendScore : String -> Int -> Cmd Msg
-sendScore key score =
+sendScore : Navigation.Location -> String -> Int -> Cmd Msg
+sendScore location key score =
     Http.send APIResult <|
         Http.getString <|
-            winUrl
+            winUrl location
                 ++ "?key="
                 ++ key
                 ++ "&score="
