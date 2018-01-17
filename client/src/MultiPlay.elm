@@ -8,6 +8,7 @@ module MultiPlay
         , view
         )
 
+import Base64
 import Card
 import Dict
 import Game
@@ -117,9 +118,12 @@ update msg model =
             ( model, Just <| ClaimNoSet <| Dict.values model.game.table )
 
         WSUpdate u ->
-            case Decode.decodeString Proto.updateDecoder u of
+            case
+                Base64.decode u
+                    |> Result.andThen (Decode.decodeString Proto.updateDecoder)
+            of
                 Err e ->
-                    ( model, Nothing )
+                    Debug.crash e
 
                 Ok upd ->
                     ( applyUpdate upd model, Nothing )
@@ -140,7 +144,7 @@ applyUpdate update model =
                     model
 
                 _ ->
-                    model
+                    Debug.crash "unknown change"
 
         Proto.Event event ->
             case event.eventOneof of
@@ -151,10 +155,10 @@ applyUpdate update model =
                     model
 
                 _ ->
-                    model
+                    Debug.crash "unknown event"
 
         _ ->
-            model
+            Debug.crash "unknown update"
 
 
 subscriptions : Model -> Sub Msg
