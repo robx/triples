@@ -1,19 +1,16 @@
 package main
 
 import (
-	"encoding/json"
+"io/ioutil"
 	"log"
 	"net/http"
 	"sync"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
+
+	pb "gitlab.com/rrrob/triples/serve/proto"
 )
-
-type Action struct {
-}
-
-type Update struct {
-}
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
@@ -59,12 +56,12 @@ func (g *Game) loop() {
 	log.Printf("starting new game: %s %s", g.creator.Game, g.creator.FirstName)
 }
 
-func (g *Game) join(b Blob) (Update, <-chan Update) {
+func (g *Game) join(b Blob) (pb.Update, <-chan pb.Update) {
 	log.Printf("player joining: %s", b.FirstName)
-	return Update{}, make(chan Update)
+	return pb.Update{}, make(chan pb.Update)
 }
 
-func (g *Game) action(a Action) {
+func (g *Game) claim(c pb.Claim) {
 }
 
 func (g *Game) Serve(b Blob, w http.ResponseWriter, r *http.Request) {
@@ -75,9 +72,9 @@ func (g *Game) Serve(b Blob, w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	actions := make(chan Action)
+	claims := make(chan pb.Claim)
 	go func() {
-		defer close(actions)
+		defer close(claims)
 		for {
 			t, m, err := conn.NextReader()
 			if err != nil {
@@ -86,25 +83,35 @@ func (g *Game) Serve(b Blob, w http.ResponseWriter, r *http.Request) {
 			}
 			switch t {
 			case websocket.TextMessage:
-				action := Action{}
-				if err := json.NewDecoder(m).Decode(&action); err != nil {
-					log.Printf("json err: %s", err)
+				bs, err := ioutil.ReadAll(m)
+				if err != nil {
+					log.Printf("reading message: %s", err)
 					return
 				}
-				actions <- action
+				claim := pb.Claim{}
+				if err := proto.Unmarshal(bs, &claim); err != nil {
+					log.Printf("proto err: %s", err)
+					return
+				}
+				claims <- claim
 			default:
 				log.Printf("ignoring message type: %d", t)
 			}
 		}
 	}()
 
-	writeUpdate := func(u Update) error {
+	writeUpdate := func(u pb.Update) error {
 		w, err := conn.NextWriter(websocket.TextMessage)
 		if err != nil {
 			return err
 		}
 		defer w.Close()
-		return json.NewEncoder(w).Encode(u)
+		b, err := proto.Marshal(&u)
+		if err != nil {
+			return err
+		}
+		_, err = w.Write(b)
+		return err
 	}
 
 	welcome, updates := g.join(b)
@@ -119,8 +126,8 @@ func (g *Game) Serve(b Blob, w http.ResponseWriter, r *http.Request) {
 				log.Print(err)
 				return
 			}
-		case a := <-actions:
-			g.action(a)
+		case c := <-claims:
+			g.claim(c)
 		}
 	}
 }
