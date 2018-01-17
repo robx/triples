@@ -205,7 +205,7 @@ compact g =
 
 type Action
     = Deal (List ( Pos, Card ))
-    | Set (List Pos)
+    | Match (List Pos)
     | Move (List ( Pos, Pos ))
 
 
@@ -234,7 +234,7 @@ apply action game =
         Deal ps ->
             List.foldr (<|) game (List.map deal1 ps)
 
-        Set ps ->
+        Match ps ->
             List.foldr (<|) game (List.map remove1 ps)
 
         Move ms ->
@@ -266,7 +266,7 @@ viewApply action game =
         Deal ps ->
             List.foldr (<|) game (List.map deal1 ps)
 
-        Set ps ->
+        Match ps ->
             List.foldr (<|) game (List.map remove1 ps)
 
         Move ms ->
