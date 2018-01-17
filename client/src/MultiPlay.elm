@@ -15,8 +15,10 @@ import Graphics
 import Graphics.Style as Style
 import Html
 import Html.Attributes as HtmlA
+import Json.Decode as Decode
 import List.Extra
 import Play
+import Proto.Triples as Proto
 import WebSocket
 
 
@@ -96,29 +98,44 @@ update msg model =
             ( model, Just <| ClaimNoSet <| Dict.values model.game.table )
 
         WSUpdate u ->
-            case parseUpdate u of
+            case Decode.decodeString Proto.updateDecoder u of
                 Err e ->
                     ( model, Nothing )
 
-                Ok a ->
-                    ( applyAction a model, Nothing )
+                Ok upd ->
+                    ( applyUpdate upd model, Nothing )
 
 
-parseUpdate : String -> Result String Game.Action
-parseUpdate s =
-    Err "not implemented"
+applyUpdate : Proto.Update -> Model -> Model
+applyUpdate update model =
+    case update.updateOneof of
+        Proto.Change change ->
+            case change.changeOneof of
+                Proto.Deal deal ->
+                    model
 
+                Proto.Match match ->
+                    model
 
-applyAction : Game.Action -> Model -> Model
-applyAction action model =
-    let
-        moves =
-            always Nothing
-    in
-    { model
-        | game = Game.viewApply action model.game
-        , selected = List.filterMap moves model.selected
-    }
+                Proto.Move move ->
+                    model
+
+                _ ->
+                    model
+
+        Proto.Event event ->
+            case event.eventOneof of
+                Proto.Join join ->
+                    model
+
+                Proto.Claimed claimed ->
+                    model
+
+                _ ->
+                    model
+
+        _ ->
+            model
 
 
 subscriptions : Model -> Sub Msg
