@@ -22,6 +22,7 @@ var (
 	listen   = flag.String("listen", ":8080", "http listen")
 	static   = flag.String("static", "./static/", "points to static/")
 	debugbot = flag.Bool("debugbot", false, "debug logs for the Telegram bot")
+	baseURL  = flag.String("base", "https://arp.vllmrt.net/triples", "http base URL")
 )
 
 func main() {
@@ -32,9 +33,9 @@ func main() {
 	go runBot(
 		os.Getenv("TELEGRAM_TOKEN"),
 		[]CallbackHandler{
-			handleGame("triples", "https://arp.vllmrt.net/triples/?game=triples"),
-			handleGame("quadruples", "https://arp.vllmrt.net/triples/?game=quadruples"),
-			handleGame("triplesmulti", "https://arp.vllmrt.net/triples/?game=triplesmulti"),
+			handleGame("triples", *baseURL+"?game=triples"),
+			handleGame("quadruples", *baseURL+"?game=quadruples"),
+			handleGame("triplesmulti", *baseURL+"?game=triplesmulti"),
 		},
 		actions)
 
