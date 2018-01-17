@@ -1,7 +1,7 @@
 package main
 
 import (
-"io/ioutil"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"sync"
@@ -56,9 +56,20 @@ func (g *Game) loop() {
 	log.Printf("starting new game: %s %s", g.creator.Game, g.creator.FirstName)
 }
 
-func (g *Game) join(b Blob) (pb.Update, <-chan pb.Update) {
+func (g *Game) join(b Blob) (*pb.Update, <-chan *pb.Update) {
 	log.Printf("player joining: %s", b.FirstName)
-	return pb.Update{}, make(chan pb.Update)
+	u := &pb.Update{
+		UpdateOneof: &pb.Update_Event{
+			Event: &pb.UpdateEvent{
+				EventOneof: &pb.UpdateEvent_Join{
+					Join: &pb.UpdateEvent_EventJoin{
+						Name: b.FirstName,
+					},
+				},
+			},
+		},
+	}
+	return u, make(chan *pb.Update)
 }
 
 func (g *Game) claim(c pb.Claim) {
@@ -100,13 +111,13 @@ func (g *Game) Serve(b Blob, w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	writeUpdate := func(u pb.Update) error {
+	writeUpdate := func(u *pb.Update) error {
 		w, err := conn.NextWriter(websocket.TextMessage)
 		if err != nil {
 			return err
 		}
 		defer w.Close()
-		b, err := proto.Marshal(&u)
+		b, err := proto.Marshal(u)
 		if err != nil {
 			return err
 		}
