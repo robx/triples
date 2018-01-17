@@ -233,9 +233,25 @@ parseParams loc =
             p
 
 
+(</>) : String -> String -> String
+(</>) a b =
+    case ( String.right 1 a, String.left 1 b ) of
+        ( "/", "/" ) ->
+            a ++ String.dropLeft 1 b
+
+        ( _, "/" ) ->
+            a ++ b
+
+        ( "/", _ ) ->
+            a ++ b
+
+        _ ->
+            a ++ "/" ++ b
+
+
 winUrl : Navigation.Location -> String
 winUrl loc =
-    loc.protocol ++ "//" ++ loc.host ++ loc.pathname ++ "/api/win"
+    loc.protocol ++ "//" ++ loc.host ++ loc.pathname </> "api/win"
 
 
 joinUrl : Navigation.Location -> String
@@ -247,7 +263,7 @@ joinUrl loc =
             else
                 "ws:"
     in
-    protocol ++ "//" ++ loc.host ++ loc.pathname ++ "/api/join"
+    protocol ++ "//" ++ loc.host ++ loc.pathname </> "api/join"
 
 
 sendScore : Navigation.Location -> String -> Int -> Cmd Msg
