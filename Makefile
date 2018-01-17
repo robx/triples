@@ -1,4 +1,4 @@
-.PHONY: all build format test deploy
+.PHONY: all build format test protoc deploy
 
 all: build
 
@@ -14,6 +14,9 @@ test:
 	make -C client test
 	make -C serve test
 
+protoc:
+	protoc --elm_out=client/src proto/triples.proto
+	protoc --go_out=serve proto/triples.proto
 
 DEPLOY_DEST ?= arp:triples/
 
