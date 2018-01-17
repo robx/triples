@@ -23,6 +23,7 @@ var (
 	static   = flag.String("static", "./static/", "points to static/")
 	debugbot = flag.Bool("debugbot", false, "debug logs for the Telegram bot")
 	baseURL  = flag.String("base", "https://arp.vllmrt.net/triples", "http base URL")
+	bot      = flag.Bool("bot", true, "run the telegram bot")
 )
 
 func main() {
@@ -30,14 +31,16 @@ func main() {
 
 	actions := make(chan BotAction)
 
-	go runBot(
-		os.Getenv("TELEGRAM_TOKEN"),
-		[]CallbackHandler{
-			handleGame("triples", *baseURL+"?game=triples"),
-			handleGame("quadruples", *baseURL+"?game=quadruples"),
-			handleGame("triplesmulti", *baseURL+"?game=triplesmulti"),
-		},
-		actions)
+	if *bot {
+		go runBot(
+			os.Getenv("TELEGRAM_TOKEN"),
+			[]CallbackHandler{
+				handleGame("triples", *baseURL+"?game=triples"),
+				handleGame("quadruples", *baseURL+"?game=quadruples"),
+				handleGame("triplesmulti", *baseURL+"?game=triplesmulti"),
+			},
+			actions)
+	}
 
 	log.Printf("listening on %s...\n", *listen)
 	log.Fatal(http.ListenAndServe(*listen, mux(actions, *static)))
