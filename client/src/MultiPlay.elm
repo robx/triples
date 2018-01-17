@@ -38,11 +38,13 @@ type Res
     | Late
 
 
-type alias UserEvent =
-    { result : Result
-    , action : Action
-    , name : String
-    }
+type UserEvent
+    = Claimed
+        { result : Result
+        , action : Action
+        , name : String
+        }
+    | Join String
 
 
 type alias Model =
@@ -71,8 +73,25 @@ type Msg
 
 view : Style.Style -> Model -> Html.Html Msg
 view style model =
-    Html.map User <|
-        Play.viewGame style model.game model.selected False model.answer
+    Html.div []
+        [ Html.map User <|
+            Play.viewGame style model.game model.selected False model.answer
+        , viewLog model.log
+        ]
+
+
+viewLog : List UserEvent -> Html.Html msg
+viewLog events =
+    let
+        viewEvent e =
+            case e of
+                Join n ->
+                    Html.p [] [ Html.text <| n ++ " joined!" ]
+
+                _ ->
+                    Html.p [] [ Html.text "unknown event" ]
+    in
+    Html.div [] <| List.map viewEvent events
 
 
 update : Msg -> Model -> ( Model, Maybe Claim )
@@ -126,7 +145,7 @@ applyUpdate update model =
         Proto.Event event ->
             case event.eventOneof of
                 Proto.Join join ->
-                    model
+                    { model | log = Join join.name :: model.log }
 
                 Proto.Claimed claimed ->
                     model
