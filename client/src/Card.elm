@@ -42,8 +42,8 @@ fromInt x =
     }
 
 
-set : List Card -> Bool
-set cards =
+triple : List Card -> Bool
+triple cards =
     let
         test prop =
             cards
@@ -52,16 +52,15 @@ set cards =
                 |> List.length
                 |> flip List.member [ 1, 3 ]
     in
-    List.length cards
-        == 3
+    (List.length cards == 3)
         && test .color
         && test .count
         && test .shape
         && test .fill
 
 
-superset : List Card -> Bool
-superset cards =
+quadruple : List Card -> Bool
+quadruple cards =
     case cards of
         [ c1, c2, c3, c4 ] ->
             let
@@ -75,12 +74,9 @@ superset cards =
                     , fill = miss a.fill b.fill
                     }
             in
-            missingCard c1 c2
-                == missingCard c3 c4
-                || missingCard c1 c3
-                == missingCard c2 c4
-                || missingCard c1 c4
-                == missingCard c2 c3
+            (missingCard c1 c2 == missingCard c3 c4)
+                || (missingCard c1 c3 == missingCard c2 c4)
+                || (missingCard c1 c4 == missingCard c2 c3)
 
         _ ->
             False

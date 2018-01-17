@@ -81,7 +81,7 @@ update msg model =
                 ( model, Nothing )
             else if List.member p model.selected then
                 ( { model | selected = List.Extra.remove p model.selected }, Nothing )
-            else if List.length model.selected < (model.game.setSize - 1) then
+            else if List.length model.selected < (model.game.matchSize - 1) then
                 ( { model | selected = p :: model.selected }, Nothing )
             else
                 let
@@ -105,7 +105,8 @@ update msg model =
 
 
 parseUpdate : String -> Result String Game.Action
-parseUpdate s = Err "not implemented"
+parseUpdate s =
+    Err "not implemented"
 
 
 applyAction : Game.Action -> Model -> Model

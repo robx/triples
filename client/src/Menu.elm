@@ -50,7 +50,7 @@ view go model =
             z
 
         def =
-            { type_ = Game.ClassicSet, short = False, multi = False }
+            { type_ = Game.Triples, short = False, multi = False }
     in
     Html.div [ HtmlA.id "main" ] <|
         addScore
@@ -63,9 +63,9 @@ view go model =
                         [ Html.button [ HtmlE.onClick <| go def ] [ Html.text "Classic" ]
                         , Html.button [ HtmlE.onClick <| go { def | short = True } ] [ Html.text "Classic (short)" ]
                         , Html.button [ HtmlE.onClick <| go { def | multi = True } ] [ Html.text "Classic (multiplayer)" ]
-                        , Html.button [ HtmlE.onClick <| go { def | type_ = Game.SuperSet } ] [ Html.text "Super" ]
-                        , Html.button [ HtmlE.onClick <| go { def | type_ = Game.SuperSet, short = True } ] [ Html.text "Super (short)" ]
-                        , Html.button [ HtmlE.onClick <| go { def | type_ = Game.SuperSet, multi = True } ] [ Html.text "Super (multiplayer)" ]
+                        , Html.button [ HtmlE.onClick <| go { def | type_ = Game.Quadruples } ] [ Html.text "Super" ]
+                        , Html.button [ HtmlE.onClick <| go { def | type_ = Game.Quadruples, short = True } ] [ Html.text "Super (short)" ]
+                        , Html.button [ HtmlE.onClick <| go { def | type_ = Game.Quadruples, multi = True } ] [ Html.text "Super (multiplayer)" ]
                         ]
 
                 Just d ->

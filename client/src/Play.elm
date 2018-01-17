@@ -172,7 +172,7 @@ update now msg model =
                 ( model, Nothing )
             else if List.member p model.selected then
                 ( { model | selected = List.Extra.remove p model.selected }, Nothing )
-            else if List.length model.selected < (Game.gameSetSize model.game - 1) then
+            else if List.length model.selected < (Game.gameMatchSize model.game - 1) then
                 ( { model | selected = p :: model.selected }, Nothing )
             else
                 let

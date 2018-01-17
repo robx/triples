@@ -19,7 +19,7 @@ type alias GameView =
     , rows : Int
     , table : Dict Pos Card
     , deckSize : Int
-    , setSize : Int
+    , matchSize : Int
     }
 
 
@@ -29,7 +29,7 @@ toView g =
     , rows = 3
     , table = g.table
     , deckSize = List.length g.deck
-    , setSize = gameSetSize g
+    , matchSize = gameMatchSize g
     }
 
 
@@ -38,8 +38,8 @@ type alias Pos =
 
 
 type GameType
-    = ClassicSet
-    | SuperSet
+    = Triples
+    | Quadruples
 
 
 type alias GameDef =
@@ -49,16 +49,16 @@ type alias GameDef =
     }
 
 
-defClassic =
-    { type_ = ClassicSet, short = False, multi = False }
+defTriples =
+    { type_ = Triples, short = False, multi = False }
 
 
-defSuper =
-    { type_ = SuperSet, short = False, multi = False }
+defQuadruples =
+    { type_ = Quadruples, short = False, multi = False }
 
 
-defClassicMulti =
-    { type_ = ClassicSet, short = False, multi = True }
+defTriplesMulti =
+    { type_ = Triples, short = False, multi = True }
 
 
 deckEmpty : Game -> Bool
@@ -79,26 +79,26 @@ viewPosEmpty g p =
 defaultColumns : GameType -> Int
 defaultColumns t =
     case t of
-        ClassicSet ->
+        Triples ->
             4
 
-        SuperSet ->
+        Quadruples ->
             3
 
 
-setSize : GameType -> Int
-setSize t =
+matchSize : GameType -> Int
+matchSize t =
     case t of
-        ClassicSet ->
+        Triples ->
             3
 
-        SuperSet ->
+        Quadruples ->
             4
 
 
-gameSetSize : Game -> Int
-gameSetSize g =
-    setSize g.type_
+gameMatchSize : Game -> Int
+gameMatchSize g =
+    matchSize g.type_
 
 
 deck : List Card
@@ -112,7 +112,7 @@ empty def =
     , table = Dict.empty
     , cols = defaultColumns def.type_
     , rows = 3
-    , setSize = setSize def.type_
+    , matchSize = matchSize def.type_
     }
 
 
@@ -294,24 +294,15 @@ grid cols =
     List.range 0 (cols - 1) |> List.concatMap (\x -> List.range 0 2 |> List.map (\y -> ( x, y )))
 
 
-standardGrid : List Pos
-standardGrid =
-    grid 4
-
-
-superGrid : List Pos
-superGrid =
-    grid 3
+standardGrid : Game -> List Pos
+standardGrid g =
+    grid (defaultColumns g.type_)
 
 
 gaps : Game -> List Pos
 gaps g =
-    List.filter (\p -> not <| Dict.member p g.table)
-        (if g.type_ == ClassicSet then
-            standardGrid
-         else
-            superGrid
-        )
+    List.filter (\p -> not <| Dict.member p g.table) <|
+        standardGrid g
 
 
 allGaps : Game -> List Pos
@@ -319,34 +310,26 @@ allGaps g =
     List.filter (\p -> not <| Dict.member p g.table) (grid (columns g))
 
 
-set : Game -> List Pos -> Bool
-set g ps =
-    let
-        cs =
-            List.filterMap (flip Dict.get g.table) ps
-    in
-    List.length ps == 3 && Card.set cs
+match : Game -> List Pos -> Bool
+match g ps =
+    if List.length ps /= gameMatchSize g then
+        False
+    else
+        let
+            cards =
+                List.filterMap (flip Dict.get g.table) ps
+        in
+        case g.type_ of
+            Triples ->
+                Card.triple cards
 
-
-superset : Game -> List Pos -> Bool
-superset g ps =
-    let
-        cs =
-            List.filterMap (flip Dict.get g.table) ps
-    in
-    List.length cs == 4 && Card.superset cs
+            Quadruples ->
+                Card.quadruple cards
 
 
 take : Game -> List Pos -> ( Bool, Game )
 take g ps =
-    let
-        s =
-            if g.type_ == SuperSet then
-                superset g ps
-            else
-                set g ps
-    in
-    if s then
+    if match g ps then
         ( True, { g | table = List.foldr (<|) g.table (List.map Dict.remove ps) } )
     else
         ( False, g )
@@ -354,39 +337,6 @@ take g ps =
 
 count : Game -> Int
 count g =
-    if g.type_ == SuperSet then
-        countSupersets g
-    else
-        countSets g
-
-
-countSets : Game -> Int
-countSets g =
-    let
-        cards =
-            Dict.values g.table
-
-        pairs xs =
-            case xs of
-                [] ->
-                    []
-
-                y :: ys ->
-                    List.map (\z -> [ y, z ]) ys ++ pairs ys
-
-        triples xs =
-            case xs of
-                [] ->
-                    []
-
-                y :: ys ->
-                    (List.map ((::) y) <| pairs ys) ++ triples ys
-    in
-    List.length <| List.filter Card.set <| triples cards
-
-
-countSupersets : Game -> Int
-countSupersets g =
     let
         cards =
             Dict.values g.table
@@ -415,4 +365,10 @@ countSupersets g =
                 y :: ys ->
                     (List.map ((::) y) <| triples ys) ++ quads ys
     in
-    List.length <| List.filter Card.superset <| quads cards
+    List.length <|
+        case g.type_ of
+            Triples ->
+                List.filter Card.triple <| triples cards
+
+            Quadruples ->
+                List.filter Card.quadruple <| quads cards

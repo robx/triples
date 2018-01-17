@@ -211,13 +211,13 @@ parseParams loc =
             , telegramGame =
                 case g of
                     Just "triples" ->
-                        Just Game.defClassic
+                        Just Game.defTriples
 
                     Just "quadruples" ->
-                        Just Game.defSuper
+                        Just Game.defQuadruples
 
                     Just "triplesmulti" ->
-                        Just Game.defClassicMulti
+                        Just Game.defTriplesMulti
 
                     _ ->
                         Nothing
