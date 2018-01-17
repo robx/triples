@@ -243,9 +243,9 @@ joinUrl loc =
     let
         protocol =
             if loc.protocol == "https:" then
-                "ws:"
-            else
                 "wss:"
+            else
+                "ws:"
     in
     protocol ++ "//" ++ loc.host ++ loc.pathname ++ "/api/join"
 
