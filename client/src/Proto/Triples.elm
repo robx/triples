@@ -5,15 +5,14 @@ module Proto.Triples exposing (..)
 -- https://github.com/tiziano88/elm-protobuf
 -- source file: proto/triples.proto
 
-import Protobuf exposing (..)
-
 import Json.Decode as JD
 import Json.Encode as JE
+import Protobuf exposing (..)
 
 
 type ClaimType
-    = Match -- 0
-    | Nomatch -- 1
+    = ClaimMatch -- 0
+    | ClaimNomatch -- 1
 
 
 claimTypeDecoder : JD.Decoder ClaimType
@@ -21,20 +20,21 @@ claimTypeDecoder =
     let
         lookup s =
             case s of
-                "MATCH" ->
-                    Match
+                "CLAIM_MATCH" ->
+                    ClaimMatch
 
-                "NOMATCH" ->
-                    Nomatch
+                "CLAIM_NOMATCH" ->
+                    ClaimNomatch
 
                 _ ->
-                    Match
+                    ClaimMatch
     in
-        JD.map lookup JD.string
+    JD.map lookup JD.string
 
 
 claimTypeDefault : ClaimType
-claimTypeDefault = Match
+claimTypeDefault =
+    ClaimMatch
 
 
 claimTypeEncoder : ClaimType -> JE.Value
@@ -42,14 +42,13 @@ claimTypeEncoder v =
     let
         lookup s =
             case s of
-                Match ->
-                    "MATCH"
+                ClaimMatch ->
+                    "CLAIM_MATCH"
 
-                Nomatch ->
-                    "NOMATCH"
-
+                ClaimNomatch ->
+                    "CLAIM_NOMATCH"
     in
-        JE.string <| lookup v
+    JE.string <| lookup v
 
 
 type alias Claim =
@@ -60,37 +59,42 @@ type alias Claim =
 
 claimDecoder : JD.Decoder Claim
 claimDecoder =
-    JD.lazy <| \_ -> decode Claim
-        |> required "type" claimTypeDecoder claimTypeDefault
-        |> repeated "cards" JD.int
+    JD.lazy <|
+        \_ ->
+            decode Claim
+                |> required "type" claimTypeDecoder claimTypeDefault
+                |> repeated "cards" JD.int
 
 
 claimEncoder : Claim -> JE.Value
 claimEncoder v =
-    JE.object <| List.filterMap identity <|
-        [ (requiredFieldEncoder "type" claimTypeEncoder claimTypeDefault v.type_)
-        , (repeatedFieldEncoder "cards" JE.int v.cards)
-        ]
+    JE.object <|
+        List.filterMap identity <|
+            [ requiredFieldEncoder "type" claimTypeEncoder claimTypeDefault v.type_
+            , repeatedFieldEncoder "cards" JE.int v.cards
+            ]
 
 
-type alias Event =
+type alias UpdateEvent =
     { eventOneof : EventOneof
     }
 
 
 type EventOneof
     = EventOneofUnspecified
-    | Join Event_Join
-    | Claimed Event_Claimed
+    | Join UpdateEvent_EventJoin
+    | Claimed UpdateEvent_EventClaimed
 
 
 eventOneofDecoder : JD.Decoder EventOneof
 eventOneofDecoder =
-    JD.lazy <| \_ -> JD.oneOf
-        [ JD.map Join (JD.field "join" event_JoinDecoder)
-        , JD.map Claimed (JD.field "claimed" event_ClaimedDecoder)
-        , JD.succeed EventOneofUnspecified
-        ]
+    JD.lazy <|
+        \_ ->
+            JD.oneOf
+                [ JD.map Join (JD.field "join" updateEvent_EventJoinDecoder)
+                , JD.map Claimed (JD.field "claimed" updateEvent_EventClaimedDecoder)
+                , JD.succeed EventOneofUnspecified
+                ]
 
 
 eventOneofEncoder : EventOneof -> Maybe ( String, JE.Value )
@@ -98,135 +102,148 @@ eventOneofEncoder v =
     case v of
         EventOneofUnspecified ->
             Nothing
+
         Join x ->
-            Just ( "join", event_JoinEncoder x )
+            Just ( "join", updateEvent_EventJoinEncoder x )
+
         Claimed x ->
-            Just ( "claimed", event_ClaimedEncoder x )
+            Just ( "claimed", updateEvent_EventClaimedEncoder x )
 
 
-eventDecoder : JD.Decoder Event
-eventDecoder =
-    JD.lazy <| \_ -> decode Event
-        |> field eventOneofDecoder
+updateEventDecoder : JD.Decoder UpdateEvent
+updateEventDecoder =
+    JD.lazy <|
+        \_ ->
+            decode UpdateEvent
+                |> field eventOneofDecoder
 
 
-eventEncoder : Event -> JE.Value
-eventEncoder v =
-    JE.object <| List.filterMap identity <|
-        [ (eventOneofEncoder v.eventOneof)
-        ]
+updateEventEncoder : UpdateEvent -> JE.Value
+updateEventEncoder v =
+    JE.object <|
+        List.filterMap identity <|
+            [ eventOneofEncoder v.eventOneof
+            ]
 
 
-type alias Event_Join =
+type alias UpdateEvent_EventJoin =
     { name : String -- 1
     }
 
 
-event_JoinDecoder : JD.Decoder Event_Join
-event_JoinDecoder =
-    JD.lazy <| \_ -> decode Event_Join
-        |> required "name" JD.string ""
+updateEvent_EventJoinDecoder : JD.Decoder UpdateEvent_EventJoin
+updateEvent_EventJoinDecoder =
+    JD.lazy <|
+        \_ ->
+            decode UpdateEvent_EventJoin
+                |> required "name" JD.string ""
 
 
-event_JoinEncoder : Event_Join -> JE.Value
-event_JoinEncoder v =
-    JE.object <| List.filterMap identity <|
-        [ (requiredFieldEncoder "name" JE.string "" v.name)
-        ]
+updateEvent_EventJoinEncoder : UpdateEvent_EventJoin -> JE.Value
+updateEvent_EventJoinEncoder v =
+    JE.object <|
+        List.filterMap identity <|
+            [ requiredFieldEncoder "name" JE.string "" v.name
+            ]
 
 
-type alias Event_Claimed =
+type alias UpdateEvent_EventClaimed =
     { name : String -- 1
     , type_ : ClaimType -- 2
-    , result : Event_Claimed_Result -- 3
+    , result : UpdateEvent_EventClaimed_Result -- 3
     }
 
 
-type Event_Claimed_Result
-    = Event_Claimed_Correct -- 0
-    | Event_Claimed_Wrong -- 1
-    | Event_Claimed_Late -- 2
+type UpdateEvent_EventClaimed_Result
+    = UpdateEvent_EventClaimed_Correct -- 0
+    | UpdateEvent_EventClaimed_Wrong -- 1
+    | UpdateEvent_EventClaimed_Late -- 2
 
 
-event_ClaimedDecoder : JD.Decoder Event_Claimed
-event_ClaimedDecoder =
-    JD.lazy <| \_ -> decode Event_Claimed
-        |> required "name" JD.string ""
-        |> required "type" claimTypeDecoder claimTypeDefault
-        |> required "result" event_Claimed_ResultDecoder event_Claimed_ResultDefault
+updateEvent_EventClaimedDecoder : JD.Decoder UpdateEvent_EventClaimed
+updateEvent_EventClaimedDecoder =
+    JD.lazy <|
+        \_ ->
+            decode UpdateEvent_EventClaimed
+                |> required "name" JD.string ""
+                |> required "type" claimTypeDecoder claimTypeDefault
+                |> required "result" updateEvent_EventClaimed_ResultDecoder updateEvent_EventClaimed_ResultDefault
 
 
-event_Claimed_ResultDecoder : JD.Decoder Event_Claimed_Result
-event_Claimed_ResultDecoder =
+updateEvent_EventClaimed_ResultDecoder : JD.Decoder UpdateEvent_EventClaimed_Result
+updateEvent_EventClaimed_ResultDecoder =
     let
         lookup s =
             case s of
                 "CORRECT" ->
-                    Event_Claimed_Correct
+                    UpdateEvent_EventClaimed_Correct
 
                 "WRONG" ->
-                    Event_Claimed_Wrong
+                    UpdateEvent_EventClaimed_Wrong
 
                 "LATE" ->
-                    Event_Claimed_Late
+                    UpdateEvent_EventClaimed_Late
 
                 _ ->
-                    Event_Claimed_Correct
+                    UpdateEvent_EventClaimed_Correct
     in
-        JD.map lookup JD.string
+    JD.map lookup JD.string
 
 
-event_Claimed_ResultDefault : Event_Claimed_Result
-event_Claimed_ResultDefault = Event_Claimed_Correct
+updateEvent_EventClaimed_ResultDefault : UpdateEvent_EventClaimed_Result
+updateEvent_EventClaimed_ResultDefault =
+    UpdateEvent_EventClaimed_Correct
 
 
-event_ClaimedEncoder : Event_Claimed -> JE.Value
-event_ClaimedEncoder v =
-    JE.object <| List.filterMap identity <|
-        [ (requiredFieldEncoder "name" JE.string "" v.name)
-        , (requiredFieldEncoder "type" claimTypeEncoder claimTypeDefault v.type_)
-        , (requiredFieldEncoder "result" event_Claimed_ResultEncoder event_Claimed_ResultDefault v.result)
-        ]
+updateEvent_EventClaimedEncoder : UpdateEvent_EventClaimed -> JE.Value
+updateEvent_EventClaimedEncoder v =
+    JE.object <|
+        List.filterMap identity <|
+            [ requiredFieldEncoder "name" JE.string "" v.name
+            , requiredFieldEncoder "type" claimTypeEncoder claimTypeDefault v.type_
+            , requiredFieldEncoder "result" updateEvent_EventClaimed_ResultEncoder updateEvent_EventClaimed_ResultDefault v.result
+            ]
 
 
-event_Claimed_ResultEncoder : Event_Claimed_Result -> JE.Value
-event_Claimed_ResultEncoder v =
+updateEvent_EventClaimed_ResultEncoder : UpdateEvent_EventClaimed_Result -> JE.Value
+updateEvent_EventClaimed_ResultEncoder v =
     let
         lookup s =
             case s of
-                Event_Claimed_Correct ->
+                UpdateEvent_EventClaimed_Correct ->
                     "CORRECT"
 
-                Event_Claimed_Wrong ->
+                UpdateEvent_EventClaimed_Wrong ->
                     "WRONG"
 
-                Event_Claimed_Late ->
+                UpdateEvent_EventClaimed_Late ->
                     "LATE"
-
     in
-        JE.string <| lookup v
+    JE.string <| lookup v
 
 
-type alias Change =
+type alias UpdateChange =
     { changeOneof : ChangeOneof
     }
 
 
 type ChangeOneof
     = ChangeOneofUnspecified
-    | Deal Change_Deal
-    | Match Change_Match
-    | Move Change_Move
+    | Deal UpdateChange_ChangeDeal
+    | Match UpdateChange_ChangeMatch
+    | Move UpdateChange_ChangeMove
 
 
 changeOneofDecoder : JD.Decoder ChangeOneof
 changeOneofDecoder =
-    JD.lazy <| \_ -> JD.oneOf
-        [ JD.map Deal (JD.field "deal" change_DealDecoder)
-        , JD.map Match (JD.field "match" change_MatchDecoder)
-        , JD.map Move (JD.field "move" change_MoveDecoder)
-        , JD.succeed ChangeOneofUnspecified
-        ]
+    JD.lazy <|
+        \_ ->
+            JD.oneOf
+                [ JD.map Deal (JD.field "deal" updateChange_ChangeDealDecoder)
+                , JD.map Match (JD.field "match" updateChange_ChangeMatchDecoder)
+                , JD.map Move (JD.field "move" updateChange_ChangeMoveDecoder)
+                , JD.succeed ChangeOneofUnspecified
+                ]
 
 
 changeOneofEncoder : ChangeOneof -> Maybe ( String, JE.Value )
@@ -234,142 +251,166 @@ changeOneofEncoder v =
     case v of
         ChangeOneofUnspecified ->
             Nothing
+
         Deal x ->
-            Just ( "deal", change_DealEncoder x )
+            Just ( "deal", updateChange_ChangeDealEncoder x )
+
         Match x ->
-            Just ( "match", change_MatchEncoder x )
+            Just ( "match", updateChange_ChangeMatchEncoder x )
+
         Move x ->
-            Just ( "move", change_MoveEncoder x )
+            Just ( "move", updateChange_ChangeMoveEncoder x )
 
 
-changeDecoder : JD.Decoder Change
-changeDecoder =
-    JD.lazy <| \_ -> decode Change
-        |> field changeOneofDecoder
+updateChangeDecoder : JD.Decoder UpdateChange
+updateChangeDecoder =
+    JD.lazy <|
+        \_ ->
+            decode UpdateChange
+                |> field changeOneofDecoder
 
 
-changeEncoder : Change -> JE.Value
-changeEncoder v =
-    JE.object <| List.filterMap identity <|
-        [ (changeOneofEncoder v.changeOneof)
-        ]
+updateChangeEncoder : UpdateChange -> JE.Value
+updateChangeEncoder v =
+    JE.object <|
+        List.filterMap identity <|
+            [ changeOneofEncoder v.changeOneof
+            ]
 
 
-type alias Change_Position =
+type alias UpdateChange_Position =
     { x : Int -- 1
     , y : Int -- 2
     }
 
 
-change_PositionDecoder : JD.Decoder Change_Position
-change_PositionDecoder =
-    JD.lazy <| \_ -> decode Change_Position
-        |> required "x" JD.int 0
-        |> required "y" JD.int 0
+updateChange_PositionDecoder : JD.Decoder UpdateChange_Position
+updateChange_PositionDecoder =
+    JD.lazy <|
+        \_ ->
+            decode UpdateChange_Position
+                |> required "x" JD.int 0
+                |> required "y" JD.int 0
 
 
-change_PositionEncoder : Change_Position -> JE.Value
-change_PositionEncoder v =
-    JE.object <| List.filterMap identity <|
-        [ (requiredFieldEncoder "x" JE.int 0 v.x)
-        , (requiredFieldEncoder "y" JE.int 0 v.y)
-        ]
+updateChange_PositionEncoder : UpdateChange_Position -> JE.Value
+updateChange_PositionEncoder v =
+    JE.object <|
+        List.filterMap identity <|
+            [ requiredFieldEncoder "x" JE.int 0 v.x
+            , requiredFieldEncoder "y" JE.int 0 v.y
+            ]
 
 
-type alias Change_Deal =
-    { places : List Change_Deal_Place -- 1
+type alias UpdateChange_ChangeDeal =
+    { places : List UpdateChange_ChangeDeal_Place -- 1
     }
 
 
-change_DealDecoder : JD.Decoder Change_Deal
-change_DealDecoder =
-    JD.lazy <| \_ -> decode Change_Deal
-        |> repeated "places" change_Deal_PlaceDecoder
+updateChange_ChangeDealDecoder : JD.Decoder UpdateChange_ChangeDeal
+updateChange_ChangeDealDecoder =
+    JD.lazy <|
+        \_ ->
+            decode UpdateChange_ChangeDeal
+                |> repeated "places" updateChange_ChangeDeal_PlaceDecoder
 
 
-change_DealEncoder : Change_Deal -> JE.Value
-change_DealEncoder v =
-    JE.object <| List.filterMap identity <|
-        [ (repeatedFieldEncoder "places" change_Deal_PlaceEncoder v.places)
-        ]
+updateChange_ChangeDealEncoder : UpdateChange_ChangeDeal -> JE.Value
+updateChange_ChangeDealEncoder v =
+    JE.object <|
+        List.filterMap identity <|
+            [ repeatedFieldEncoder "places" updateChange_ChangeDeal_PlaceEncoder v.places
+            ]
 
 
-type alias Change_Deal_Place =
-    { position : Maybe Change_Position -- 1
+type alias UpdateChange_ChangeDeal_Place =
+    { position : Maybe UpdateChange_Position -- 1
     , card : Int -- 2
     }
 
 
-change_Deal_PlaceDecoder : JD.Decoder Change_Deal_Place
-change_Deal_PlaceDecoder =
-    JD.lazy <| \_ -> decode Change_Deal_Place
-        |> optional "position" change_PositionDecoder
-        |> required "card" JD.int 0
+updateChange_ChangeDeal_PlaceDecoder : JD.Decoder UpdateChange_ChangeDeal_Place
+updateChange_ChangeDeal_PlaceDecoder =
+    JD.lazy <|
+        \_ ->
+            decode UpdateChange_ChangeDeal_Place
+                |> optional "position" updateChange_PositionDecoder
+                |> required "card" JD.int 0
 
 
-change_Deal_PlaceEncoder : Change_Deal_Place -> JE.Value
-change_Deal_PlaceEncoder v =
-    JE.object <| List.filterMap identity <|
-        [ (optionalEncoder "position" change_PositionEncoder v.position)
-        , (requiredFieldEncoder "card" JE.int 0 v.card)
-        ]
+updateChange_ChangeDeal_PlaceEncoder : UpdateChange_ChangeDeal_Place -> JE.Value
+updateChange_ChangeDeal_PlaceEncoder v =
+    JE.object <|
+        List.filterMap identity <|
+            [ optionalEncoder "position" updateChange_PositionEncoder v.position
+            , requiredFieldEncoder "card" JE.int 0 v.card
+            ]
 
 
-type alias Change_Match =
-    { positions : List Change_Position -- 1
+type alias UpdateChange_ChangeMatch =
+    { positions : List UpdateChange_Position -- 1
     }
 
 
-change_MatchDecoder : JD.Decoder Change_Match
-change_MatchDecoder =
-    JD.lazy <| \_ -> decode Change_Match
-        |> repeated "positions" change_PositionDecoder
+updateChange_ChangeMatchDecoder : JD.Decoder UpdateChange_ChangeMatch
+updateChange_ChangeMatchDecoder =
+    JD.lazy <|
+        \_ ->
+            decode UpdateChange_ChangeMatch
+                |> repeated "positions" updateChange_PositionDecoder
 
 
-change_MatchEncoder : Change_Match -> JE.Value
-change_MatchEncoder v =
-    JE.object <| List.filterMap identity <|
-        [ (repeatedFieldEncoder "positions" change_PositionEncoder v.positions)
-        ]
+updateChange_ChangeMatchEncoder : UpdateChange_ChangeMatch -> JE.Value
+updateChange_ChangeMatchEncoder v =
+    JE.object <|
+        List.filterMap identity <|
+            [ repeatedFieldEncoder "positions" updateChange_PositionEncoder v.positions
+            ]
 
 
-type alias Change_Move =
-    { moves : List Change_Move_MoveOne -- 1
+type alias UpdateChange_ChangeMove =
+    { moves : List UpdateChange_ChangeMove_MoveOne -- 1
     }
 
 
-change_MoveDecoder : JD.Decoder Change_Move
-change_MoveDecoder =
-    JD.lazy <| \_ -> decode Change_Move
-        |> repeated "moves" change_Move_MoveOneDecoder
+updateChange_ChangeMoveDecoder : JD.Decoder UpdateChange_ChangeMove
+updateChange_ChangeMoveDecoder =
+    JD.lazy <|
+        \_ ->
+            decode UpdateChange_ChangeMove
+                |> repeated "moves" updateChange_ChangeMove_MoveOneDecoder
 
 
-change_MoveEncoder : Change_Move -> JE.Value
-change_MoveEncoder v =
-    JE.object <| List.filterMap identity <|
-        [ (repeatedFieldEncoder "moves" change_Move_MoveOneEncoder v.moves)
-        ]
+updateChange_ChangeMoveEncoder : UpdateChange_ChangeMove -> JE.Value
+updateChange_ChangeMoveEncoder v =
+    JE.object <|
+        List.filterMap identity <|
+            [ repeatedFieldEncoder "moves" updateChange_ChangeMove_MoveOneEncoder v.moves
+            ]
 
 
-type alias Change_Move_MoveOne =
-    { from : Maybe Change_Position -- 1
-    , to : Maybe Change_Position -- 2
+type alias UpdateChange_ChangeMove_MoveOne =
+    { from : Maybe UpdateChange_Position -- 1
+    , to : Maybe UpdateChange_Position -- 2
     }
 
 
-change_Move_MoveOneDecoder : JD.Decoder Change_Move_MoveOne
-change_Move_MoveOneDecoder =
-    JD.lazy <| \_ -> decode Change_Move_MoveOne
-        |> optional "from" change_PositionDecoder
-        |> optional "to" change_PositionDecoder
+updateChange_ChangeMove_MoveOneDecoder : JD.Decoder UpdateChange_ChangeMove_MoveOne
+updateChange_ChangeMove_MoveOneDecoder =
+    JD.lazy <|
+        \_ ->
+            decode UpdateChange_ChangeMove_MoveOne
+                |> optional "from" updateChange_PositionDecoder
+                |> optional "to" updateChange_PositionDecoder
 
 
-change_Move_MoveOneEncoder : Change_Move_MoveOne -> JE.Value
-change_Move_MoveOneEncoder v =
-    JE.object <| List.filterMap identity <|
-        [ (optionalEncoder "from" change_PositionEncoder v.from)
-        , (optionalEncoder "to" change_PositionEncoder v.to)
-        ]
+updateChange_ChangeMove_MoveOneEncoder : UpdateChange_ChangeMove_MoveOne -> JE.Value
+updateChange_ChangeMove_MoveOneEncoder v =
+    JE.object <|
+        List.filterMap identity <|
+            [ optionalEncoder "from" updateChange_PositionEncoder v.from
+            , optionalEncoder "to" updateChange_PositionEncoder v.to
+            ]
 
 
 type alias Update =
@@ -379,17 +420,19 @@ type alias Update =
 
 type UpdateOneof
     = UpdateOneofUnspecified
-    | Change Change
-    | Event Event
+    | Change UpdateChange
+    | Event UpdateEvent
 
 
 updateOneofDecoder : JD.Decoder UpdateOneof
 updateOneofDecoder =
-    JD.lazy <| \_ -> JD.oneOf
-        [ JD.map Change (JD.field "change" changeDecoder)
-        , JD.map Event (JD.field "event" eventDecoder)
-        , JD.succeed UpdateOneofUnspecified
-        ]
+    JD.lazy <|
+        \_ ->
+            JD.oneOf
+                [ JD.map Change (JD.field "change" updateChangeDecoder)
+                , JD.map Event (JD.field "event" updateEventDecoder)
+                , JD.succeed UpdateOneofUnspecified
+                ]
 
 
 updateOneofEncoder : UpdateOneof -> Maybe ( String, JE.Value )
@@ -397,20 +440,25 @@ updateOneofEncoder v =
     case v of
         UpdateOneofUnspecified ->
             Nothing
+
         Change x ->
-            Just ( "change", changeEncoder x )
+            Just ( "change", updateChangeEncoder x )
+
         Event x ->
-            Just ( "event", eventEncoder x )
+            Just ( "event", updateEventEncoder x )
 
 
 updateDecoder : JD.Decoder Update
 updateDecoder =
-    JD.lazy <| \_ -> decode Update
-        |> field updateOneofDecoder
+    JD.lazy <|
+        \_ ->
+            decode Update
+                |> field updateOneofDecoder
 
 
 updateEncoder : Update -> JE.Value
 updateEncoder v =
-    JE.object <| List.filterMap identity <|
-        [ (updateOneofEncoder v.updateOneof)
-        ]
+    JE.object <|
+        List.filterMap identity <|
+            [ updateOneofEncoder v.updateOneof
+            ]
