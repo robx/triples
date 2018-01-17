@@ -1,8 +1,8 @@
 syntax = "proto3";
 
 enum ClaimType {
-  MATCH = 0;
-  NOMATCH = 1;
+  CLAIM_MATCH = 0;
+  CLAIM_NOMATCH = 1;
 }
 
 message Claim {
@@ -10,11 +10,11 @@ message Claim {
   repeated uint32 cards = 2;
 }
 
-message Event {
-  message Join {
+message UpdateEvent {
+  message EventJoin {
     string name = 1;
   }
-  message Claimed {
+  message EventClaimed {
     string name = 1;
     ClaimType type = 2;
     enum Result {
@@ -25,27 +25,27 @@ message Event {
     Result result = 3;
   }   
   oneof event_oneof {
-    Join join = 1;
-    Claimed claimed = 2;
+    EventJoin join = 1;
+    EventClaimed claimed = 2;
   }
 }
 
-message Change {
+message UpdateChange {
   message Position {
     uint32 x = 1;
     uint32 y = 2;
   }
-  message Deal {
+  message ChangeDeal {
     message Place {
       Position position = 1;
       uint32 card = 2;
     }
     repeated Place places = 1;
   }
-  message Match {
+  message ChangeMatch {
     repeated Position positions = 1;
   }
-  message Move {
+  message ChangeMove {
     message MoveOne {
       Position from = 1;
       Position to = 2;
@@ -53,15 +53,15 @@ message Change {
     repeated MoveOne moves = 1;
   }
   oneof change_oneof {
-    Deal deal = 1;
-    Match match = 2;
-    Move move = 3;
+    ChangeDeal deal = 1;
+    ChangeMatch match = 2;
+    ChangeMove move = 3;
   }
 }
 
 message Update {
   oneof update_oneof {
-    Change change = 1;
-    Event event = 2;
+    UpdateChange change = 1;
+    UpdateEvent event = 2;
   }
 }
