@@ -81,7 +81,7 @@ update msg model =
                 , claim model.wsURL True <| List.filterMap (flip Dict.get model.game.table) <| claimed
                 )
 
-        User Play.DealMore ->
+        User Play.UserDeal ->
             ( model
             , claim model.wsURL False <| Dict.values model.game.table
             )

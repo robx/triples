@@ -53,7 +53,7 @@ type Event
 
 type Msg
     = StartGame
-    | Deal
+    | AutoDeal
     | User UserMsg
 
 
@@ -64,7 +64,7 @@ type Result msg
 
 type UserMsg
     = Choose Game.Pos
-    | DealMore
+    | UserDeal
 
 
 view : Style.Style -> Model -> Html.Html Msg
@@ -122,6 +122,8 @@ viewGame model =
                         Nothing ->
                             if model.game.deckSize == 0 then
                                 "."
+                            else if model.game.deckSize == 81 then
+                                ">"
                             else
                                 "+"
 
@@ -132,7 +134,7 @@ viewGame model =
                     if disabled then
                         []
                     else
-                        [ SvgE.onClick DealMore
+                        [ SvgE.onClick UserDeal
                         , SvgA.style "cursor: pointer;"
                         ]
             in
@@ -219,7 +221,7 @@ update now msg model =
         StartGame ->
             ( { model | log = [ ( now, EStart ) ] }, Nothing )
 
-        Deal ->
+        AutoDeal ->
             let
                 ( gamecpct, moves ) =
                     Game.compact model.game
@@ -251,12 +253,12 @@ update now msg model =
                             ( now, ESet ) :: model.log
                     in
                     ( { model | game = newgame, selected = [], dealing = True, answer = Nothing, log = log }
-                    , Just (After 500 Deal)
+                    , Just (After 500 AutoDeal)
                     )
                 else
                     ( model, Nothing )
 
-        User DealMore ->
+        User UserDeal ->
             let
                 over =
                     Game.over model.game
