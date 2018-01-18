@@ -1,12 +1,11 @@
 package main
 
 import (
-	"io/ioutil"
 	"log"
 	"net/http"
 	"sync"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/gorilla/websocket"
 
 	pb "gitlab.com/rrrob/triples/serve/proto"
@@ -94,13 +93,8 @@ func (g *Game) Serve(b Blob, w http.ResponseWriter, r *http.Request) {
 			}
 			switch t {
 			case websocket.TextMessage:
-				bs, err := ioutil.ReadAll(m)
-				if err != nil {
-					log.Printf("reading message: %s", err)
-					return
-				}
 				claim := pb.Claim{}
-				if err := proto.Unmarshal(bs, &claim); err != nil {
+				if err := jsonpb.Unmarshal(m, &claim); err != nil {
 					log.Printf("proto err: %s", err)
 					return
 				}
@@ -117,12 +111,10 @@ func (g *Game) Serve(b Blob, w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		defer w.Close()
-		b, err := proto.Marshal(u)
-		if err != nil {
-			return err
+		m := jsonpb.Marshaler{
+			EmitDefaults: true,
 		}
-		_, err = w.Write(b)
-		return err
+		return m.Marshal(w, u)
 	}
 
 	welcome, updates := g.join(b)
