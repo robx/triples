@@ -42,18 +42,25 @@ func (rs *Rooms) Get(blob Blob) *Room {
 type Room struct {
 	creator  Blob
 	connects chan *client
+	claims   chan *claim
+}
+
+type claim struct {
+	clientId int
+	claim    *pb.Claim
 }
 
 type client struct {
 	blob    Blob
 	updates chan<- *pb.Update
-	claims  <-chan *pb.Claim
+	sendId  chan<- int
 }
 
 func newRoom(blob Blob) *Room {
 	r := &Room{
 		creator:  blob,
 		connects: make(chan *client),
+		claims:   make(chan *claim),
 	}
 	go r.loop()
 	return r
@@ -62,16 +69,28 @@ func newRoom(blob Blob) *Room {
 func (r *Room) loop() {
 	log.Printf("starting new room: %s %s", r.creator.Game, r.creator.FirstName)
 	var (
-		clients []*client
-		msgID   uint32
+		clientId int
+		clients  = map[int]*client{}
+		msgId    int
 	)
 	for {
 		var update *pb.Update
 		select {
 		case c := <-r.connects:
-			clients = append(clients, c)
-			update = makeJoin(c.blob, msgID)
-			msgID += 1
+			c.sendId <- clientId
+			clients[clientId] = c
+			clientId++
+			update = makeJoin(c.blob, msgId)
+			msgId += 1
+		case cl := <-r.claims:
+			if cl.claim == nil {
+				log.Printf("removing client %d", cl.clientId)
+				c := clients[cl.clientId]
+				close(c.updates)
+				delete(clients, cl.clientId)
+			} else {
+				log.Print("received claim")
+			}
 		}
 		if update != nil {
 			log.Printf("sending message to %d clients", len(clients))
@@ -82,9 +101,9 @@ func (r *Room) loop() {
 	}
 }
 
-func makeJoin(b Blob, msgID uint32) *pb.Update {
+func makeJoin(b Blob, msgId int) *pb.Update {
 	return &pb.Update{
-		Msgid: msgID,
+		Msgid: int32(msgId),
 		UpdateOneof: &pb.Update_Event{
 			Event: &pb.UpdateEvent{
 				EventOneof: &pb.UpdateEvent_Join{
@@ -97,16 +116,16 @@ func makeJoin(b Blob, msgID uint32) *pb.Update {
 	}
 }
 
-func (r *Room) connect(b Blob) (<-chan *pb.Update, chan<- *pb.Claim) {
+func (r *Room) connect(b Blob) (<-chan *pb.Update, chan<- *claim, <-chan int) {
 	log.Printf("player connecting: %s", b.FirstName)
 	updates := make(chan *pb.Update)
-	claims := make(chan *pb.Claim)
+	sendId := make(chan int)
 	r.connects <- &client{
 		blob:    b,
 		updates: updates,
-		claims:  claims,
+		sendId:  sendId,
 	}
-	return updates, claims
+	return updates, r.claims, sendId
 }
 
 func (r *Room) Serve(b Blob, w http.ResponseWriter, req *http.Request) {
@@ -117,10 +136,16 @@ func (r *Room) Serve(b Blob, w http.ResponseWriter, req *http.Request) {
 	}
 	defer conn.Close()
 
-	updates, claims := r.connect(b)
+	updates, claims, getId := r.connect(b)
 
 	go func() {
-		defer close(claims)
+		clientId := <-getId
+		defer func() {
+			claims <- &claim{
+				clientId: clientId,
+				claim:    nil,
+			}
+		}()
 		for {
 			t, m, err := conn.NextReader()
 			if err != nil {
@@ -130,12 +155,15 @@ func (r *Room) Serve(b Blob, w http.ResponseWriter, req *http.Request) {
 			switch t {
 			case websocket.TextMessage:
 				log.Printf("receiving message from %s", b.FirstName)
-				claim := &pb.Claim{}
-				if err := jsonpb.Unmarshal(m, claim); err != nil {
+				cl := &pb.Claim{}
+				if err := jsonpb.Unmarshal(m, cl); err != nil {
 					log.Printf("proto err: %s", err)
 					return
 				}
-				claims <- claim
+				claims <- &claim{
+					clientId: clientId,
+					claim:    cl,
+				}
 			default:
 				log.Printf("ignoring message type: %d", t)
 			}
