@@ -125,12 +125,20 @@ func (g *Game) Serve(b Blob, w http.ResponseWriter, r *http.Request) {
 	}
 	for {
 		select {
-		case u := <-updates:
+		case u, ok := <-updates:
+			if !ok {
+				log.Print("game over")
+				return
+			}
 			if err := writeUpdate(u); err != nil {
 				log.Print(err)
 				return
 			}
-		case c := <-claims:
+		case c, ok := <-claims:
+			if !ok {
+				log.Print("lost connection")
+				return
+			}
 			g.claim(c)
 		}
 	}
