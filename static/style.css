@@ -55,7 +55,7 @@ svg text {
     dominant-baseline: central;
 }
 
-#info {
+#infobox {
     box-sizing: border-box;
     width: 100%;
     height: 100%;
@@ -63,6 +63,6 @@ svg text {
     overflow-y: scroll;
 }
 
-#info ul {
+#infobox ul {
     padding: 0;
 }

@@ -149,7 +149,11 @@ applyUpdate update model =
                     { model | game = Game.viewApply action model.game }
 
                 Proto.Match match ->
-                    model
+                    let
+                        action =
+                            Game.Match <| List.map (getPosition << Just) match.positions
+                    in
+                    { model | game = Game.viewApply action model.game }
 
                 Proto.Move move ->
                     model
@@ -163,7 +167,27 @@ applyUpdate update model =
                     { model | log = (join.name ++ " joined!") :: model.log }
 
                 Proto.Claimed claimed ->
-                    model
+                    let
+                        res =
+                            case claimed.result of
+                                Proto.UpdateEvent_EventClaimed_Correct ->
+                                    "correct"
+
+                                Proto.UpdateEvent_EventClaimed_Wrong ->
+                                    "wrong"
+
+                                Proto.UpdateEvent_EventClaimed_Late ->
+                                    "late"
+
+                        typ =
+                            case claimed.type_ of
+                                Proto.ClaimMatch ->
+                                    "a triple"
+
+                                Proto.ClaimNomatch ->
+                                    "no triple"
+                    in
+                    { model | log = (claimed.name ++ " claimed " ++ typ ++ " (" ++ res ++ ")") :: model.log }
 
                 _ ->
                     Debug.crash "unknown event"

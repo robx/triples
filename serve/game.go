@@ -97,6 +97,102 @@ func (g *game) add(player string) {
 	g.scores[player] = s
 }
 
+func (g *game) findCard(c uint32) (pos, bool) {
+	for p, cc := range g.cards {
+		if cc == c {
+			return p, true
+		}
+	}
+	return pos{}, false
+}
+
+const (
+	LATE  = 0
+	RIGHT = 1
+	WRONG = -1
+)
+
+func isSet(x, y, z uint32) bool {
+	check := func(a, b, c uint32) bool {
+		return a == b && b == c || a != b && b != c && a != c
+	}
+	for i := 0; i < 3; i++ {
+		if !check(x%3, y%3, z%3) {
+			return false
+		}
+		x /= 3
+		y /= 3
+		z /= 3
+	}
+	return true
+}
+
+func (g *game) listCards() []uint32 {
+	var cs []uint32
+	for _, c := range g.cards {
+		cs = append(cs, c)
+	}
+	return cs
+}
+
+func (g *game) countSets() int {
+	var (
+		count = 0
+		cards = g.listCards()
+	)
+	for i := 0; i < len(cards); i++ {
+		for j := i + 1; j < len(cards); j++ {
+			for k := j + 1; k < len(cards); k++ {
+				if isSet(cards[i], cards[j], cards[k]) {
+					count++
+				}
+			}
+		}
+	}
+	return count
+}
+
+func (g *game) over() bool {
+	if len(g.deck) > 0 {
+		return false
+	}
+	return g.countSets() == 0
+}
+
+func (g *game) claimMatch(name string, cards []uint32) (int, score, *pb.Update) {
+	var ps []pos
+	if g.over() {
+		return LATE, g.scores[name], nil
+	}
+	for _, c := range cards {
+		if p, ok := g.findCard(c); !ok {
+			return LATE, g.scores[name], nil
+		} else {
+			ps = append(ps, p)
+		}
+	}
+	if len(cards) == 3 && isSet(cards[0], cards[1], cards[2]) {
+		s := g.scores[name]
+		s.match += 1
+		g.scores[name] = s
+		return RIGHT, s, &pb.Update{
+			UpdateOneof: &pb.Update_Change{
+				Change: &pb.UpdateChange{
+					ChangeOneof: &pb.UpdateChange_Match{
+						Match: &pb.UpdateChange_ChangeMatch{
+							Positions: toPbPositions(ps),
+						},
+					},
+				},
+			},
+		}
+	}
+	s := g.scores[name]
+	s.matchwrong += 1
+	g.scores[name] = s
+	return WRONG, s, nil
+}
+
 func (g *game) deal() *pb.Update {
 	d := map[pos]uint32{}
 	for x := 0; x < 4; x++ {
@@ -134,7 +230,7 @@ func (r *Room) loop() {
 		g        *game
 	)
 	for {
-		var update *pb.Update
+		var updates []*pb.Update
 		select {
 		case c := <-r.connects:
 			c.sendId <- clientId
@@ -145,7 +241,7 @@ func (r *Room) loop() {
 				g.add(c.blob.FirstName)
 			}
 			c.updates <- makeFull(g, present)
-			update = makeJoin(c.blob)
+			updates = append(updates, makeJoin(c.blob))
 		case cl := <-r.claims:
 			c := clients[cl.clientId]
 			if cl.claim == nil {
@@ -156,23 +252,32 @@ func (r *Room) loop() {
 			} else {
 				log.Print("received claim")
 				if g == nil {
-					if cl.claim.Type == pb.ClaimType_CLAIM_NOMATCH {
+					if cl.claim.Type == pb.ClaimType_CLAIM_NOMATCH && len(cl.claim.Cards) == 0 {
 						log.Printf("starting game on behalf of %s", c.blob.FirstName)
 						g = newGame()
 						for p := range present {
 							g.add(p)
 						}
-						update = g.deal()
+						updates = append(updates, g.deal())
 					} else {
 						log.Printf("out of game claim: %+v", cl.claim)
 					}
 				} else {
+					switch cl.claim.Type {
+					case pb.ClaimType_CLAIM_MATCH:
+						res, score, up := g.claimMatch(c.blob.FirstName, cl.claim.Cards)
+						if up != nil {
+							updates = append(updates, up)
+							updates = append(updates, g.deal())
+						}
+						updates = append(updates, makeClaimed(c.blob.FirstName, cl.claim.Type, res, score))
+					}
 					log.Printf("ignoring claim: %+v", cl.claim)
 				}
 			}
 		}
-		if update != nil {
-			log.Printf("sending message to %d clients", len(clients))
+		log.Printf("sending %d messages to %d clients", len(updates), len(clients))
+		for _, update := range updates {
 			for _, c := range clients {
 				c.updates <- update
 			}
@@ -194,6 +299,34 @@ func makeJoin(b Blob) *pb.Update {
 	}
 }
 
+func toPbResult(r int) pb.UpdateEvent_EventClaimed_Result {
+	switch r {
+	case RIGHT:
+		return pb.UpdateEvent_EventClaimed_CORRECT
+	case WRONG:
+		return pb.UpdateEvent_EventClaimed_WRONG
+	default:
+		return pb.UpdateEvent_EventClaimed_LATE
+	}
+}
+
+func makeClaimed(name string, typ pb.ClaimType, res int, s score) *pb.Update {
+	return &pb.Update{
+		UpdateOneof: &pb.Update_Event{
+			Event: &pb.UpdateEvent{
+				EventOneof: &pb.UpdateEvent_Claimed{
+					Claimed: &pb.UpdateEvent_EventClaimed{
+						Name:   name,
+						Type:   typ,
+						Result: toPbResult(res),
+						Score:  toPbScore(s),
+					},
+				},
+			},
+		},
+	}
+}
+
 type pos struct {
 	x uint32
 	y uint32
@@ -204,6 +337,17 @@ type score struct {
 	matchwrong   uint32
 	nomatch      uint32
 	nomatchwrong uint32
+}
+
+func toPbPositions(ps []pos) []*pb.Position {
+	var out []*pb.Position
+	for _, p := range ps {
+		out = append(out, &pb.Position{
+			X: p.x,
+			Y: p.y,
+		})
+	}
+	return out
 }
 
 func toPbCards(cards map[pos]uint32) []*pb.PlacedCard {
