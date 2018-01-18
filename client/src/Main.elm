@@ -201,6 +201,9 @@ parseParams loc =
                 <?> UrlParser.stringParam "name"
                 <?> UrlParser.stringParam "game"
 
+        parseParams parser location =
+            UrlParser.parseHash parser { location | hash = "" }
+
         f s k n g =
             { style =
                 case Maybe.withDefault "square" s of
@@ -229,7 +232,7 @@ parseParams loc =
                         Nothing
             }
     in
-    case UrlParser.parseHash (UrlParser.map f parser) loc of
+    case parseParams (UrlParser.map f parser) loc of
         Nothing ->
             Debug.crash "url parse failure"
 
