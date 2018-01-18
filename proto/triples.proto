@@ -81,6 +81,9 @@ message UpdateFull {
     Score score = 2;
   }
   repeated PlayerScore scores = 3;
+  uint32 matchSize = 4;
+  uint32 cols = 5;
+  uint32 rows = 6;
 }
 
 message Update {

@@ -476,6 +476,9 @@ type alias UpdateFull =
     { cards : List PlacedCard -- 1
     , deckSize : Int -- 2
     , scores : List UpdateFull_PlayerScore -- 3
+    , matchSize : Int -- 4
+    , cols : Int -- 5
+    , rows : Int -- 6
     }
 
 
@@ -487,6 +490,9 @@ updateFullDecoder =
                 |> repeated "cards" placedCardDecoder
                 |> required "deckSize" JD.int 0
                 |> repeated "scores" updateFull_PlayerScoreDecoder
+                |> required "matchSize" JD.int 0
+                |> required "cols" JD.int 0
+                |> required "rows" JD.int 0
 
 
 updateFullEncoder : UpdateFull -> JE.Value
@@ -496,6 +502,9 @@ updateFullEncoder v =
             [ repeatedFieldEncoder "cards" placedCardEncoder v.cards
             , requiredFieldEncoder "deckSize" JE.int 0 v.deckSize
             , repeatedFieldEncoder "scores" updateFull_PlayerScoreEncoder v.scores
+            , requiredFieldEncoder "matchSize" JE.int 0 v.matchSize
+            , requiredFieldEncoder "cols" JE.int 0 v.cols
+            , requiredFieldEncoder "rows" JE.int 0 v.rows
             ]
 
 

@@ -23,32 +23,13 @@ import Proto.Triples as Proto
 import WebSocket
 
 
-type Action
-    = ActionSet
-    | ActionNoSet
-
-
-type Res
-    = Correct
-    | Wrong
-    | Late
-
-
-type UserEvent
-    = Claimed
-        { result : Result
-        , action : Action
-        , name : String
-        }
-    | Join String
-
-
 type alias Model =
     { wsURL : String
     , game : Game.GameView
+    , scores : List ( String, Int )
     , selected : List Game.Pos
     , answer : Maybe Int
-    , log : List ( Int, UserEvent )
+    , log : List String
     }
 
 
@@ -56,6 +37,7 @@ init : Game.GameView -> String -> Model
 init game wsURL =
     { wsURL = wsURL
     , game = game
+    , scores = []
     , selected = []
     , answer = Nothing
     , log = []
@@ -69,15 +51,6 @@ type Msg
 
 view : Style.Style -> Model -> Html.Html Msg
 view style model =
-    let
-        eventToString ( i, e ) =
-            case e of
-                Join n ->
-                    n ++ " joined! (" ++ toString i ++ ")"
-
-                _ ->
-                    "dunno"
-    in
     Html.map User <|
         Play.viewGame
             { style = style
@@ -85,7 +58,7 @@ view style model =
             , selected = model.selected
             , disableMore = False
             , answer = model.answer
-            , events = List.map eventToString model.log
+            , events = model.log
             }
 
 
@@ -126,7 +99,44 @@ update msg model =
 
 applyUpdate : Proto.Update -> Model -> Model
 applyUpdate update model =
+    let
+        getScore s =
+            case s of
+                Nothing ->
+                    0
+
+                Just ss ->
+                    ss.match - ss.matchwrong + ss.nomatch - ss.nomatchwrong
+
+        toScore ps =
+            ( ps.name, getScore ps.score )
+
+        getPosition p =
+            case p of
+                Nothing ->
+                    ( 0, 0 )
+
+                Just pp ->
+                    ( pp.x, pp.y )
+
+        toDict pcs =
+            Dict.fromList <|
+                List.map (\pc -> ( getPosition pc.position, Card.fromInt pc.card )) <|
+                    pcs
+    in
     case update.updateOneof of
+        Proto.Full full ->
+            { model
+                | game =
+                    { cols = full.cols
+                    , rows = full.rows
+                    , table = toDict full.cards
+                    , deckSize = full.deckSize
+                    , matchSize = full.matchSize
+                    }
+                , scores = List.map toScore full.scores
+            }
+
         Proto.Change change ->
             case change.changeOneof of
                 Proto.Deal deal ->
@@ -144,7 +154,7 @@ applyUpdate update model =
         Proto.Event event ->
             case event.eventOneof of
                 Proto.Join join ->
-                    { model | log = ( update.msgid, Join join.name ) :: model.log }
+                    { model | log = (join.name ++ " joined!") :: model.log }
 
                 Proto.Claimed claimed ->
                     model

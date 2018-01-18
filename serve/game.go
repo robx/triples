@@ -167,9 +167,12 @@ func makeFull(deckSize uint32, cards map[pos]uint32, scores map[string]score) *p
 	return &pb.Update{
 		UpdateOneof: &pb.Update_Full{
 			Full: &pb.UpdateFull{
-				DeckSize: deckSize,
-				Cards:    toPbCards(cards),
-				Scores:   toPbPlayerScores(scores),
+				Cols:      4,
+				Rows:      3,
+				MatchSize: 3,
+				DeckSize:  81,
+				Cards:     toPbCards(cards),
+				Scores:    toPbPlayerScores(scores),
 			},
 		},
 	}
