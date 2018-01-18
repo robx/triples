@@ -72,6 +72,7 @@ func (g *Game) join(b Blob) (*pb.Update, <-chan *pb.Update) {
 }
 
 func (g *Game) claim(c pb.Claim) {
+	log.Printf("received claim: %+v", c)
 }
 
 func (g *Game) Serve(b Blob, w http.ResponseWriter, r *http.Request) {
