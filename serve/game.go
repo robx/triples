@@ -40,12 +40,20 @@ func (rs *Rooms) Get(blob Blob) *Room {
 }
 
 type Room struct {
-	creator Blob
+	creator  Blob
+	connects chan *client
+}
+
+type client struct {
+	blob    Blob
+	updates chan<- *pb.Update
+	claims  <-chan *pb.Claim
 }
 
 func newRoom(blob Blob) *Room {
 	r := &Room{
-		creator: blob,
+		creator:  blob,
+		connects: make(chan *client),
 	}
 	go r.loop()
 	return r
@@ -53,11 +61,30 @@ func newRoom(blob Blob) *Room {
 
 func (r *Room) loop() {
 	log.Printf("starting new room: %s %s", r.creator.Game, r.creator.FirstName)
+	var (
+		clients []*client
+		msgID   uint32
+	)
+	for {
+		var update *pb.Update
+		select {
+		case c := <-r.connects:
+			clients = append(clients, c)
+			update = makeJoin(c.blob, msgID)
+			msgID += 1
+		}
+		if update != nil {
+			log.Printf("sending message to %d clients", len(clients))
+			for _, c := range clients {
+				c.updates <- update
+			}
+		}
+	}
 }
 
-func (r *Room) connect(b Blob) (*pb.Update, <-chan *pb.Update) {
-	log.Printf("player connecting: %s", b.FirstName)
-	u := &pb.Update{
+func makeJoin(b Blob, msgID uint32) *pb.Update {
+	return &pb.Update{
+		Msgid: msgID,
 		UpdateOneof: &pb.Update_Event{
 			Event: &pb.UpdateEvent{
 				EventOneof: &pb.UpdateEvent_Join{
@@ -68,11 +95,18 @@ func (r *Room) connect(b Blob) (*pb.Update, <-chan *pb.Update) {
 			},
 		},
 	}
-	return u, make(chan *pb.Update)
 }
 
-func (r *Room) claim(c pb.Claim) {
-	log.Printf("received claim: %+v", c)
+func (r *Room) connect(b Blob) (<-chan *pb.Update, chan<- *pb.Claim) {
+	log.Printf("player connecting: %s", b.FirstName)
+	updates := make(chan *pb.Update)
+	claims := make(chan *pb.Claim)
+	r.connects <- &client{
+		blob:    b,
+		updates: updates,
+		claims:  claims,
+	}
+	return updates, claims
 }
 
 func (r *Room) Serve(b Blob, w http.ResponseWriter, req *http.Request) {
@@ -83,7 +117,8 @@ func (r *Room) Serve(b Blob, w http.ResponseWriter, req *http.Request) {
 	}
 	defer conn.Close()
 
-	claims := make(chan pb.Claim)
+	updates, claims := r.connect(b)
+
 	go func() {
 		defer close(claims)
 		for {
@@ -94,8 +129,9 @@ func (r *Room) Serve(b Blob, w http.ResponseWriter, req *http.Request) {
 			}
 			switch t {
 			case websocket.TextMessage:
-				claim := pb.Claim{}
-				if err := jsonpb.Unmarshal(m, &claim); err != nil {
+				log.Printf("receiving message from %s", b.FirstName)
+				claim := &pb.Claim{}
+				if err := jsonpb.Unmarshal(m, claim); err != nil {
 					log.Printf("proto err: %s", err)
 					return
 				}
@@ -106,40 +142,22 @@ func (r *Room) Serve(b Blob, w http.ResponseWriter, req *http.Request) {
 		}
 	}()
 
-	writeUpdate := func(u *pb.Update) error {
-		w, err := conn.NextWriter(websocket.TextMessage)
-		if err != nil {
-			return err
+	for u := range updates {
+		log.Printf("sending message to %s", b.FirstName)
+		if err := writeUpdate(conn, u); err != nil {
+			log.Print(err)
+			return
 		}
-		defer w.Close()
-		m := jsonpb.Marshaler{
-			EmitDefaults: true,
-		}
-		return m.Marshal(w, u)
 	}
+	log.Print("room over")
+}
 
-	welcome, updates := r.connect(b)
-	if err := writeUpdate(welcome); err != nil {
-		log.Print(err)
-		return
+func writeUpdate(conn *websocket.Conn, u *pb.Update) error {
+	w, err := conn.NextWriter(websocket.TextMessage)
+	if err != nil {
+		return err
 	}
-	for {
-		select {
-		case u, ok := <-updates:
-			if !ok {
-				log.Print("game over")
-				return
-			}
-			if err := writeUpdate(u); err != nil {
-				log.Print(err)
-				return
-			}
-		case c, ok := <-claims:
-			if !ok {
-				log.Print("lost connection")
-				return
-			}
-			r.claim(c)
-		}
-	}
+	defer w.Close()
+	m := jsonpb.Marshaler{}
+	return m.Marshal(w, u)
 }

@@ -414,7 +414,8 @@ updateChange_ChangeMove_MoveOneEncoder v =
 
 
 type alias Update =
-    { updateOneof : UpdateOneof
+    { msgid : Int -- 1
+    , updateOneof : UpdateOneof
     }
 
 
@@ -453,6 +454,7 @@ updateDecoder =
     JD.lazy <|
         \_ ->
             decode Update
+                |> required "msgid" JD.int 0
                 |> field updateOneofDecoder
 
 
@@ -460,5 +462,6 @@ updateEncoder : Update -> JE.Value
 updateEncoder v =
     JE.object <|
         List.filterMap identity <|
-            [ updateOneofEncoder v.updateOneof
+            [ requiredFieldEncoder "msgid" JE.int 0 v.msgid
+            , updateOneofEncoder v.updateOneof
             ]

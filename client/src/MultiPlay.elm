@@ -48,7 +48,7 @@ type alias Model =
     , game : Game.GameView
     , selected : List Game.Pos
     , answer : Maybe Int
-    , log : List UserEvent
+    , log : List ( Int, UserEvent )
     }
 
 
@@ -70,10 +70,10 @@ type Msg
 view : Style.Style -> Model -> Html.Html Msg
 view style model =
     let
-        eventToString e =
+        eventToString ( i, e ) =
             case e of
                 Join n ->
-                    n ++ " joined!"
+                    n ++ " joined! (" ++ toString i ++ ")"
 
                 _ ->
                     "dunno"
@@ -144,7 +144,7 @@ applyUpdate update model =
         Proto.Event event ->
             case event.eventOneof of
                 Proto.Join join ->
-                    { model | log = Join join.name :: model.log }
+                    { model | log = ( update.msgid, Join join.name ) :: model.log }
 
                 Proto.Claimed claimed ->
                     model

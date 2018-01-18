@@ -60,8 +60,9 @@ message UpdateChange {
 }
 
 message Update {
+  uint32 msgid = 1;
   oneof update_oneof {
-    UpdateChange change = 1;
-    UpdateEvent event = 2;
+    UpdateChange change = 2;
+    UpdateEvent event = 3;
   }
 }
