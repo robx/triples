@@ -76,7 +76,7 @@ view style model =
             , selected = model.selected
             , disableMore = model.dealing
             , answer = model.answer
-            , events = []
+            , info = Nothing
             }
 
 
@@ -86,7 +86,11 @@ type alias ViewGameModel =
     , selected : List Game.Pos
     , disableMore : Bool
     , answer : Maybe Int
-    , events : List String
+    , info :
+        Maybe
+            { scores : List ( String, Int )
+            , events : List String
+            }
     }
 
 
@@ -156,12 +160,12 @@ viewGame model =
             in
             "0 0 " ++ toString width ++ " " ++ toString height
 
-        events =
-            case model.events of
-                [] ->
+        infobox =
+            case model.info of
+                Nothing ->
                     []
 
-                es ->
+                Just info ->
                     let
                         w =
                             model.style.layout.w
@@ -188,9 +192,11 @@ viewGame model =
                                 , SvgA.y (toString (-3 / 2 * (h - 5)))
                                 ]
                                 [ Html.div
-                                    [ HtmlA.id "messages" ]
-                                    [ Html.ul [] <|
-                                        List.map (\e -> Html.li [] [ Html.text e ]) es
+                                    [ HtmlA.id "infobox" ]
+                                    [ Html.table []
+                                        (List.map (\( n, s ) -> Html.tr [] [ Html.td [] [ Html.text <| n ], Html.td [] [ Html.text <| toString s ] ]) info.scores)
+                                    , Html.ul [] <|
+                                        List.map (\e -> Html.li [] [ Html.text e ]) info.events
                                     ]
                                 ]
                             ]
@@ -204,7 +210,7 @@ viewGame model =
         , HtmlA.id "main"
         , HtmlA.style [ ( "background", model.style.colors.table ) ]
         ]
-        (Graphics.svgDefs model.style :: more :: events ++ gs)
+        (Graphics.svgDefs model.style :: more :: infobox ++ gs)
 
 
 update : Time.Time -> Msg -> Model -> ( Model, Maybe (Result Msg) )

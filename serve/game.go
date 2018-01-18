@@ -82,6 +82,8 @@ func (r *Room) loop() {
 			c.sendId <- clientId
 			clients[clientId] = c
 			clientId++
+			s := scores[c.blob.FirstName]
+			scores[c.blob.FirstName] = s
 			c.updates <- makeFull(deckSize, cards, scores)
 			update = makeJoin(c.blob)
 		case cl := <-r.claims:

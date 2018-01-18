@@ -58,7 +58,7 @@ view style model =
             , selected = model.selected
             , disableMore = False
             , answer = model.answer
-            , events = model.log
+            , info = Just { scores = model.scores, events = model.log }
             }
 
 

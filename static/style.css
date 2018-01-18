@@ -55,7 +55,7 @@ svg text {
     dominant-baseline: central;
 }
 
-div#messages {
+#info {
     box-sizing: border-box;
     width: 100%;
     height: 100%;
@@ -63,6 +63,6 @@ div#messages {
     overflow-y: scroll;
 }
 
-div#messages ul {
+#info ul {
     padding: 0;
 }
