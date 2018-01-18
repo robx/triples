@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/base64"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -95,19 +94,13 @@ func (g *Game) Serve(b Blob, w http.ResponseWriter, r *http.Request) {
 			}
 			switch t {
 			case websocket.TextMessage:
-				log.Printf("received message")
-				bs64, err := ioutil.ReadAll(m)
+				bs, err := ioutil.ReadAll(m)
 				if err != nil {
 					log.Printf("reading message: %s", err)
 					return
 				}
-				var bs []byte
-				if _, err := base64.StdEncoding.Decode(bs, bs64); err != nil {
-					log.Printf("decoding base64: %s", err)
-					return
-				}
 				claim := pb.Claim{}
-				if err := proto.Unmarshal(bs64, &claim); err != nil {
+				if err := proto.Unmarshal(bs, &claim); err != nil {
 					log.Printf("proto err: %s", err)
 					return
 				}
@@ -124,13 +117,11 @@ func (g *Game) Serve(b Blob, w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		defer w.Close()
-		bs, err := proto.Marshal(u)
+		b, err := proto.Marshal(u)
 		if err != nil {
 			return err
 		}
-		encoder := base64.NewEncoder(base64.StdEncoding, w)
-		defer encoder.Close()
-		_, err = encoder.Write(bs)
+		_, err = w.Write(b)
 		return err
 	}
 
