@@ -71,7 +71,13 @@ view : Style.Style -> Model -> Html.Html Msg
 view style model =
     Html.div []
         [ Html.map User <|
-            Play.viewGame style model.game model.selected False model.answer
+            Play.viewGame
+                { style = style
+                , game = model.game
+                , selected = model.selected
+                , disableMore = False
+                , answer = model.answer
+                }
         , viewLog model.log
         ]
 

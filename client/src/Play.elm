@@ -69,16 +69,27 @@ type UserMsg
 
 view : Style.Style -> Model -> Html.Html Msg
 view style model =
-    let
-        disableMore =
-            model.dealing
-    in
     Html.map User <|
-        viewGame style (Game.toView model.game) model.selected disableMore model.answer
+        viewGame
+            { style = style
+            , game = Game.toView model.game
+            , selected = model.selected
+            , disableMore = model.dealing
+            , answer = model.answer
+            }
 
 
-viewGame : Style.Style -> Game.GameView -> List Game.Pos -> Bool -> Maybe Int -> Html.Html UserMsg
-viewGame style gameView selected disableMore answer =
+type alias ViewGameModel =
+    { style : Style.Style
+    , game : Game.GameView
+    , selected : List Game.Pos
+    , disableMore : Bool
+    , answer : Maybe Int
+    }
+
+
+viewGame : ViewGameModel -> Html.Html UserMsg
+viewGame model =
     let
         d ( pos, card ) =
             Svg.g
@@ -86,26 +97,26 @@ viewGame style gameView selected disableMore answer =
                 , SvgE.onClick (Choose pos)
                 , SvgA.style "cursor: pointer;"
                 ]
-                [ Graphics.draw style (List.member pos selected) card ]
+                [ Graphics.draw model.style (List.member pos model.selected) card ]
 
         gs =
-            Dict.toList gameView.table |> List.map d
+            Dict.toList model.game.table |> List.map d
 
         more =
             let
                 text =
-                    case answer of
+                    case model.answer of
                         Just n ->
                             toString n
 
                         Nothing ->
-                            if gameView.deckSize == 0 then
+                            if model.game.deckSize == 0 then
                                 "."
                             else
                                 "+"
 
                 disabled =
-                    disableMore || answer /= Nothing
+                    model.disableMore || model.answer /= Nothing
 
                 handler =
                     if disabled then
@@ -116,35 +127,35 @@ viewGame style gameView selected disableMore answer =
                         ]
             in
             Svg.g
-                (SvgA.transform (trans ( gameView.cols, 0 )) :: handler)
-                [ Graphics.button style text ]
+                (SvgA.transform (trans ( model.game.cols, 0 )) :: handler)
+                [ Graphics.button model.style text ]
 
         trans ( c, r ) =
             let
                 x =
-                    (toFloat c + 0.5) * (10 + style.layout.w)
+                    (toFloat c + 0.5) * (10 + model.style.layout.w)
 
                 y =
-                    (toFloat r + 0.5) * (10 + style.layout.h)
+                    (toFloat r + 0.5) * (10 + model.style.layout.h)
             in
             "translate(" ++ toString x ++ "," ++ toString y ++ ")"
 
         viewBox =
             let
                 width =
-                    (style.layout.w + 10) * (toFloat gameView.cols + 1)
+                    (model.style.layout.w + 10) * (toFloat model.game.cols + 1)
 
                 height =
-                    (style.layout.h + 10) * toFloat gameView.rows
+                    (model.style.layout.h + 10) * toFloat model.game.rows
             in
             "0 0 " ++ toString width ++ " " ++ toString height
     in
     Svg.svg
         [ SvgA.viewBox viewBox
         , HtmlA.id "main"
-        , HtmlA.style [ ( "background", style.colors.table ) ]
+        , HtmlA.style [ ( "background", model.style.colors.table ) ]
         ]
-        (Graphics.svgDefs style :: more :: gs)
+        (Graphics.svgDefs model.style :: more :: gs)
 
 
 update : Time.Time -> Msg -> Model -> ( Model, Maybe (Result Msg) )
