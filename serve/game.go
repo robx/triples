@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"math/rand"
 	"net/http"
 	"sync"
 
@@ -66,14 +67,43 @@ func newRoom(blob Blob) *Room {
 	return r
 }
 
+type game struct {
+	deck   []uint32
+	cards  map[pos]uint32
+	scores map[string]score
+}
+
+func newGame() *game {
+	var (
+		deck []uint32
+		d    = rand.Perm(81)
+	)
+	for _, i := range d {
+		deck = append(deck, uint32(i))
+	}
+	return &game{
+		deck:   deck,
+		cards:  map[pos]uint32{},
+		scores: map[string]score{},
+	}
+}
+
+func (g *game) deckSize() uint32 {
+	return uint32(len(g.deck))
+}
+
+func (g *game) add(player string) {
+	s := g.scores[player]
+	g.scores[player] = s
+}
+
 func (r *Room) loop() {
 	log.Printf("starting new room: %s %s", r.creator.Game, r.creator.FirstName)
 	var (
 		clientId int
 		clients  = map[int]*client{}
-		deckSize uint32
-		cards    = map[pos]uint32{}
-		scores   = map[string]score{}
+		present  = map[string]struct{}{}
+		g        *game
 	)
 	for {
 		var update *pb.Update
@@ -82,9 +112,11 @@ func (r *Room) loop() {
 			c.sendId <- clientId
 			clients[clientId] = c
 			clientId++
-			s := scores[c.blob.FirstName]
-			scores[c.blob.FirstName] = s
-			c.updates <- makeFull(deckSize, cards, scores)
+			present[c.blob.FirstName] = struct{}{}
+			if g != nil {
+				g.add(c.blob.FirstName)
+			}
+			c.updates <- makeFull(g, present)
 			update = makeJoin(c.blob)
 		case cl := <-r.claims:
 			if cl.claim == nil {
@@ -156,6 +188,17 @@ func toPbPlayerScores(scores map[string]score) []*pb.UpdateFull_PlayerScore {
 	return out
 }
 
+func toZeroPbPlayerScores(scores map[string]struct{}) []*pb.UpdateFull_PlayerScore {
+	var out []*pb.UpdateFull_PlayerScore
+	for p := range scores {
+		out = append(out, &pb.UpdateFull_PlayerScore{
+			Name:  p,
+			Score: &pb.Score{},
+		})
+	}
+	return out
+}
+
 func toPbScore(s score) *pb.Score {
 	return &pb.Score{
 		Match:        s.match,
@@ -165,16 +208,26 @@ func toPbScore(s score) *pb.Score {
 	}
 }
 
-func makeFull(deckSize uint32, cards map[pos]uint32, scores map[string]score) *pb.Update {
+func makeFull(g *game, present map[string]struct{}) *pb.Update {
+	var (
+		deckSize uint32 = 81
+		cards    []*pb.PlacedCard
+		scores   = toZeroPbPlayerScores(present)
+	)
+	if g != nil {
+		deckSize = g.deckSize()
+		scores = toPbPlayerScores(g.scores)
+		cards = toPbCards(g.cards)
+	}
 	return &pb.Update{
 		UpdateOneof: &pb.Update_Full{
 			Full: &pb.UpdateFull{
 				Cols:      4,
 				Rows:      3,
 				MatchSize: 3,
-				DeckSize:  81,
-				Cards:     toPbCards(cards),
-				Scores:    toPbPlayerScores(scores),
+				DeckSize:  deckSize,
+				Cards:     cards,
+				Scores:    scores,
 			},
 		},
 	}
