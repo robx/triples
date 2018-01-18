@@ -201,11 +201,11 @@ func encode(b Blob) string {
 		panic(err)
 	}
 	bs := secretbox.Seal(nonce[:], js, &nonce, &key)
-	return base64.URLEncoding.EncodeToString(bs)
+	return base64.RawURLEncoding.EncodeToString(bs)
 }
 
 func decode(s string) (Blob, error) {
-	bs, err := base64.URLEncoding.DecodeString(s)
+	bs, err := base64.RawURLEncoding.DecodeString(s)
 	if err != nil {
 		return Blob{}, err
 	}
