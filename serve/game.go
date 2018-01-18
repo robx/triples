@@ -71,7 +71,9 @@ func (r *Room) loop() {
 	var (
 		clientId int
 		clients  = map[int]*client{}
-		msgId    int
+		deckSize uint32
+		cards    = map[pos]uint32{}
+		scores   = map[string]score{}
 	)
 	for {
 		var update *pb.Update
@@ -80,8 +82,8 @@ func (r *Room) loop() {
 			c.sendId <- clientId
 			clients[clientId] = c
 			clientId++
-			update = makeJoin(c.blob, msgId)
-			msgId += 1
+			c.updates <- makeFull(deckSize, cards, scores)
+			update = makeJoin(c.blob)
 		case cl := <-r.claims:
 			if cl.claim == nil {
 				log.Printf("removing client %d", cl.clientId)
@@ -101,9 +103,8 @@ func (r *Room) loop() {
 	}
 }
 
-func makeJoin(b Blob, msgId int) *pb.Update {
+func makeJoin(b Blob) *pb.Update {
 	return &pb.Update{
-		Msgid: int32(msgId),
 		UpdateOneof: &pb.Update_Event{
 			Event: &pb.UpdateEvent{
 				EventOneof: &pb.UpdateEvent_Join{
@@ -111,6 +112,64 @@ func makeJoin(b Blob, msgId int) *pb.Update {
 						Name: b.FirstName,
 					},
 				},
+			},
+		},
+	}
+}
+
+type pos struct {
+	x uint32
+	y uint32
+}
+
+type score struct {
+	match        uint32
+	matchwrong   uint32
+	nomatch      uint32
+	nomatchwrong uint32
+}
+
+func toPbCards(cards map[pos]uint32) []*pb.PlacedCard {
+	var out []*pb.PlacedCard
+	for p, c := range cards {
+		out = append(out, &pb.PlacedCard{
+			Position: &pb.Position{
+				X: p.x,
+				Y: p.y,
+			},
+			Card: c,
+		})
+	}
+	return out
+}
+
+func toPbPlayerScores(scores map[string]score) []*pb.UpdateFull_PlayerScore {
+	var out []*pb.UpdateFull_PlayerScore
+	for p, s := range scores {
+		out = append(out, &pb.UpdateFull_PlayerScore{
+			Name:  p,
+			Score: toPbScore(s),
+		})
+	}
+	return out
+}
+
+func toPbScore(s score) *pb.Score {
+	return &pb.Score{
+		Match:        s.match,
+		Matchwrong:   s.matchwrong,
+		Nomatch:      s.nomatch,
+		Nomatchwrong: s.nomatchwrong,
+	}
+}
+
+func makeFull(deckSize uint32, cards map[pos]uint32, scores map[string]score) *pb.Update {
+	return &pb.Update{
+		UpdateOneof: &pb.Update_Full{
+			Full: &pb.UpdateFull{
+				DeckSize: deckSize,
+				Cards:    toPbCards(cards),
+				Scores:   toPbPlayerScores(scores),
 			},
 		},
 	}

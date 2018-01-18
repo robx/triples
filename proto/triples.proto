@@ -84,7 +84,6 @@ message UpdateFull {
 }
 
 message Update {
-  int32 msgid = 1;
   oneof update_oneof {
     UpdateChange change = 2;
     UpdateEvent event = 3;
