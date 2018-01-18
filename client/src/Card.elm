@@ -42,6 +42,11 @@ fromInt x =
     }
 
 
+toInt : Card -> Int
+toInt c =
+    c.color + 3 * c.count + 9 * c.shape + 27 * c.fill
+
+
 triple : List Card -> Bool
 triple cards =
     let

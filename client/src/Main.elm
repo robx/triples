@@ -183,6 +183,13 @@ update msg model =
                     in
                     ( { model | page = newMenu model.params (Just msg) }, send )
 
+        ( MultiPlayMsg pmsg, MultiPlay pmodel ) ->
+            let
+                ( newpmodel, cmd ) =
+                    MultiPlay.update pmsg pmodel
+            in
+            ( { model | page = MultiPlay newpmodel }, cmd )
+
         _ ->
             ( model, Cmd.none )
 

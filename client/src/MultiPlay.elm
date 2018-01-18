@@ -8,7 +8,6 @@ module MultiPlay
         , view
         )
 
-import Base64
 import Card
 import Dict
 import Game
@@ -17,15 +16,11 @@ import Graphics.Style as Style
 import Html
 import Html.Attributes as HtmlA
 import Json.Decode as Decode
+import Json.Encode as Encode
 import List.Extra
 import Play
 import Proto.Triples as Proto
 import WebSocket
-
-
-type Claim
-    = ClaimSet (List Card.Card)
-    | ClaimNoSet (List Card.Card)
 
 
 type Action
@@ -95,38 +90,39 @@ viewLog events =
     Html.div [] <| List.map viewEvent events
 
 
-update : Msg -> Model -> ( Model, Maybe Claim )
+update : Msg -> Model -> ( Model, Cmd msg )
 update msg model =
     case msg of
         User (Play.Choose p) ->
             if Game.viewPosEmpty model.game p then
-                ( model, Nothing )
+                ( model, Cmd.none )
             else if List.member p model.selected then
-                ( { model | selected = List.Extra.remove p model.selected }, Nothing )
+                ( { model | selected = List.Extra.remove p model.selected }, Cmd.none )
             else if List.length model.selected < (model.game.matchSize - 1) then
-                ( { model | selected = p :: model.selected }, Nothing )
+                ( { model | selected = p :: model.selected }, Cmd.none )
             else
                 let
                     claimed =
                         p :: model.selected
                 in
                 ( { model | selected = [] }
-                , Just <| ClaimSet <| List.filterMap (flip Dict.get model.game.table) <| claimed
+                , claim model.wsURL True <| List.filterMap (flip Dict.get model.game.table) <| claimed
                 )
 
         User Play.DealMore ->
-            ( model, Just <| ClaimNoSet <| Dict.values model.game.table )
+            ( model
+            , claim model.wsURL False <| Dict.values model.game.table
+            )
 
         WSUpdate u ->
             case
-                Base64.decode u
-                    |> Result.andThen (Decode.decodeString Proto.updateDecoder)
+                Decode.decodeString Proto.updateDecoder u
             of
                 Err e ->
                     Debug.crash e
 
                 Ok upd ->
-                    ( applyUpdate upd model, Nothing )
+                    ( applyUpdate upd model, Cmd.none )
 
 
 applyUpdate : Proto.Update -> Model -> Model
@@ -159,6 +155,19 @@ applyUpdate update model =
 
         _ ->
             Debug.crash "unknown update"
+
+
+claim : String -> Bool -> List Card.Card -> Cmd msg
+claim wsUrl match cards =
+    WebSocket.send wsUrl <|
+        (Encode.encode 0 << Proto.claimEncoder) <|
+            { type_ =
+                if match then
+                    Proto.ClaimMatch
+                else
+                    Proto.ClaimNomatch
+            , cards = List.map Card.toInt cards
+            }
 
 
 subscriptions : Model -> Sub Msg
