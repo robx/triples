@@ -16,47 +16,47 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-type Games struct {
+type Rooms struct {
 	mu    sync.Mutex
-	games map[string]*Game
+	rooms map[string]*Room
 }
 
-func newGames() *Games {
-	return &Games{
-		games: map[string]*Game{},
+func newRooms() *Rooms {
+	return &Rooms{
+		rooms: map[string]*Room{},
 	}
 }
 
-func (g *Games) Get(blob Blob) *Game {
+func (rs *Rooms) Get(blob Blob) *Room {
 	key := blob.ChatInstance
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	game := g.games[key]
-	if game != nil {
-		return game
+	rs.mu.Lock()
+	defer rs.mu.Unlock()
+	room := rs.rooms[key]
+	if room != nil {
+		return room
 	}
-	g.games[key] = newGame(blob)
-	return g.games[key]
+	rs.rooms[key] = newRoom(blob)
+	return rs.rooms[key]
 }
 
-type Game struct {
+type Room struct {
 	creator Blob
 }
 
-func newGame(blob Blob) *Game {
-	g := &Game{
+func newRoom(blob Blob) *Room {
+	r := &Room{
 		creator: blob,
 	}
-	go g.loop()
-	return g
+	go r.loop()
+	return r
 }
 
-func (g *Game) loop() {
-	log.Printf("starting new game: %s %s", g.creator.Game, g.creator.FirstName)
+func (r *Room) loop() {
+	log.Printf("starting new room: %s %s", r.creator.Game, r.creator.FirstName)
 }
 
-func (g *Game) join(b Blob) (*pb.Update, <-chan *pb.Update) {
-	log.Printf("player joining: %s", b.FirstName)
+func (r *Room) connect(b Blob) (*pb.Update, <-chan *pb.Update) {
+	log.Printf("player connecting: %s", b.FirstName)
 	u := &pb.Update{
 		UpdateOneof: &pb.Update_Event{
 			Event: &pb.UpdateEvent{
@@ -71,12 +71,12 @@ func (g *Game) join(b Blob) (*pb.Update, <-chan *pb.Update) {
 	return u, make(chan *pb.Update)
 }
 
-func (g *Game) claim(c pb.Claim) {
+func (r *Room) claim(c pb.Claim) {
 	log.Printf("received claim: %+v", c)
 }
 
-func (g *Game) Serve(b Blob, w http.ResponseWriter, r *http.Request) {
-	conn, err := upgrader.Upgrade(w, r, nil)
+func (r *Room) Serve(b Blob, w http.ResponseWriter, req *http.Request) {
+	conn, err := upgrader.Upgrade(w, req, nil)
 	if err != nil {
 		log.Printf("websocket upgrade: %s", err)
 		return
@@ -118,7 +118,7 @@ func (g *Game) Serve(b Blob, w http.ResponseWriter, r *http.Request) {
 		return m.Marshal(w, u)
 	}
 
-	welcome, updates := g.join(b)
+	welcome, updates := r.connect(b)
 	if err := writeUpdate(welcome); err != nil {
 		log.Print(err)
 		return
@@ -139,7 +139,7 @@ func (g *Game) Serve(b Blob, w http.ResponseWriter, r *http.Request) {
 				log.Print("lost connection")
 				return
 			}
-			g.claim(c)
+			r.claim(c)
 		}
 	}
 }

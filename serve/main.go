@@ -55,7 +55,7 @@ func mux(actions chan<- BotAction, static string) *httprouter.Router {
 		r.ServeFiles("/static/*filepath", http.Dir(static))
 	}
 	r.GET("/api/win", winHandler(actions))
-	r.GET("/api/join", multiHandler(newGames()))
+	r.GET("/api/join", multiHandler(newRooms()))
 	return r
 }
 
@@ -289,7 +289,7 @@ func winHandler(actions chan<- BotAction) httprouter.Handle {
 	}
 }
 
-func multiHandler(games *Games) httprouter.Handle {
+func multiHandler(rooms *Rooms) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		key := r.FormValue("key")
 		if key == "" {
@@ -302,6 +302,6 @@ func multiHandler(games *Games) httprouter.Handle {
 			http.Error(w, "bad key", http.StatusBadRequest)
 			return
 		}
-		games.Get(blob).Serve(blob, w, r)
+		rooms.Get(blob).Serve(blob, w, r)
 	}
 }
