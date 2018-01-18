@@ -146,10 +146,9 @@ func (r *Room) Serve(b Blob, w http.ResponseWriter, req *http.Request) {
 		log.Printf("sending message to %s", b.FirstName)
 		if err := writeUpdate(conn, u); err != nil {
 			log.Print(err)
-			return
 		}
 	}
-	log.Print("room over")
+	log.Print("left room")
 }
 
 func writeUpdate(conn *websocket.Conn, u *pb.Update) error {
