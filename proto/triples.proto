@@ -10,8 +10,18 @@ message Claim {
   repeated uint32 cards = 2;
 }
 
+message Score {
+  uint32 match = 1;
+  uint32 matchwrong = 2;
+  uint32 nomatch = 3;
+  uint32 nomatchwrong = 4;
+}
+
 message UpdateEvent {
   message EventJoin {
+    string name = 1;
+  }
+  message EventLeave {
     string name = 1;
   }
   message EventClaimed {
@@ -23,24 +33,28 @@ message UpdateEvent {
       LATE = 2;
     }
     Result result = 3;
+    Score score = 4;
   }   
   oneof event_oneof {
     EventJoin join = 1;
-    EventClaimed claimed = 2;
+    EventLeave leave = 2;
+    EventClaimed claimed = 3;
   }
 }
 
+message Position {
+  uint32 x = 1;
+  uint32 y = 2;
+}
+
+message PlacedCard {
+  Position position = 1;
+  uint32 card = 2;
+}
+
 message UpdateChange {
-  message Position {
-    uint32 x = 1;
-    uint32 y = 2;
-  }
   message ChangeDeal {
-    message Place {
-      Position position = 1;
-      uint32 card = 2;
-    }
-    repeated Place places = 1;
+    repeated PlacedCard cards = 1;
   }
   message ChangeMatch {
     repeated Position positions = 1;
@@ -59,10 +73,21 @@ message UpdateChange {
   }
 }
 
+message UpdateFull {
+  repeated PlacedCard cards = 1;
+  uint32 deckSize = 2;
+  message PlayerScore {
+    string name = 1;
+    Score score = 2;
+  }
+  repeated PlayerScore scores = 3;
+}
+
 message Update {
   int32 msgid = 1;
   oneof update_oneof {
     UpdateChange change = 2;
     UpdateEvent event = 3;
+    UpdateFull full = 4;
   }
 }

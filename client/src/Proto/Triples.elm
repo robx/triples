@@ -75,6 +75,36 @@ claimEncoder v =
             ]
 
 
+type alias Score =
+    { match : Int -- 1
+    , matchwrong : Int -- 2
+    , nomatch : Int -- 3
+    , nomatchwrong : Int -- 4
+    }
+
+
+scoreDecoder : JD.Decoder Score
+scoreDecoder =
+    JD.lazy <|
+        \_ ->
+            decode Score
+                |> required "match" JD.int 0
+                |> required "matchwrong" JD.int 0
+                |> required "nomatch" JD.int 0
+                |> required "nomatchwrong" JD.int 0
+
+
+scoreEncoder : Score -> JE.Value
+scoreEncoder v =
+    JE.object <|
+        List.filterMap identity <|
+            [ requiredFieldEncoder "match" JE.int 0 v.match
+            , requiredFieldEncoder "matchwrong" JE.int 0 v.matchwrong
+            , requiredFieldEncoder "nomatch" JE.int 0 v.nomatch
+            , requiredFieldEncoder "nomatchwrong" JE.int 0 v.nomatchwrong
+            ]
+
+
 type alias UpdateEvent =
     { eventOneof : EventOneof
     }
@@ -83,6 +113,7 @@ type alias UpdateEvent =
 type EventOneof
     = EventOneofUnspecified
     | Join UpdateEvent_EventJoin
+    | Leave UpdateEvent_EventLeave
     | Claimed UpdateEvent_EventClaimed
 
 
@@ -92,6 +123,7 @@ eventOneofDecoder =
         \_ ->
             JD.oneOf
                 [ JD.map Join (JD.field "join" updateEvent_EventJoinDecoder)
+                , JD.map Leave (JD.field "leave" updateEvent_EventLeaveDecoder)
                 , JD.map Claimed (JD.field "claimed" updateEvent_EventClaimedDecoder)
                 , JD.succeed EventOneofUnspecified
                 ]
@@ -105,6 +137,9 @@ eventOneofEncoder v =
 
         Join x ->
             Just ( "join", updateEvent_EventJoinEncoder x )
+
+        Leave x ->
+            Just ( "leave", updateEvent_EventLeaveEncoder x )
 
         Claimed x ->
             Just ( "claimed", updateEvent_EventClaimedEncoder x )
@@ -147,10 +182,32 @@ updateEvent_EventJoinEncoder v =
             ]
 
 
+type alias UpdateEvent_EventLeave =
+    { name : String -- 1
+    }
+
+
+updateEvent_EventLeaveDecoder : JD.Decoder UpdateEvent_EventLeave
+updateEvent_EventLeaveDecoder =
+    JD.lazy <|
+        \_ ->
+            decode UpdateEvent_EventLeave
+                |> required "name" JD.string ""
+
+
+updateEvent_EventLeaveEncoder : UpdateEvent_EventLeave -> JE.Value
+updateEvent_EventLeaveEncoder v =
+    JE.object <|
+        List.filterMap identity <|
+            [ requiredFieldEncoder "name" JE.string "" v.name
+            ]
+
+
 type alias UpdateEvent_EventClaimed =
     { name : String -- 1
     , type_ : ClaimType -- 2
     , result : UpdateEvent_EventClaimed_Result -- 3
+    , score : Maybe Score -- 4
     }
 
 
@@ -168,6 +225,7 @@ updateEvent_EventClaimedDecoder =
                 |> required "name" JD.string ""
                 |> required "type" claimTypeDecoder claimTypeDefault
                 |> required "result" updateEvent_EventClaimed_ResultDecoder updateEvent_EventClaimed_ResultDefault
+                |> optional "score" scoreDecoder
 
 
 updateEvent_EventClaimed_ResultDecoder : JD.Decoder UpdateEvent_EventClaimed_Result
@@ -202,6 +260,7 @@ updateEvent_EventClaimedEncoder v =
             [ requiredFieldEncoder "name" JE.string "" v.name
             , requiredFieldEncoder "type" claimTypeEncoder claimTypeDefault v.type_
             , requiredFieldEncoder "result" updateEvent_EventClaimed_ResultEncoder updateEvent_EventClaimed_ResultDefault v.result
+            , optionalEncoder "score" scoreEncoder v.score
             ]
 
 
@@ -220,6 +279,54 @@ updateEvent_EventClaimed_ResultEncoder v =
                     "LATE"
     in
     JE.string <| lookup v
+
+
+type alias Position =
+    { x : Int -- 1
+    , y : Int -- 2
+    }
+
+
+positionDecoder : JD.Decoder Position
+positionDecoder =
+    JD.lazy <|
+        \_ ->
+            decode Position
+                |> required "x" JD.int 0
+                |> required "y" JD.int 0
+
+
+positionEncoder : Position -> JE.Value
+positionEncoder v =
+    JE.object <|
+        List.filterMap identity <|
+            [ requiredFieldEncoder "x" JE.int 0 v.x
+            , requiredFieldEncoder "y" JE.int 0 v.y
+            ]
+
+
+type alias PlacedCard =
+    { position : Maybe Position -- 1
+    , card : Int -- 2
+    }
+
+
+placedCardDecoder : JD.Decoder PlacedCard
+placedCardDecoder =
+    JD.lazy <|
+        \_ ->
+            decode PlacedCard
+                |> optional "position" positionDecoder
+                |> required "card" JD.int 0
+
+
+placedCardEncoder : PlacedCard -> JE.Value
+placedCardEncoder v =
+    JE.object <|
+        List.filterMap identity <|
+            [ optionalEncoder "position" positionEncoder v.position
+            , requiredFieldEncoder "card" JE.int 0 v.card
+            ]
 
 
 type alias UpdateChange =
@@ -278,32 +385,8 @@ updateChangeEncoder v =
             ]
 
 
-type alias UpdateChange_Position =
-    { x : Int -- 1
-    , y : Int -- 2
-    }
-
-
-updateChange_PositionDecoder : JD.Decoder UpdateChange_Position
-updateChange_PositionDecoder =
-    JD.lazy <|
-        \_ ->
-            decode UpdateChange_Position
-                |> required "x" JD.int 0
-                |> required "y" JD.int 0
-
-
-updateChange_PositionEncoder : UpdateChange_Position -> JE.Value
-updateChange_PositionEncoder v =
-    JE.object <|
-        List.filterMap identity <|
-            [ requiredFieldEncoder "x" JE.int 0 v.x
-            , requiredFieldEncoder "y" JE.int 0 v.y
-            ]
-
-
 type alias UpdateChange_ChangeDeal =
-    { places : List UpdateChange_ChangeDeal_Place -- 1
+    { cards : List PlacedCard -- 1
     }
 
 
@@ -312,43 +395,19 @@ updateChange_ChangeDealDecoder =
     JD.lazy <|
         \_ ->
             decode UpdateChange_ChangeDeal
-                |> repeated "places" updateChange_ChangeDeal_PlaceDecoder
+                |> repeated "cards" placedCardDecoder
 
 
 updateChange_ChangeDealEncoder : UpdateChange_ChangeDeal -> JE.Value
 updateChange_ChangeDealEncoder v =
     JE.object <|
         List.filterMap identity <|
-            [ repeatedFieldEncoder "places" updateChange_ChangeDeal_PlaceEncoder v.places
-            ]
-
-
-type alias UpdateChange_ChangeDeal_Place =
-    { position : Maybe UpdateChange_Position -- 1
-    , card : Int -- 2
-    }
-
-
-updateChange_ChangeDeal_PlaceDecoder : JD.Decoder UpdateChange_ChangeDeal_Place
-updateChange_ChangeDeal_PlaceDecoder =
-    JD.lazy <|
-        \_ ->
-            decode UpdateChange_ChangeDeal_Place
-                |> optional "position" updateChange_PositionDecoder
-                |> required "card" JD.int 0
-
-
-updateChange_ChangeDeal_PlaceEncoder : UpdateChange_ChangeDeal_Place -> JE.Value
-updateChange_ChangeDeal_PlaceEncoder v =
-    JE.object <|
-        List.filterMap identity <|
-            [ optionalEncoder "position" updateChange_PositionEncoder v.position
-            , requiredFieldEncoder "card" JE.int 0 v.card
+            [ repeatedFieldEncoder "cards" placedCardEncoder v.cards
             ]
 
 
 type alias UpdateChange_ChangeMatch =
-    { positions : List UpdateChange_Position -- 1
+    { positions : List Position -- 1
     }
 
 
@@ -357,14 +416,14 @@ updateChange_ChangeMatchDecoder =
     JD.lazy <|
         \_ ->
             decode UpdateChange_ChangeMatch
-                |> repeated "positions" updateChange_PositionDecoder
+                |> repeated "positions" positionDecoder
 
 
 updateChange_ChangeMatchEncoder : UpdateChange_ChangeMatch -> JE.Value
 updateChange_ChangeMatchEncoder v =
     JE.object <|
         List.filterMap identity <|
-            [ repeatedFieldEncoder "positions" updateChange_PositionEncoder v.positions
+            [ repeatedFieldEncoder "positions" positionEncoder v.positions
             ]
 
 
@@ -390,8 +449,8 @@ updateChange_ChangeMoveEncoder v =
 
 
 type alias UpdateChange_ChangeMove_MoveOne =
-    { from : Maybe UpdateChange_Position -- 1
-    , to : Maybe UpdateChange_Position -- 2
+    { from : Maybe Position -- 1
+    , to : Maybe Position -- 2
     }
 
 
@@ -400,16 +459,67 @@ updateChange_ChangeMove_MoveOneDecoder =
     JD.lazy <|
         \_ ->
             decode UpdateChange_ChangeMove_MoveOne
-                |> optional "from" updateChange_PositionDecoder
-                |> optional "to" updateChange_PositionDecoder
+                |> optional "from" positionDecoder
+                |> optional "to" positionDecoder
 
 
 updateChange_ChangeMove_MoveOneEncoder : UpdateChange_ChangeMove_MoveOne -> JE.Value
 updateChange_ChangeMove_MoveOneEncoder v =
     JE.object <|
         List.filterMap identity <|
-            [ optionalEncoder "from" updateChange_PositionEncoder v.from
-            , optionalEncoder "to" updateChange_PositionEncoder v.to
+            [ optionalEncoder "from" positionEncoder v.from
+            , optionalEncoder "to" positionEncoder v.to
+            ]
+
+
+type alias UpdateFull =
+    { cards : List PlacedCard -- 1
+    , deckSize : Int -- 2
+    , scores : List UpdateFull_PlayerScore -- 3
+    }
+
+
+updateFullDecoder : JD.Decoder UpdateFull
+updateFullDecoder =
+    JD.lazy <|
+        \_ ->
+            decode UpdateFull
+                |> repeated "cards" placedCardDecoder
+                |> required "deckSize" JD.int 0
+                |> repeated "scores" updateFull_PlayerScoreDecoder
+
+
+updateFullEncoder : UpdateFull -> JE.Value
+updateFullEncoder v =
+    JE.object <|
+        List.filterMap identity <|
+            [ repeatedFieldEncoder "cards" placedCardEncoder v.cards
+            , requiredFieldEncoder "deckSize" JE.int 0 v.deckSize
+            , repeatedFieldEncoder "scores" updateFull_PlayerScoreEncoder v.scores
+            ]
+
+
+type alias UpdateFull_PlayerScore =
+    { name : String -- 1
+    , score : Maybe Score -- 2
+    }
+
+
+updateFull_PlayerScoreDecoder : JD.Decoder UpdateFull_PlayerScore
+updateFull_PlayerScoreDecoder =
+    JD.lazy <|
+        \_ ->
+            decode UpdateFull_PlayerScore
+                |> required "name" JD.string ""
+                |> optional "score" scoreDecoder
+
+
+updateFull_PlayerScoreEncoder : UpdateFull_PlayerScore -> JE.Value
+updateFull_PlayerScoreEncoder v =
+    JE.object <|
+        List.filterMap identity <|
+            [ requiredFieldEncoder "name" JE.string "" v.name
+            , optionalEncoder "score" scoreEncoder v.score
             ]
 
 
@@ -423,6 +533,7 @@ type UpdateOneof
     = UpdateOneofUnspecified
     | Change UpdateChange
     | Event UpdateEvent
+    | Full UpdateFull
 
 
 updateOneofDecoder : JD.Decoder UpdateOneof
@@ -432,6 +543,7 @@ updateOneofDecoder =
             JD.oneOf
                 [ JD.map Change (JD.field "change" updateChangeDecoder)
                 , JD.map Event (JD.field "event" updateEventDecoder)
+                , JD.map Full (JD.field "full" updateFullDecoder)
                 , JD.succeed UpdateOneofUnspecified
                 ]
 
@@ -447,6 +559,9 @@ updateOneofEncoder v =
 
         Event x ->
             Just ( "event", updateEventEncoder x )
+
+        Full x ->
+            Just ( "full", updateFullEncoder x )
 
 
 updateDecoder : JD.Decoder Update

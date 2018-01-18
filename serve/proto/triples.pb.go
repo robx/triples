@@ -9,8 +9,12 @@ It is generated from these files:
 
 It has these top-level messages:
 	Claim
+	Score
 	UpdateEvent
+	Position
+	PlacedCard
 	UpdateChange
+	UpdateFull
 	Update
 */
 package triples
@@ -74,7 +78,7 @@ func (x UpdateEvent_EventClaimed_Result) String() string {
 	return proto.EnumName(UpdateEvent_EventClaimed_Result_name, int32(x))
 }
 func (UpdateEvent_EventClaimed_Result) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor0, []int{1, 1, 0}
+	return fileDescriptor0, []int{2, 2, 0}
 }
 
 type Claim struct {
@@ -101,9 +105,50 @@ func (m *Claim) GetCards() []uint32 {
 	return nil
 }
 
+type Score struct {
+	Match        uint32 `protobuf:"varint,1,opt,name=match" json:"match,omitempty"`
+	Matchwrong   uint32 `protobuf:"varint,2,opt,name=matchwrong" json:"matchwrong,omitempty"`
+	Nomatch      uint32 `protobuf:"varint,3,opt,name=nomatch" json:"nomatch,omitempty"`
+	Nomatchwrong uint32 `protobuf:"varint,4,opt,name=nomatchwrong" json:"nomatchwrong,omitempty"`
+}
+
+func (m *Score) Reset()                    { *m = Score{} }
+func (m *Score) String() string            { return proto.CompactTextString(m) }
+func (*Score) ProtoMessage()               {}
+func (*Score) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
+
+func (m *Score) GetMatch() uint32 {
+	if m != nil {
+		return m.Match
+	}
+	return 0
+}
+
+func (m *Score) GetMatchwrong() uint32 {
+	if m != nil {
+		return m.Matchwrong
+	}
+	return 0
+}
+
+func (m *Score) GetNomatch() uint32 {
+	if m != nil {
+		return m.Nomatch
+	}
+	return 0
+}
+
+func (m *Score) GetNomatchwrong() uint32 {
+	if m != nil {
+		return m.Nomatchwrong
+	}
+	return 0
+}
+
 type UpdateEvent struct {
 	// Types that are valid to be assigned to EventOneof:
 	//	*UpdateEvent_Join
+	//	*UpdateEvent_Leave
 	//	*UpdateEvent_Claimed
 	EventOneof isUpdateEvent_EventOneof `protobuf_oneof:"event_oneof"`
 }
@@ -111,7 +156,7 @@ type UpdateEvent struct {
 func (m *UpdateEvent) Reset()                    { *m = UpdateEvent{} }
 func (m *UpdateEvent) String() string            { return proto.CompactTextString(m) }
 func (*UpdateEvent) ProtoMessage()               {}
-func (*UpdateEvent) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
+func (*UpdateEvent) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
 
 type isUpdateEvent_EventOneof interface {
 	isUpdateEvent_EventOneof()
@@ -120,11 +165,15 @@ type isUpdateEvent_EventOneof interface {
 type UpdateEvent_Join struct {
 	Join *UpdateEvent_EventJoin `protobuf:"bytes,1,opt,name=join,oneof"`
 }
+type UpdateEvent_Leave struct {
+	Leave *UpdateEvent_EventLeave `protobuf:"bytes,2,opt,name=leave,oneof"`
+}
 type UpdateEvent_Claimed struct {
-	Claimed *UpdateEvent_EventClaimed `protobuf:"bytes,2,opt,name=claimed,oneof"`
+	Claimed *UpdateEvent_EventClaimed `protobuf:"bytes,3,opt,name=claimed,oneof"`
 }
 
 func (*UpdateEvent_Join) isUpdateEvent_EventOneof()    {}
+func (*UpdateEvent_Leave) isUpdateEvent_EventOneof()   {}
 func (*UpdateEvent_Claimed) isUpdateEvent_EventOneof() {}
 
 func (m *UpdateEvent) GetEventOneof() isUpdateEvent_EventOneof {
@@ -141,6 +190,13 @@ func (m *UpdateEvent) GetJoin() *UpdateEvent_EventJoin {
 	return nil
 }
 
+func (m *UpdateEvent) GetLeave() *UpdateEvent_EventLeave {
+	if x, ok := m.GetEventOneof().(*UpdateEvent_Leave); ok {
+		return x.Leave
+	}
+	return nil
+}
+
 func (m *UpdateEvent) GetClaimed() *UpdateEvent_EventClaimed {
 	if x, ok := m.GetEventOneof().(*UpdateEvent_Claimed); ok {
 		return x.Claimed
@@ -152,6 +208,7 @@ func (m *UpdateEvent) GetClaimed() *UpdateEvent_EventClaimed {
 func (*UpdateEvent) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
 	return _UpdateEvent_OneofMarshaler, _UpdateEvent_OneofUnmarshaler, _UpdateEvent_OneofSizer, []interface{}{
 		(*UpdateEvent_Join)(nil),
+		(*UpdateEvent_Leave)(nil),
 		(*UpdateEvent_Claimed)(nil),
 	}
 }
@@ -165,8 +222,13 @@ func _UpdateEvent_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
 		if err := b.EncodeMessage(x.Join); err != nil {
 			return err
 		}
-	case *UpdateEvent_Claimed:
+	case *UpdateEvent_Leave:
 		b.EncodeVarint(2<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Leave); err != nil {
+			return err
+		}
+	case *UpdateEvent_Claimed:
+		b.EncodeVarint(3<<3 | proto.WireBytes)
 		if err := b.EncodeMessage(x.Claimed); err != nil {
 			return err
 		}
@@ -188,7 +250,15 @@ func _UpdateEvent_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Bu
 		err := b.DecodeMessage(msg)
 		m.EventOneof = &UpdateEvent_Join{msg}
 		return true, err
-	case 2: // event_oneof.claimed
+	case 2: // event_oneof.leave
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(UpdateEvent_EventLeave)
+		err := b.DecodeMessage(msg)
+		m.EventOneof = &UpdateEvent_Leave{msg}
+		return true, err
+	case 3: // event_oneof.claimed
 		if wire != proto.WireBytes {
 			return true, proto.ErrInternalBadWireType
 		}
@@ -210,9 +280,14 @@ func _UpdateEvent_OneofSizer(msg proto.Message) (n int) {
 		n += proto.SizeVarint(1<<3 | proto.WireBytes)
 		n += proto.SizeVarint(uint64(s))
 		n += s
+	case *UpdateEvent_Leave:
+		s := proto.Size(x.Leave)
+		n += proto.SizeVarint(2<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
 	case *UpdateEvent_Claimed:
 		s := proto.Size(x.Claimed)
-		n += proto.SizeVarint(2<<3 | proto.WireBytes)
+		n += proto.SizeVarint(3<<3 | proto.WireBytes)
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case nil:
@@ -229,9 +304,25 @@ type UpdateEvent_EventJoin struct {
 func (m *UpdateEvent_EventJoin) Reset()                    { *m = UpdateEvent_EventJoin{} }
 func (m *UpdateEvent_EventJoin) String() string            { return proto.CompactTextString(m) }
 func (*UpdateEvent_EventJoin) ProtoMessage()               {}
-func (*UpdateEvent_EventJoin) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1, 0} }
+func (*UpdateEvent_EventJoin) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2, 0} }
 
 func (m *UpdateEvent_EventJoin) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+type UpdateEvent_EventLeave struct {
+	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+}
+
+func (m *UpdateEvent_EventLeave) Reset()                    { *m = UpdateEvent_EventLeave{} }
+func (m *UpdateEvent_EventLeave) String() string            { return proto.CompactTextString(m) }
+func (*UpdateEvent_EventLeave) ProtoMessage()               {}
+func (*UpdateEvent_EventLeave) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2, 1} }
+
+func (m *UpdateEvent_EventLeave) GetName() string {
 	if m != nil {
 		return m.Name
 	}
@@ -242,12 +333,13 @@ type UpdateEvent_EventClaimed struct {
 	Name   string                          `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
 	Type   ClaimType                       `protobuf:"varint,2,opt,name=type,enum=ClaimType" json:"type,omitempty"`
 	Result UpdateEvent_EventClaimed_Result `protobuf:"varint,3,opt,name=result,enum=UpdateEvent_EventClaimed_Result" json:"result,omitempty"`
+	Score  *Score                          `protobuf:"bytes,4,opt,name=score" json:"score,omitempty"`
 }
 
 func (m *UpdateEvent_EventClaimed) Reset()                    { *m = UpdateEvent_EventClaimed{} }
 func (m *UpdateEvent_EventClaimed) String() string            { return proto.CompactTextString(m) }
 func (*UpdateEvent_EventClaimed) ProtoMessage()               {}
-func (*UpdateEvent_EventClaimed) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1, 1} }
+func (*UpdateEvent_EventClaimed) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2, 2} }
 
 func (m *UpdateEvent_EventClaimed) GetName() string {
 	if m != nil {
@@ -270,6 +362,61 @@ func (m *UpdateEvent_EventClaimed) GetResult() UpdateEvent_EventClaimed_Result {
 	return UpdateEvent_EventClaimed_CORRECT
 }
 
+func (m *UpdateEvent_EventClaimed) GetScore() *Score {
+	if m != nil {
+		return m.Score
+	}
+	return nil
+}
+
+type Position struct {
+	X uint32 `protobuf:"varint,1,opt,name=x" json:"x,omitempty"`
+	Y uint32 `protobuf:"varint,2,opt,name=y" json:"y,omitempty"`
+}
+
+func (m *Position) Reset()                    { *m = Position{} }
+func (m *Position) String() string            { return proto.CompactTextString(m) }
+func (*Position) ProtoMessage()               {}
+func (*Position) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
+
+func (m *Position) GetX() uint32 {
+	if m != nil {
+		return m.X
+	}
+	return 0
+}
+
+func (m *Position) GetY() uint32 {
+	if m != nil {
+		return m.Y
+	}
+	return 0
+}
+
+type PlacedCard struct {
+	Position *Position `protobuf:"bytes,1,opt,name=position" json:"position,omitempty"`
+	Card     uint32    `protobuf:"varint,2,opt,name=card" json:"card,omitempty"`
+}
+
+func (m *PlacedCard) Reset()                    { *m = PlacedCard{} }
+func (m *PlacedCard) String() string            { return proto.CompactTextString(m) }
+func (*PlacedCard) ProtoMessage()               {}
+func (*PlacedCard) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
+
+func (m *PlacedCard) GetPosition() *Position {
+	if m != nil {
+		return m.Position
+	}
+	return nil
+}
+
+func (m *PlacedCard) GetCard() uint32 {
+	if m != nil {
+		return m.Card
+	}
+	return 0
+}
+
 type UpdateChange struct {
 	// Types that are valid to be assigned to ChangeOneof:
 	//	*UpdateChange_Deal
@@ -281,7 +428,7 @@ type UpdateChange struct {
 func (m *UpdateChange) Reset()                    { *m = UpdateChange{} }
 func (m *UpdateChange) String() string            { return proto.CompactTextString(m) }
 func (*UpdateChange) ProtoMessage()               {}
-func (*UpdateChange) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
+func (*UpdateChange) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
 
 type isUpdateChange_ChangeOneof interface {
 	isUpdateChange_ChangeOneof()
@@ -422,82 +569,32 @@ func _UpdateChange_OneofSizer(msg proto.Message) (n int) {
 	return n
 }
 
-type UpdateChange_Position struct {
-	X uint32 `protobuf:"varint,1,opt,name=x" json:"x,omitempty"`
-	Y uint32 `protobuf:"varint,2,opt,name=y" json:"y,omitempty"`
-}
-
-func (m *UpdateChange_Position) Reset()                    { *m = UpdateChange_Position{} }
-func (m *UpdateChange_Position) String() string            { return proto.CompactTextString(m) }
-func (*UpdateChange_Position) ProtoMessage()               {}
-func (*UpdateChange_Position) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2, 0} }
-
-func (m *UpdateChange_Position) GetX() uint32 {
-	if m != nil {
-		return m.X
-	}
-	return 0
-}
-
-func (m *UpdateChange_Position) GetY() uint32 {
-	if m != nil {
-		return m.Y
-	}
-	return 0
-}
-
 type UpdateChange_ChangeDeal struct {
-	Places []*UpdateChange_ChangeDeal_Place `protobuf:"bytes,1,rep,name=places" json:"places,omitempty"`
+	Cards []*PlacedCard `protobuf:"bytes,1,rep,name=cards" json:"cards,omitempty"`
 }
 
 func (m *UpdateChange_ChangeDeal) Reset()                    { *m = UpdateChange_ChangeDeal{} }
 func (m *UpdateChange_ChangeDeal) String() string            { return proto.CompactTextString(m) }
 func (*UpdateChange_ChangeDeal) ProtoMessage()               {}
-func (*UpdateChange_ChangeDeal) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2, 1} }
+func (*UpdateChange_ChangeDeal) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5, 0} }
 
-func (m *UpdateChange_ChangeDeal) GetPlaces() []*UpdateChange_ChangeDeal_Place {
+func (m *UpdateChange_ChangeDeal) GetCards() []*PlacedCard {
 	if m != nil {
-		return m.Places
+		return m.Cards
 	}
 	return nil
-}
-
-type UpdateChange_ChangeDeal_Place struct {
-	Position *UpdateChange_Position `protobuf:"bytes,1,opt,name=position" json:"position,omitempty"`
-	Card     uint32                 `protobuf:"varint,2,opt,name=card" json:"card,omitempty"`
-}
-
-func (m *UpdateChange_ChangeDeal_Place) Reset()         { *m = UpdateChange_ChangeDeal_Place{} }
-func (m *UpdateChange_ChangeDeal_Place) String() string { return proto.CompactTextString(m) }
-func (*UpdateChange_ChangeDeal_Place) ProtoMessage()    {}
-func (*UpdateChange_ChangeDeal_Place) Descriptor() ([]byte, []int) {
-	return fileDescriptor0, []int{2, 1, 0}
-}
-
-func (m *UpdateChange_ChangeDeal_Place) GetPosition() *UpdateChange_Position {
-	if m != nil {
-		return m.Position
-	}
-	return nil
-}
-
-func (m *UpdateChange_ChangeDeal_Place) GetCard() uint32 {
-	if m != nil {
-		return m.Card
-	}
-	return 0
 }
 
 type UpdateChange_ChangeMatch struct {
-	Positions []*UpdateChange_Position `protobuf:"bytes,1,rep,name=positions" json:"positions,omitempty"`
+	Positions []*Position `protobuf:"bytes,1,rep,name=positions" json:"positions,omitempty"`
 }
 
 func (m *UpdateChange_ChangeMatch) Reset()                    { *m = UpdateChange_ChangeMatch{} }
 func (m *UpdateChange_ChangeMatch) String() string            { return proto.CompactTextString(m) }
 func (*UpdateChange_ChangeMatch) ProtoMessage()               {}
-func (*UpdateChange_ChangeMatch) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2, 2} }
+func (*UpdateChange_ChangeMatch) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5, 1} }
 
-func (m *UpdateChange_ChangeMatch) GetPositions() []*UpdateChange_Position {
+func (m *UpdateChange_ChangeMatch) GetPositions() []*Position {
 	if m != nil {
 		return m.Positions
 	}
@@ -511,7 +608,7 @@ type UpdateChange_ChangeMove struct {
 func (m *UpdateChange_ChangeMove) Reset()                    { *m = UpdateChange_ChangeMove{} }
 func (m *UpdateChange_ChangeMove) String() string            { return proto.CompactTextString(m) }
 func (*UpdateChange_ChangeMove) ProtoMessage()               {}
-func (*UpdateChange_ChangeMove) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2, 3} }
+func (*UpdateChange_ChangeMove) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5, 2} }
 
 func (m *UpdateChange_ChangeMove) GetMoves() []*UpdateChange_ChangeMove_MoveOne {
 	if m != nil {
@@ -521,27 +618,83 @@ func (m *UpdateChange_ChangeMove) GetMoves() []*UpdateChange_ChangeMove_MoveOne 
 }
 
 type UpdateChange_ChangeMove_MoveOne struct {
-	From *UpdateChange_Position `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
-	To   *UpdateChange_Position `protobuf:"bytes,2,opt,name=to" json:"to,omitempty"`
+	From *Position `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
+	To   *Position `protobuf:"bytes,2,opt,name=to" json:"to,omitempty"`
 }
 
 func (m *UpdateChange_ChangeMove_MoveOne) Reset()         { *m = UpdateChange_ChangeMove_MoveOne{} }
 func (m *UpdateChange_ChangeMove_MoveOne) String() string { return proto.CompactTextString(m) }
 func (*UpdateChange_ChangeMove_MoveOne) ProtoMessage()    {}
 func (*UpdateChange_ChangeMove_MoveOne) Descriptor() ([]byte, []int) {
-	return fileDescriptor0, []int{2, 3, 0}
+	return fileDescriptor0, []int{5, 2, 0}
 }
 
-func (m *UpdateChange_ChangeMove_MoveOne) GetFrom() *UpdateChange_Position {
+func (m *UpdateChange_ChangeMove_MoveOne) GetFrom() *Position {
 	if m != nil {
 		return m.From
 	}
 	return nil
 }
 
-func (m *UpdateChange_ChangeMove_MoveOne) GetTo() *UpdateChange_Position {
+func (m *UpdateChange_ChangeMove_MoveOne) GetTo() *Position {
 	if m != nil {
 		return m.To
+	}
+	return nil
+}
+
+type UpdateFull struct {
+	Cards    []*PlacedCard             `protobuf:"bytes,1,rep,name=cards" json:"cards,omitempty"`
+	DeckSize uint32                    `protobuf:"varint,2,opt,name=deckSize" json:"deckSize,omitempty"`
+	Scores   []*UpdateFull_PlayerScore `protobuf:"bytes,3,rep,name=scores" json:"scores,omitempty"`
+}
+
+func (m *UpdateFull) Reset()                    { *m = UpdateFull{} }
+func (m *UpdateFull) String() string            { return proto.CompactTextString(m) }
+func (*UpdateFull) ProtoMessage()               {}
+func (*UpdateFull) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
+
+func (m *UpdateFull) GetCards() []*PlacedCard {
+	if m != nil {
+		return m.Cards
+	}
+	return nil
+}
+
+func (m *UpdateFull) GetDeckSize() uint32 {
+	if m != nil {
+		return m.DeckSize
+	}
+	return 0
+}
+
+func (m *UpdateFull) GetScores() []*UpdateFull_PlayerScore {
+	if m != nil {
+		return m.Scores
+	}
+	return nil
+}
+
+type UpdateFull_PlayerScore struct {
+	Name  string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Score *Score `protobuf:"bytes,2,opt,name=score" json:"score,omitempty"`
+}
+
+func (m *UpdateFull_PlayerScore) Reset()                    { *m = UpdateFull_PlayerScore{} }
+func (m *UpdateFull_PlayerScore) String() string            { return proto.CompactTextString(m) }
+func (*UpdateFull_PlayerScore) ProtoMessage()               {}
+func (*UpdateFull_PlayerScore) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6, 0} }
+
+func (m *UpdateFull_PlayerScore) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *UpdateFull_PlayerScore) GetScore() *Score {
+	if m != nil {
+		return m.Score
 	}
 	return nil
 }
@@ -551,13 +704,14 @@ type Update struct {
 	// Types that are valid to be assigned to UpdateOneof:
 	//	*Update_Change
 	//	*Update_Event
+	//	*Update_Full
 	UpdateOneof isUpdate_UpdateOneof `protobuf_oneof:"update_oneof"`
 }
 
 func (m *Update) Reset()                    { *m = Update{} }
 func (m *Update) String() string            { return proto.CompactTextString(m) }
 func (*Update) ProtoMessage()               {}
-func (*Update) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
+func (*Update) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
 
 type isUpdate_UpdateOneof interface {
 	isUpdate_UpdateOneof()
@@ -569,9 +723,13 @@ type Update_Change struct {
 type Update_Event struct {
 	Event *UpdateEvent `protobuf:"bytes,3,opt,name=event,oneof"`
 }
+type Update_Full struct {
+	Full *UpdateFull `protobuf:"bytes,4,opt,name=full,oneof"`
+}
 
 func (*Update_Change) isUpdate_UpdateOneof() {}
 func (*Update_Event) isUpdate_UpdateOneof()  {}
+func (*Update_Full) isUpdate_UpdateOneof()   {}
 
 func (m *Update) GetUpdateOneof() isUpdate_UpdateOneof {
 	if m != nil {
@@ -601,11 +759,19 @@ func (m *Update) GetEvent() *UpdateEvent {
 	return nil
 }
 
+func (m *Update) GetFull() *UpdateFull {
+	if x, ok := m.GetUpdateOneof().(*Update_Full); ok {
+		return x.Full
+	}
+	return nil
+}
+
 // XXX_OneofFuncs is for the internal use of the proto package.
 func (*Update) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
 	return _Update_OneofMarshaler, _Update_OneofUnmarshaler, _Update_OneofSizer, []interface{}{
 		(*Update_Change)(nil),
 		(*Update_Event)(nil),
+		(*Update_Full)(nil),
 	}
 }
 
@@ -621,6 +787,11 @@ func _Update_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
 	case *Update_Event:
 		b.EncodeVarint(3<<3 | proto.WireBytes)
 		if err := b.EncodeMessage(x.Event); err != nil {
+			return err
+		}
+	case *Update_Full:
+		b.EncodeVarint(4<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Full); err != nil {
 			return err
 		}
 	case nil:
@@ -649,6 +820,14 @@ func _Update_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer)
 		err := b.DecodeMessage(msg)
 		m.UpdateOneof = &Update_Event{msg}
 		return true, err
+	case 4: // update_oneof.full
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(UpdateFull)
+		err := b.DecodeMessage(msg)
+		m.UpdateOneof = &Update_Full{msg}
+		return true, err
 	default:
 		return false, nil
 	}
@@ -668,6 +847,11 @@ func _Update_OneofSizer(msg proto.Message) (n int) {
 		n += proto.SizeVarint(3<<3 | proto.WireBytes)
 		n += proto.SizeVarint(uint64(s))
 		n += s
+	case *Update_Full:
+		s := proto.Size(x.Full)
+		n += proto.SizeVarint(4<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
 	case nil:
 	default:
 		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
@@ -677,16 +861,20 @@ func _Update_OneofSizer(msg proto.Message) (n int) {
 
 func init() {
 	proto.RegisterType((*Claim)(nil), "Claim")
+	proto.RegisterType((*Score)(nil), "Score")
 	proto.RegisterType((*UpdateEvent)(nil), "UpdateEvent")
 	proto.RegisterType((*UpdateEvent_EventJoin)(nil), "UpdateEvent.EventJoin")
+	proto.RegisterType((*UpdateEvent_EventLeave)(nil), "UpdateEvent.EventLeave")
 	proto.RegisterType((*UpdateEvent_EventClaimed)(nil), "UpdateEvent.EventClaimed")
+	proto.RegisterType((*Position)(nil), "Position")
+	proto.RegisterType((*PlacedCard)(nil), "PlacedCard")
 	proto.RegisterType((*UpdateChange)(nil), "UpdateChange")
-	proto.RegisterType((*UpdateChange_Position)(nil), "UpdateChange.Position")
 	proto.RegisterType((*UpdateChange_ChangeDeal)(nil), "UpdateChange.ChangeDeal")
-	proto.RegisterType((*UpdateChange_ChangeDeal_Place)(nil), "UpdateChange.ChangeDeal.Place")
 	proto.RegisterType((*UpdateChange_ChangeMatch)(nil), "UpdateChange.ChangeMatch")
 	proto.RegisterType((*UpdateChange_ChangeMove)(nil), "UpdateChange.ChangeMove")
 	proto.RegisterType((*UpdateChange_ChangeMove_MoveOne)(nil), "UpdateChange.ChangeMove.MoveOne")
+	proto.RegisterType((*UpdateFull)(nil), "UpdateFull")
+	proto.RegisterType((*UpdateFull_PlayerScore)(nil), "UpdateFull.PlayerScore")
 	proto.RegisterType((*Update)(nil), "Update")
 	proto.RegisterEnum("ClaimType", ClaimType_name, ClaimType_value)
 	proto.RegisterEnum("UpdateEvent_EventClaimed_Result", UpdateEvent_EventClaimed_Result_name, UpdateEvent_EventClaimed_Result_value)
@@ -695,42 +883,52 @@ func init() {
 func init() { proto.RegisterFile("proto/triples.proto", fileDescriptor0) }
 
 var fileDescriptor0 = []byte{
-	// 591 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x94, 0xc1, 0x6e, 0xd3, 0x4c,
-	0x10, 0xc7, 0x6d, 0xd7, 0x76, 0x92, 0x71, 0xdc, 0x2f, 0xdf, 0x82, 0x90, 0xf1, 0xa1, 0x44, 0x11,
-	0x2a, 0x51, 0x84, 0x5c, 0x11, 0xa0, 0xe2, 0xc2, 0x21, 0x35, 0x11, 0x01, 0x35, 0x4d, 0xb5, 0x0a,
-	0xe2, 0x84, 0x2a, 0x93, 0x6c, 0x5b, 0x23, 0xdb, 0x6b, 0xc5, 0x6e, 0xd4, 0x1c, 0x78, 0x0c, 0x9e,
-	0x80, 0x0b, 0x2f, 0xc3, 0x1b, 0xf0, 0x30, 0x68, 0x67, 0x37, 0x69, 0x5a, 0xb0, 0xb8, 0x38, 0xde,
-	0xff, 0xfe, 0x76, 0xfe, 0x33, 0xe3, 0xd9, 0xc0, 0xbd, 0x7c, 0xc1, 0x4b, 0x7e, 0x50, 0x2e, 0xe2,
-	0x3c, 0x61, 0x45, 0x80, 0xab, 0xce, 0x6b, 0xb0, 0xc2, 0x24, 0x8a, 0x53, 0xb2, 0x07, 0x66, 0xb9,
-	0xca, 0x99, 0xa7, 0xb7, 0xf5, 0xee, 0x6e, 0x1f, 0x02, 0x54, 0xa7, 0xab, 0x9c, 0x51, 0xd4, 0xc9,
-	0x7d, 0xb0, 0x66, 0xd1, 0x62, 0x5e, 0x78, 0x46, 0x7b, 0xa7, 0xeb, 0x52, 0xb9, 0xe8, 0xfc, 0x34,
-	0xc0, 0xf9, 0x90, 0xcf, 0xa3, 0x92, 0x0d, 0x97, 0x2c, 0x2b, 0xc9, 0x53, 0x30, 0xbf, 0xf0, 0x38,
-	0xc3, 0x28, 0x4e, 0xff, 0x41, 0xb0, 0xb5, 0x17, 0xe0, 0xf3, 0x3d, 0x8f, 0xb3, 0x91, 0x46, 0x91,
-	0x22, 0x2f, 0xa1, 0x36, 0x13, 0x36, 0x6c, 0xee, 0x19, 0x78, 0xe0, 0xe1, 0x9f, 0x07, 0x42, 0x09,
-	0x8c, 0x34, 0xba, 0x66, 0xfd, 0x47, 0xd0, 0xd8, 0xc4, 0x22, 0x04, 0xcc, 0x2c, 0x4a, 0x65, 0xde,
-	0x0d, 0x8a, 0xef, 0xfe, 0x0f, 0x1d, 0x9a, 0xdb, 0x87, 0xff, 0x06, 0x6d, 0x0a, 0x36, 0x2a, 0x0a,
-	0x7e, 0x05, 0xf6, 0x82, 0x15, 0x57, 0x49, 0xe9, 0xed, 0x20, 0xd1, 0xae, 0xcc, 0x2d, 0xa0, 0xc8,
-	0x51, 0xc5, 0x77, 0x7a, 0x60, 0x4b, 0x85, 0x38, 0x50, 0x0b, 0x27, 0x94, 0x0e, 0xc3, 0x69, 0x4b,
-	0x23, 0x0d, 0xb0, 0x3e, 0xd2, 0xc9, 0xc9, 0xdb, 0x96, 0x4e, 0xea, 0x60, 0x1e, 0x0f, 0xa6, 0xc3,
-	0x96, 0x71, 0xe4, 0x82, 0xc3, 0x44, 0xa8, 0x33, 0x9e, 0x31, 0x7e, 0xde, 0xf9, 0x65, 0x42, 0x53,
-	0xda, 0x84, 0x97, 0x51, 0x76, 0xc1, 0x48, 0x00, 0xe6, 0x9c, 0x45, 0x89, 0x6a, 0xa8, 0x17, 0x6c,
-	0x6f, 0x06, 0xf2, 0xe7, 0x0d, 0x8b, 0x12, 0xd1, 0x52, 0xc1, 0x91, 0x67, 0x60, 0xa5, 0x51, 0x39,
-	0xbb, 0xbc, 0xd3, 0xd0, 0x5b, 0x07, 0xc6, 0x02, 0x18, 0x69, 0x54, 0x92, 0xc2, 0x22, 0xe5, 0x4b,
-	0x86, 0x65, 0x56, 0x58, 0x8c, 0xf9, 0x92, 0x09, 0x0b, 0xc1, 0xf9, 0xfb, 0x50, 0x3f, 0xe5, 0x45,
-	0x5c, 0xc6, 0x3c, 0x23, 0x4d, 0xd0, 0xaf, 0x31, 0x37, 0x97, 0xea, 0xd7, 0x62, 0xb5, 0x42, 0x63,
-	0x97, 0xea, 0x2b, 0xff, 0x9b, 0x0e, 0x70, 0x93, 0x21, 0x39, 0x04, 0x3b, 0x4f, 0xa2, 0x19, 0x2b,
-	0x3c, 0xbd, 0xbd, 0xd3, 0x75, 0xfa, 0x7b, 0x55, 0xb5, 0x04, 0xa7, 0x02, 0xa3, 0x8a, 0xf6, 0x27,
-	0x60, 0xa1, 0x40, 0xfa, 0x50, 0xcf, 0x95, 0xef, 0x9d, 0xf9, 0x52, 0x21, 0xd6, 0x59, 0xd1, 0x0d,
-	0x27, 0x3e, 0xbc, 0x18, 0x54, 0x95, 0x14, 0xbe, 0xfb, 0x21, 0x38, 0x5b, 0x7d, 0x20, 0x2f, 0xa0,
-	0xb1, 0xc6, 0xd7, 0xa9, 0x55, 0xc5, 0xbd, 0x01, 0xfd, 0xef, 0x9b, 0xe2, 0x44, 0x6f, 0xc8, 0x21,
-	0x58, 0xa2, 0x37, 0xeb, 0x00, 0xed, 0xaa, 0x26, 0x06, 0xe2, 0x31, 0xc9, 0x18, 0x95, 0xb8, 0xff,
-	0x09, 0x6a, 0x4a, 0x21, 0x3d, 0x30, 0xcf, 0x17, 0x3c, 0xfd, 0x47, 0x69, 0xc8, 0x90, 0x7d, 0x30,
-	0x4a, 0xae, 0x3e, 0x71, 0x15, 0x69, 0x94, 0xfc, 0x68, 0x17, 0x9a, 0x33, 0x94, 0xd5, 0x78, 0x7d,
-	0x05, 0x5b, 0xc2, 0xe2, 0x3a, 0xa7, 0xc5, 0x45, 0x3c, 0x47, 0x3b, 0x8b, 0xca, 0x05, 0x79, 0x02,
-	0xb6, 0xe4, 0x55, 0x6c, 0xf7, 0x56, 0xec, 0x91, 0x46, 0xd5, 0x36, 0x79, 0x0c, 0x16, 0x8e, 0xad,
-	0x1a, 0x9a, 0xe6, 0xf6, 0xdd, 0x10, 0x93, 0x85, 0x9b, 0xc2, 0xfe, 0x0a, 0x75, 0x69, 0xdf, 0x3b,
-	0x80, 0xc6, 0xe6, 0x96, 0x91, 0xff, 0xc0, 0x09, 0x8f, 0x07, 0xef, 0xc6, 0x67, 0xe3, 0xc1, 0x34,
-	0x1c, 0xb5, 0x34, 0xf2, 0x3f, 0xb8, 0x52, 0x38, 0x99, 0x48, 0x49, 0xff, 0x6c, 0xe3, 0x9f, 0xd4,
-	0xf3, 0xdf, 0x01, 0x00, 0x00, 0xff, 0xff, 0x19, 0x26, 0x29, 0xb8, 0xbb, 0x04, 0x00, 0x00,
+	// 751 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x55, 0xdd, 0x6e, 0xd3, 0x4a,
+	0x10, 0x8e, 0x1d, 0x3b, 0x3f, 0xe3, 0xa4, 0x27, 0x67, 0xcf, 0xd1, 0x39, 0xa9, 0x05, 0x25, 0xb5,
+	0x80, 0x56, 0x15, 0x72, 0x44, 0x10, 0x15, 0x37, 0x08, 0xb5, 0xa6, 0x34, 0xa0, 0xa6, 0xa9, 0xb6,
+	0x41, 0x5c, 0x56, 0x26, 0xde, 0xb6, 0x06, 0xc7, 0x1b, 0x39, 0x4e, 0x69, 0xe0, 0x09, 0x78, 0x0b,
+	0xae, 0x78, 0x0b, 0xb8, 0xe4, 0xb9, 0xd0, 0xce, 0xae, 0x13, 0x47, 0x4d, 0x25, 0x6e, 0x9c, 0x9d,
+	0xf9, 0xbe, 0xd9, 0x19, 0xcf, 0x7c, 0xe3, 0xc0, 0x3f, 0xe3, 0x84, 0xa7, 0xbc, 0x9d, 0x26, 0xe1,
+	0x38, 0x62, 0x13, 0x17, 0x2d, 0xe7, 0x39, 0x98, 0x5e, 0xe4, 0x87, 0x23, 0xb2, 0x01, 0x46, 0x3a,
+	0x1b, 0xb3, 0xa6, 0xd6, 0xd2, 0xb6, 0xd7, 0x3a, 0xe0, 0xa2, 0x77, 0x30, 0x1b, 0x33, 0x8a, 0x7e,
+	0xf2, 0x2f, 0x98, 0x43, 0x3f, 0x09, 0x26, 0x4d, 0xbd, 0x55, 0xdc, 0xae, 0x53, 0x69, 0x38, 0x5f,
+	0xc0, 0x3c, 0x1d, 0xf2, 0x04, 0xe1, 0x91, 0x9f, 0x0e, 0x2f, 0x31, 0xbe, 0x4e, 0xa5, 0x41, 0x36,
+	0x00, 0xf0, 0xf0, 0x29, 0xe1, 0xf1, 0x45, 0x53, 0x47, 0x28, 0xe7, 0x21, 0x4d, 0x28, 0xc7, 0x5c,
+	0xc6, 0x15, 0x11, 0xcc, 0x4c, 0xe2, 0x40, 0x4d, 0x1d, 0x65, 0xac, 0x81, 0xf0, 0x92, 0xcf, 0xf9,
+	0x59, 0x04, 0xeb, 0xed, 0x38, 0xf0, 0x53, 0x76, 0x70, 0xc5, 0xe2, 0x94, 0x3c, 0x02, 0xe3, 0x03,
+	0x0f, 0x63, 0x2c, 0xc1, 0xea, 0xfc, 0xe7, 0xe6, 0x30, 0x17, 0x9f, 0x6f, 0x78, 0x18, 0x77, 0x0b,
+	0x14, 0x59, 0xa4, 0x0d, 0x66, 0xc4, 0xfc, 0x2b, 0x86, 0x65, 0x59, 0x9d, 0xff, 0x6f, 0xd2, 0x8f,
+	0x04, 0xdc, 0x2d, 0x50, 0xc9, 0x23, 0x4f, 0xa1, 0x3c, 0x14, 0x4d, 0x61, 0x01, 0x16, 0x6b, 0x75,
+	0xd6, 0x6f, 0x86, 0x78, 0x92, 0xd0, 0x2d, 0xd0, 0x8c, 0x6b, 0xdf, 0x83, 0xea, 0x3c, 0x39, 0x21,
+	0x60, 0xc4, 0xfe, 0x48, 0x76, 0xb9, 0x4a, 0xf1, 0x6c, 0xb7, 0x00, 0x16, 0xe9, 0x56, 0x32, 0x7e,
+	0x69, 0x50, 0xcb, 0x5f, 0xbf, 0x8a, 0x34, 0x1f, 0xa0, 0x7e, 0xcb, 0x00, 0x9f, 0x41, 0x29, 0x61,
+	0x93, 0x69, 0x94, 0x62, 0xf5, 0x6b, 0x9d, 0xd6, 0xad, 0xd5, 0xbb, 0x14, 0x79, 0x54, 0xf1, 0xc9,
+	0x1d, 0x30, 0x27, 0x62, 0xc8, 0x38, 0x04, 0xab, 0x53, 0x72, 0x71, 0xe4, 0x54, 0x3a, 0x9d, 0x1d,
+	0x28, 0x49, 0x3e, 0xb1, 0xa0, 0xec, 0xf5, 0x29, 0x3d, 0xf0, 0x06, 0x8d, 0x02, 0xa9, 0x82, 0xf9,
+	0x8e, 0xf6, 0x8f, 0x0f, 0x1b, 0x1a, 0xa9, 0x80, 0x71, 0xb4, 0x37, 0x38, 0x68, 0xe8, 0xfb, 0x75,
+	0xb0, 0x98, 0x48, 0x74, 0xc6, 0x63, 0xc6, 0xcf, 0x9d, 0x87, 0x50, 0x39, 0xe1, 0x93, 0x30, 0x0d,
+	0x79, 0x4c, 0x6a, 0xa0, 0x5d, 0x2b, 0xf1, 0x68, 0xd7, 0xc2, 0x9a, 0x29, 0xbd, 0x68, 0x33, 0xe7,
+	0x10, 0xe0, 0x24, 0xf2, 0x87, 0x2c, 0xf0, 0xfc, 0x24, 0x20, 0x0f, 0xa0, 0x32, 0x56, 0x51, 0x6a,
+	0xd4, 0x55, 0x37, 0xbb, 0x86, 0xce, 0x21, 0xd1, 0x23, 0xa1, 0x51, 0x75, 0x0b, 0x9e, 0x9d, 0xef,
+	0x45, 0xa8, 0xc9, 0xb7, 0xf6, 0x2e, 0xfd, 0xf8, 0x82, 0x11, 0x17, 0x8c, 0x80, 0xf9, 0x91, 0xba,
+	0xa7, 0xe9, 0xe6, 0x41, 0x57, 0xfe, 0xbc, 0x64, 0x7e, 0x24, 0x44, 0x23, 0x78, 0xe4, 0x71, 0x26,
+	0x73, 0x7d, 0x49, 0x01, 0x4b, 0x01, 0x3d, 0x41, 0x10, 0xb2, 0x91, 0x4a, 0x76, 0xc1, 0x18, 0xf1,
+	0x2b, 0xa6, 0x34, 0xb3, 0x32, 0x45, 0x8f, 0xa3, 0xce, 0x90, 0x67, 0xb7, 0x01, 0x16, 0x89, 0xc9,
+	0x66, 0xb6, 0x76, 0x5a, 0xab, 0xb8, 0x6d, 0x75, 0x2c, 0x77, 0xd1, 0x08, 0xb5, 0x83, 0xf6, 0x2e,
+	0x58, 0xb9, 0xc4, 0x64, 0x0b, 0xaa, 0x59, 0x0f, 0xb2, 0xa8, 0x5c, 0x7f, 0x16, 0x98, 0xfd, 0x55,
+	0xcb, 0x32, 0x89, 0xfc, 0x64, 0x17, 0x4c, 0x91, 0x3f, 0x8b, 0x69, 0xdd, 0x56, 0xa8, 0x2b, 0x1e,
+	0xfd, 0x98, 0x51, 0x49, 0xb7, 0x3d, 0x28, 0x2b, 0x0f, 0xb9, 0x0b, 0xc6, 0x79, 0xc2, 0x47, 0x37,
+	0xa7, 0x82, 0x6e, 0xb2, 0x0e, 0x7a, 0xca, 0x55, 0xe7, 0x72, 0xa0, 0x9e, 0xf2, 0xfd, 0x35, 0xa8,
+	0x0d, 0x31, 0x83, 0x52, 0xc6, 0x0f, 0x0d, 0x40, 0xe6, 0x7f, 0x35, 0x8d, 0xfe, 0xa4, 0x0b, 0xc4,
+	0x86, 0x4a, 0xc0, 0x86, 0x1f, 0x4f, 0xc3, 0xcf, 0x4c, 0x8d, 0x7c, 0x6e, 0x93, 0x36, 0x94, 0x50,
+	0xab, 0x93, 0x66, 0x11, 0xe3, 0xb3, 0x5d, 0x17, 0x77, 0x8b, 0xab, 0x66, 0x2c, 0x91, 0x92, 0x56,
+	0x34, 0xfb, 0x05, 0x58, 0x39, 0xf7, 0xca, 0x75, 0x9b, 0x2f, 0x85, 0xbe, 0x6a, 0x29, 0xbe, 0x69,
+	0x50, 0x92, 0x39, 0xf0, 0xcb, 0x38, 0xb9, 0x08, 0x03, 0x8c, 0x36, 0xa9, 0x34, 0xc8, 0x16, 0x94,
+	0xe4, 0x0b, 0xab, 0xf8, 0xfa, 0x52, 0xbb, 0xbb, 0x05, 0xaa, 0x60, 0x72, 0x1f, 0x4c, 0x5c, 0x19,
+	0xa5, 0x9f, 0x5a, 0x7e, 0x6b, 0x85, 0xc8, 0x10, 0x24, 0x9b, 0x60, 0x9c, 0x4f, 0xa3, 0x48, 0x6d,
+	0xa8, 0x95, 0x7b, 0x3f, 0xa1, 0x2b, 0x01, 0x89, 0x16, 0x4f, 0xd1, 0x2b, 0x5b, 0xbc, 0xd3, 0x86,
+	0xea, 0xfc, 0x13, 0x41, 0xfe, 0x02, 0xcb, 0x3b, 0xda, 0x7b, 0xdd, 0x3b, 0xeb, 0xed, 0x0d, 0xbc,
+	0x6e, 0xa3, 0x40, 0xfe, 0x86, 0xba, 0x74, 0x1c, 0xf7, 0xa5, 0x4b, 0x7b, 0x5f, 0xc2, 0x7f, 0x8c,
+	0x27, 0xbf, 0x03, 0x00, 0x00, 0xff, 0xff, 0x44, 0x0d, 0xbd, 0xe3, 0x48, 0x06, 0x00, 0x00,
 }
