@@ -17,9 +17,6 @@ import Navigation
 import Play
 import Process
 import Random
-import Svg
-import Svg.Attributes as SvgA
-import Svg.Events as SvgE
 import Task
 import Time
 import UrlParser exposing ((<?>))

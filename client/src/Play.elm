@@ -76,6 +76,7 @@ view style model =
             , selected = model.selected
             , disableMore = model.dealing
             , answer = model.answer
+            , events = []
             }
 
 
@@ -85,6 +86,7 @@ type alias ViewGameModel =
     , selected : List Game.Pos
     , disableMore : Bool
     , answer : Maybe Int
+    , events : List String
     }
 
 
@@ -92,8 +94,12 @@ viewGame : ViewGameModel -> Html.Html UserMsg
 viewGame model =
     let
         d ( pos, card ) =
+            let
+                ( x, y ) =
+                    pos
+            in
             Svg.g
-                [ SvgA.transform (trans pos)
+                [ SvgA.transform (trans ( toFloat x, toFloat y ))
                 , SvgE.onClick (Choose pos)
                 , SvgA.style "cursor: pointer;"
                 ]
@@ -127,16 +133,16 @@ viewGame model =
                         ]
             in
             Svg.g
-                (SvgA.transform (trans ( model.game.cols, 0 )) :: handler)
+                (SvgA.transform (trans ( toFloat model.game.cols, 0 )) :: handler)
                 [ Graphics.button model.style text ]
 
         trans ( c, r ) =
             let
                 x =
-                    (toFloat c + 0.5) * (10 + model.style.layout.w)
+                    (c + 0.5) * (10 + model.style.layout.w)
 
                 y =
-                    (toFloat r + 0.5) * (10 + model.style.layout.h)
+                    (r + 0.5) * (10 + model.style.layout.h)
             in
             "translate(" ++ toString x ++ "," ++ toString y ++ ")"
 
@@ -149,13 +155,56 @@ viewGame model =
                     (model.style.layout.h + 10) * toFloat model.game.rows
             in
             "0 0 " ++ toString width ++ " " ++ toString height
+
+        events =
+            case model.events of
+                [] ->
+                    []
+
+                es ->
+                    let
+                        w =
+                            model.style.layout.w
+
+                        h =
+                            2 * model.style.layout.h + 10
+                    in
+                    [ Svg.g [ SvgA.transform (trans ( toFloat model.game.cols, 1.5 )) ]
+                        [ Svg.rect
+                            [ SvgA.width (toString w)
+                            , SvgA.height (toString h)
+                            , SvgA.x (toString (-w / 2))
+                            , SvgA.y (toString (-h / 2))
+                            , SvgA.rx "6"
+                            , SvgA.ry "6"
+                            , SvgA.fill "lightgray"
+                            ]
+                            []
+                        , Svg.g [ SvgA.transform "scale(0.333333)" ]
+                            [ Svg.foreignObject
+                                [ SvgA.width (toString (3 * (w - 5)))
+                                , SvgA.height (toString (3 * (h - 5)))
+                                , SvgA.x (toString (-3 / 2 * (w - 5)))
+                                , SvgA.y (toString (-3 / 2 * (h - 5)))
+                                ]
+                                [ Html.div
+                                    [ HtmlA.id "messages" ]
+                                    [ Html.ul [] <|
+                                        List.map (\e -> Html.li [] [ Html.text e ]) es
+                                    ]
+                                ]
+                            ]
+                        ]
+                    ]
     in
     Svg.svg
         [ SvgA.viewBox viewBox
+        , SvgA.width "800px"
+        , SvgA.height "600px"
         , HtmlA.id "main"
         , HtmlA.style [ ( "background", model.style.colors.table ) ]
         ]
-        (Graphics.svgDefs model.style :: more :: gs)
+        (Graphics.svgDefs model.style :: more :: events ++ gs)
 
 
 update : Time.Time -> Msg -> Model -> ( Model, Maybe (Result Msg) )

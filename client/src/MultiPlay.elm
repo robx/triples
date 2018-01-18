@@ -69,31 +69,24 @@ type Msg
 
 view : Style.Style -> Model -> Html.Html Msg
 view style model =
-    Html.div []
-        [ Html.map User <|
-            Play.viewGame
-                { style = style
-                , game = model.game
-                , selected = model.selected
-                , disableMore = False
-                , answer = model.answer
-                }
-        , viewLog model.log
-        ]
-
-
-viewLog : List UserEvent -> Html.Html msg
-viewLog events =
     let
-        viewEvent e =
+        eventToString e =
             case e of
                 Join n ->
-                    Html.p [] [ Html.text <| n ++ " joined!" ]
+                    n ++ " joined!"
 
                 _ ->
-                    Html.p [] [ Html.text "unknown event" ]
+                    "dunno"
     in
-    Html.div [] <| List.map viewEvent events
+    Html.map User <|
+        Play.viewGame
+            { style = style
+            , game = model.game
+            , selected = model.selected
+            , disableMore = False
+            , answer = model.answer
+            , events = List.map eventToString model.log
+            }
 
 
 update : Msg -> Model -> ( Model, Cmd msg )
