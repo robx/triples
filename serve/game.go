@@ -97,6 +97,34 @@ func (g *game) add(player string) {
 	g.scores[player] = s
 }
 
+func (g *game) deal() *pb.Update {
+	d := map[pos]uint32{}
+	for x := 0; x < 4; x++ {
+		for y := 0; y < 3; y++ {
+			p := pos{x: uint32(x), y: uint32(y)}
+			if _, ok := g.cards[p]; !ok {
+				if len(g.deck) > 0 {
+					c := g.deck[0]
+					g.deck = g.deck[1:]
+					g.cards[p] = c
+					d[p] = c
+				}
+			}
+		}
+	}
+	return &pb.Update{
+		UpdateOneof: &pb.Update_Change{
+			Change: &pb.UpdateChange{
+				ChangeOneof: &pb.UpdateChange_Deal{
+					Deal: &pb.UpdateChange_ChangeDeal{
+						Cards: toPbCards(d),
+					},
+				},
+			},
+		},
+	}
+}
+
 func (r *Room) loop() {
 	log.Printf("starting new room: %s %s", r.creator.Game, r.creator.FirstName)
 	var (
@@ -119,13 +147,28 @@ func (r *Room) loop() {
 			c.updates <- makeFull(g, present)
 			update = makeJoin(c.blob)
 		case cl := <-r.claims:
+			c := clients[cl.clientId]
 			if cl.claim == nil {
 				log.Printf("removing client %d", cl.clientId)
-				c := clients[cl.clientId]
 				close(c.updates)
 				delete(clients, cl.clientId)
+				// todo: clean-up present?
 			} else {
 				log.Print("received claim")
+				if g == nil {
+					if cl.claim.Type == pb.ClaimType_CLAIM_NOMATCH {
+						log.Printf("starting game on behalf of %s", c.blob.FirstName)
+						g = newGame()
+						for p := range present {
+							g.add(p)
+						}
+						update = g.deal()
+					} else {
+						log.Printf("out of game claim: %+v", cl.claim)
+					}
+				} else {
+					log.Printf("ignoring claim: %+v", cl.claim)
+				}
 			}
 		}
 		if update != nil {

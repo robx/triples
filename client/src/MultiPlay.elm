@@ -119,10 +119,12 @@ applyUpdate update model =
                 Just pp ->
                     ( pp.x, pp.y )
 
+        toList pcs =
+            List.map (\pc -> ( getPosition pc.position, Card.fromInt pc.card )) <|
+                pcs
+
         toDict pcs =
-            Dict.fromList <|
-                List.map (\pc -> ( getPosition pc.position, Card.fromInt pc.card )) <|
-                    pcs
+            Dict.fromList <| toList pcs
     in
     case update.updateOneof of
         Proto.Full full ->
@@ -140,7 +142,11 @@ applyUpdate update model =
         Proto.Change change ->
             case change.changeOneof of
                 Proto.Deal deal ->
-                    model
+                    let
+                        action =
+                            Game.Deal <| toList deal.cards
+                    in
+                    { model | game = Game.viewApply action model.game }
 
                 Proto.Match match ->
                     model
