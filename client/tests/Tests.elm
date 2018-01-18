@@ -9,32 +9,32 @@ import Test exposing (..)
 suite : Test
 suite =
     let
-        setGame =
-            { deck = Game.deck, table = Dict.empty, type_ = Game.ClassicSet, short = False }
+        triplesGame =
+            { deck = Game.deck, table = Dict.empty, type_ = Game.Triples, short = False }
 
-        supersetGame =
-            { setGame | type_ = Game.SuperSet }
+        quadruplesGame =
+            { triplesGame | type_ = Game.Quadruples }
     in
     describe "tests"
         [ test "grid has size 12" <|
             \() ->
                 Expect.equal
-                    (Game.standardGrid |> List.length)
+                    (Game.standardGrid triplesGame |> List.length)
                     12
         , test "gaps finds all gaps in an empty table" <|
             \() ->
                 Expect.equal
-                    (setGame |> Game.gaps |> List.length)
+                    (triplesGame |> Game.gaps |> List.length)
                     12
-        , test "gaps finds all gaps in an empty superset table" <|
+        , test "gaps finds all gaps in an empty quadruples table" <|
             \() ->
                 Expect.equal
-                    (supersetGame |> Game.gaps |> List.length)
+                    (quadruplesGame |> Game.gaps |> List.length)
                     9
         , test "empty table is empty" <|
             \() ->
                 Expect.equal
-                    (Game.posEmpty setGame ( 1, 1 ))
+                    (Game.posEmpty triplesGame ( 1, 1 ))
                     True
         , test "full deck has 81 cards" <|
             \() ->
