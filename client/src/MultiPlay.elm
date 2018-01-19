@@ -140,26 +140,22 @@ applyUpdate update model =
             }
 
         Proto.Change change ->
-            case change.changeOneof of
-                Proto.Deal deal ->
-                    let
-                        action =
+            let
+                action =
+                    case change.changeOneof of
+                        Proto.Deal deal ->
                             Game.Deal <| toList deal.cards
-                    in
-                    { model | game = Game.viewApply action model.game }
 
-                Proto.Match match ->
-                    let
-                        action =
+                        Proto.Match match ->
                             Game.Match <| List.map (getPosition << Just) match.positions
-                    in
-                    { model | game = Game.viewApply action model.game }
 
-                Proto.Move move ->
-                    model
+                        Proto.Move move ->
+                            Game.Move <| List.map (\m -> ( getPosition m.from, getPosition m.to )) move.moves
 
-                _ ->
-                    Debug.crash "unknown change"
+                        _ ->
+                            Debug.crash "unknown change"
+            in
+            { model | game = Game.viewApply action model.game }
 
         Proto.Event event ->
             case event.eventOneof of
