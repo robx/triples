@@ -4,13 +4,19 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"sort"
 	"sync"
+	"time"
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/gorilla/websocket"
 
 	pb "gitlab.com/rrrob/triples/serve/proto"
 )
+
+func init() {
+	rand.Seed(time.Now().UTC().UnixNano())
+}
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
@@ -112,11 +118,11 @@ const (
 	WRONG = -1
 )
 
-func isSet(x, y, z uint32) bool {
+func isMatch(x, y, z uint32) bool {
 	check := func(a, b, c uint32) bool {
 		return a == b && b == c || a != b && b != c && a != c
 	}
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 4; i++ {
 		if !check(x%3, y%3, z%3) {
 			return false
 		}
@@ -135,7 +141,7 @@ func (g *game) listCards() []uint32 {
 	return cs
 }
 
-func (g *game) countSets() int {
+func (g *game) countMatches() int {
 	var (
 		count = 0
 		cards = g.listCards()
@@ -143,7 +149,7 @@ func (g *game) countSets() int {
 	for i := 0; i < len(cards); i++ {
 		for j := i + 1; j < len(cards); j++ {
 			for k := j + 1; k < len(cards); k++ {
-				if isSet(cards[i], cards[j], cards[k]) {
+				if isMatch(cards[i], cards[j], cards[k]) {
 					count++
 				}
 			}
@@ -152,16 +158,16 @@ func (g *game) countSets() int {
 	return count
 }
 
-func (g *game) over() bool {
+func (g *game) gameover() bool {
 	if len(g.deck) > 0 {
 		return false
 	}
-	return g.countSets() == 0
+	return g.countMatches() == 0
 }
 
 func (g *game) claimMatch(name string, cards []uint32) (int, score, *pb.Update) {
 	var ps []pos
-	if g.over() {
+	if g.gameover() {
 		return LATE, g.scores[name], nil
 	}
 	for _, c := range cards {
@@ -171,7 +177,10 @@ func (g *game) claimMatch(name string, cards []uint32) (int, score, *pb.Update) 
 			ps = append(ps, p)
 		}
 	}
-	if len(cards) == 3 && isSet(cards[0], cards[1], cards[2]) {
+	if len(cards) == 3 && isMatch(cards[0], cards[1], cards[2]) {
+		for _, p := range ps {
+			delete(g.cards, p)
+		}
 		s := g.scores[name]
 		s.match += 1
 		g.scores[name] = s
@@ -193,6 +202,133 @@ func (g *game) claimMatch(name string, cards []uint32) (int, score, *pb.Update) 
 	return WRONG, s, nil
 }
 
+func (g *game) claimNomatch(name string, cards []uint32) (int, score, *pb.Update) {
+	if g.gameover() || len(cards) < 12 {
+		return LATE, g.scores[name], nil
+	}
+	cs := g.listCards()
+	equal := func(as, bs []uint32) bool {
+		if len(as) != len(bs) {
+			return false
+		}
+		var (
+			xs []int
+			ys []int
+		)
+		for _, a := range as {
+			xs = append(xs, int(a))
+		}
+		for _, b := range bs {
+			ys = append(ys, int(b))
+		}
+		sort.Ints(xs)
+		sort.Ints(ys)
+		for i := 0; i < len(xs); i++ {
+			if xs[i] != ys[i] {
+				return false
+			}
+		}
+		return true
+	}
+	if !equal(cs, cards) {
+		return LATE, g.scores[name], nil
+	}
+	c := g.countMatches()
+	if c == 0 {
+		s := g.scores[name]
+		s.nomatch += 1
+		g.scores[name] = s
+		return RIGHT, s, g.dealMore()
+	}
+	log.Printf("wrong nomatch claim, %d matches", c)
+	s := g.scores[name]
+	s.nomatchwrong += 1
+	g.scores[name] = s
+	return WRONG, s, makeRevealCount(c)
+}
+
+func (g *game) dealMore() *pb.Update {
+	cs := map[pos]uint32{}
+	x := g.columns()
+	for y := uint32(0); y < 3; y++ {
+		p := pos{x: x, y: y}
+		if len(g.deck) > 0 {
+			c := g.deck[0]
+			g.deck = g.deck[1:]
+			g.cards[p] = c
+			cs[p] = c
+		}
+	}
+	return makeDeal(cs)
+}
+
+func (g *game) columns() uint32 {
+	var m uint32
+	for p := range g.cards {
+		if p.x + 1 > m {
+			m = p.x + 1
+		}
+	}
+	if m < 4 {
+		return 4
+	}
+	return m
+}
+
+func (g *game) empty(p pos) bool {
+	_, ok := g.cards[p]
+	return !ok
+}
+
+func (g *game) compact() *pb.Update {
+	cols := g.columns()
+	up := func(p pos) pos {
+		if p.y == 2 {
+			return pos{x: p.x + 1, y: 0}
+		} else {
+			return pos{x: p.x, y: p.y + 1}
+		}
+	}
+	down := func(p pos) pos {
+		if p.y == 0 {
+			return pos{x: p.x - 1, y: 2}
+		} else {
+			return pos{x: p.x, y: p.y - 1}
+		}
+	}
+	l := pos{x: 0, y: 0}
+	h := pos{x: cols - 1, y: 2}
+	var moves []*pb.UpdateChange_ChangeMove_MoveOne
+	for {
+		for ; !g.empty(l) && l.x < cols; l = up(l) {
+		}
+		for ; g.empty(h) && h.x > l.x && h.x > 4; h = down(h) {
+		}
+		if g.empty(l) && !g.empty(h) && h.x > l.x && h.x > 4 {
+			moves = append(moves, &pb.UpdateChange_ChangeMove_MoveOne{
+				From: toPbPosition(h),
+				To:   toPbPosition(l),
+			})
+		} else {
+			break
+		}
+	}
+	if len(moves) == 0 {
+		return nil
+	}
+	return &pb.Update{
+		UpdateOneof: &pb.Update_Change{
+			Change: &pb.UpdateChange{
+				ChangeOneof: &pb.UpdateChange_Move{
+					Move: &pb.UpdateChange_ChangeMove{
+						Moves: moves,
+					},
+				},
+			},
+		},
+	}
+}
+
 func (g *game) deal() *pb.Update {
 	d := map[pos]uint32{}
 	for x := 0; x < 4; x++ {
@@ -208,12 +344,24 @@ func (g *game) deal() *pb.Update {
 			}
 		}
 	}
+	log.Printf("dealing %d cards", len(d))
+	return makeDeal(d)
+}
+
+func makeRevealCount(count int) *pb.Update {
+	return nil
+}
+
+func makeDeal(cs map[pos]uint32) *pb.Update {
+	if len(cs) == 0 {
+		return nil
+	}
 	return &pb.Update{
 		UpdateOneof: &pb.Update_Change{
 			Change: &pb.UpdateChange{
 				ChangeOneof: &pb.UpdateChange_Deal{
 					Deal: &pb.UpdateChange_ChangeDeal{
-						Cards: toPbCards(d),
+						Cards: toPbCards(cs),
 					},
 				},
 			},
@@ -266,22 +414,32 @@ func (r *Room) loop() {
 					switch cl.claim.Type {
 					case pb.ClaimType_CLAIM_MATCH:
 						res, score, up := g.claimMatch(c.blob.FirstName, cl.claim.Cards)
-						if up != nil {
-							updates = append(updates, up)
-							updates = append(updates, g.deal())
-						}
-						updates = append(updates, makeClaimed(c.blob.FirstName, cl.claim.Type, res, score))
+						updates = append(updates,
+							up,
+							g.compact(),
+							g.deal(),
+							makeClaimed(c.blob.FirstName, cl.claim.Type, res, score))
+					case pb.ClaimType_CLAIM_NOMATCH:
+						res, score, up := g.claimNomatch(c.blob.FirstName, cl.claim.Cards)
+						updates = append(updates,
+							up,
+							makeClaimed(c.blob.FirstName, cl.claim.Type, res, score))
+					default:
+						log.Printf("ignoring claim: %+v", cl.claim)
 					}
-					log.Printf("ignoring claim: %+v", cl.claim)
 				}
 			}
 		}
-		log.Printf("sending %d messages to %d clients", len(updates), len(clients))
+		count := 0
 		for _, update := range updates {
+			if update == nil {
+				continue
+			}
 			for _, c := range clients {
 				c.updates <- update
 			}
 		}
+		log.Printf("sent %d messages to %d clients", count, len(clients))
 	}
 }
 
@@ -339,13 +497,17 @@ type score struct {
 	nomatchwrong uint32
 }
 
+func toPbPosition(p pos) *pb.Position {
+	return &pb.Position{
+		X: p.x,
+		Y: p.y,
+	}
+}
+
 func toPbPositions(ps []pos) []*pb.Position {
 	var out []*pb.Position
 	for _, p := range ps {
-		out = append(out, &pb.Position{
-			X: p.x,
-			Y: p.y,
-		})
+		out = append(out, toPbPosition(p))
 	}
 	return out
 }
@@ -354,11 +516,8 @@ func toPbCards(cards map[pos]uint32) []*pb.PlacedCard {
 	var out []*pb.PlacedCard
 	for p, c := range cards {
 		out = append(out, &pb.PlacedCard{
-			Position: &pb.Position{
-				X: p.x,
-				Y: p.y,
-			},
-			Card: c,
+			Position: toPbPosition(p),
+			Card:     c,
 		})
 	}
 	return out
