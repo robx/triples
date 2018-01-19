@@ -82,8 +82,7 @@ type game struct {
 func newGame() *game {
 	var (
 		deck []uint32
-		//		d    = rand.Perm(81)
-		d = rand.Perm(21)
+		d    = rand.Perm(81)
 	)
 	for _, i := range d {
 		deck = append(deck, uint32(i))
