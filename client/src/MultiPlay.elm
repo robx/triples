@@ -130,7 +130,7 @@ applyUpdate update model =
         Proto.Full full ->
             { model
                 | game =
-                    { cols = full.cols
+                    { mincols = full.cols
                     , rows = full.rows
                     , table = toDict full.cards
                     , deckSize = full.deckSize
@@ -160,7 +160,10 @@ applyUpdate update model =
         Proto.Event event ->
             case event.eventOneof of
                 Proto.Join join ->
-                    { model | log = (join.name ++ " joined!") :: model.log }
+                    { model
+                        | log = (join.name ++ " joined!") :: model.log
+                        , scores = addPlayer join.name model.scores
+                    }
 
                 Proto.Claimed claimed ->
                     let
@@ -183,13 +186,30 @@ applyUpdate update model =
                                 Proto.ClaimNomatch ->
                                     "no triple"
                     in
-                    { model | log = (claimed.name ++ " claimed " ++ typ ++ " (" ++ res ++ ")") :: model.log }
+                    { model
+                        | log = (claimed.name ++ " claimed " ++ typ ++ " (" ++ res ++ ")") :: model.log
+                        , scores = updateScores (toScore claimed) model.scores
+                    }
 
                 _ ->
                     Debug.crash "unknown event"
 
         _ ->
             Debug.crash "unknown update"
+
+
+updateScores : ( String, Int ) -> List ( String, Int ) -> List ( String, Int )
+updateScores ( n, s ) scores =
+    Dict.fromList scores |> Dict.insert n s |> Dict.toList |> List.sortBy (\( n, s ) -> ( s, n )) |> List.reverse
+
+
+addPlayer : String -> List ( String, Int ) -> List ( String, Int )
+addPlayer n scores =
+    let
+        add v =
+            Just <| Maybe.withDefault 0 v
+    in
+    Dict.fromList scores |> Dict.update n add |> Dict.toList |> List.sortBy (\( n, s ) -> ( s, n )) |> List.reverse
 
 
 claim : String -> Bool -> List Card.Card -> Cmd msg

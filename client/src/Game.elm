@@ -15,7 +15,7 @@ type alias Game =
 
 
 type alias GameView =
-    { cols : Int
+    { mincols : Int
     , rows : Int
     , table : Dict Pos Card
     , deckSize : Int
@@ -25,7 +25,7 @@ type alias GameView =
 
 toView : Game -> GameView
 toView g =
-    { cols = columns g
+    { mincols = defaultColumns g.type_
     , rows = 3
     , table = g.table
     , deckSize = List.length g.deck
@@ -110,7 +110,7 @@ empty : GameDef -> GameView
 empty def =
     { deckSize = 81
     , table = Dict.empty
-    , cols = defaultColumns def.type_
+    , mincols = defaultColumns def.type_
     , rows = 3
     , matchSize = matchSize def.type_
     }
@@ -273,8 +273,8 @@ viewApply action game =
             List.foldr (<|) game (List.map move1 ms)
 
 
-columns : Game -> Int
-columns g =
+viewColumns : GameView -> Int
+viewColumns g =
     let
         last =
             List.reverse >> List.head
@@ -286,7 +286,12 @@ columns g =
                         Dict.keys <|
                             g.table
     in
-    max maxcol (defaultColumns g.type_)
+    max maxcol g.mincols
+
+
+columns : Game -> Int
+columns g =
+    viewColumns <| toView g
 
 
 grid : Int -> List Pos

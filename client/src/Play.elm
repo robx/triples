@@ -97,6 +97,9 @@ type alias ViewGameModel =
 viewGame : ViewGameModel -> Html.Html UserMsg
 viewGame model =
     let
+        cols =
+            Game.viewColumns model.game
+
         d ( pos, card ) =
             let
                 ( x, y ) =
@@ -120,10 +123,11 @@ viewGame model =
                             toString n
 
                         Nothing ->
-                            if model.game.deckSize == 0 then
-                                "."
-                            else if model.game.deckSize == 81 then
+                            if Dict.size model.game.table == 0 then
+                                -- hacky, start/end of multiplayer game
                                 ">"
+                            else if model.game.deckSize == 0 then
+                                "."
                             else
                                 "+"
 
@@ -139,7 +143,7 @@ viewGame model =
                         ]
             in
             Svg.g
-                (SvgA.transform (trans ( toFloat model.game.cols, 0 )) :: handler)
+                (SvgA.transform (trans ( toFloat cols, 0 )) :: handler)
                 [ Graphics.button model.style text ]
 
         trans ( c, r ) =
@@ -155,7 +159,7 @@ viewGame model =
         viewBox =
             let
                 width =
-                    (model.style.layout.w + 10) * (toFloat model.game.cols + 1)
+                    (model.style.layout.w + 10) * (toFloat cols + 1)
 
                 height =
                     (model.style.layout.h + 10) * toFloat model.game.rows
@@ -175,7 +179,7 @@ viewGame model =
                         h =
                             2 * model.style.layout.h + 10
                     in
-                    [ Svg.g [ SvgA.transform (trans ( toFloat model.game.cols, 1.5 )) ]
+                    [ Svg.g [ SvgA.transform (trans ( toFloat cols, 1.5 )) ]
                         [ Svg.rect
                             [ SvgA.width (toString w)
                             , SvgA.height (toString h)

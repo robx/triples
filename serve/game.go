@@ -82,7 +82,8 @@ type game struct {
 func newGame() *game {
 	var (
 		deck []uint32
-		d    = rand.Perm(81)
+		//		d    = rand.Perm(81)
+		d = rand.Perm(21)
 	)
 	for _, i := range d {
 		deck = append(deck, uint32(i))
@@ -240,7 +241,7 @@ func (g *game) claimNomatch(name string, cards []uint32) (int, score, *pb.Update
 		g.scores[name] = s
 		return RIGHT, s, g.dealMore()
 	}
-	log.Printf("wrong nomatch claim, %d matches", c)
+	log.Printf("wrong nomatch claim, %d matches, these cards %+v", c, cards)
 	s := g.scores[name]
 	s.nomatchwrong += 1
 	g.scores[name] = s
@@ -265,7 +266,7 @@ func (g *game) dealMore() *pb.Update {
 func (g *game) columns() uint32 {
 	var m uint32
 	for p := range g.cards {
-		if p.x + 1 > m {
+		if p.x+1 > m {
 			m = p.x + 1
 		}
 	}
@@ -302,9 +303,11 @@ func (g *game) compact() *pb.Update {
 	for {
 		for ; !g.empty(l) && l.x < cols; l = up(l) {
 		}
-		for ; g.empty(h) && h.x > l.x && h.x > 4; h = down(h) {
+		for ; g.empty(h) && h.x > l.x && h.x >= 4; h = down(h) {
 		}
-		if g.empty(l) && !g.empty(h) && h.x > l.x && h.x > 4 {
+		if g.empty(l) && !g.empty(h) && h.x > l.x && h.x >= 4 {
+			g.cards[l] = g.cards[h]
+			delete(g.cards, h)
 			moves = append(moves, &pb.UpdateChange_ChangeMove_MoveOne{
 				From: toPbPosition(h),
 				To:   toPbPosition(l),
@@ -399,14 +402,14 @@ func (r *Room) loop() {
 				// todo: clean-up present?
 			} else {
 				log.Print("received claim")
-				if g == nil {
+				if g == nil || g.gameover() {
 					if cl.claim.Type == pb.ClaimType_CLAIM_NOMATCH && len(cl.claim.Cards) == 0 {
 						log.Printf("starting game on behalf of %s", c.blob.FirstName)
 						g = newGame()
 						for p := range present {
 							g.add(p)
 						}
-						updates = append(updates, g.deal())
+						updates = append(updates, makeFull(g, present), g.deal())
 					} else {
 						log.Printf("out of game claim: %+v", cl.claim)
 					}
@@ -419,6 +422,14 @@ func (r *Room) loop() {
 							g.compact(),
 							g.deal(),
 							makeClaimed(c.blob.FirstName, cl.claim.Type, res, score))
+						if g.gameover() {
+							log.Printf("game over")
+							h := &game{
+								scores: g.scores,
+							}
+							g = nil
+							updates = append(updates, makeFull(h, present))
+						}
 					case pb.ClaimType_CLAIM_NOMATCH:
 						res, score, up := g.claimNomatch(c.blob.FirstName, cl.claim.Cards)
 						updates = append(updates,
@@ -556,7 +567,7 @@ func toPbScore(s score) *pb.Score {
 
 func makeFull(g *game, present map[string]struct{}) *pb.Update {
 	var (
-		deckSize uint32 = 81
+		deckSize uint32 = 0
 		cards    []*pb.PlacedCard
 		scores   = toZeroPbPlayerScores(present)
 	)
