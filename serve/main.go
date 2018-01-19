@@ -146,8 +146,8 @@ func handleUpdate(bot *tgbotapi.BotAPI, callbacks []CallbackHandler, update tgbo
 		)
 		g3 := tgbotapi.InlineQueryResultGame{
 			Type:          "game",
-			ID:            "1",
-			GameShortName: "quadruples",
+			ID:            "2",
+			GameShortName: "triplesmulti",
 			ReplyMarkup:   &start,
 		}
 		ic := tgbotapi.InlineConfig{
