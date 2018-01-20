@@ -73,7 +73,7 @@ draw st selected c =
 
         sym t =
             g [ transform t ]
-                (shade ++ [ g [ stroke col, fill f ] [ elt ] ])
+                (shade ++ [ g [ stroke col, strokeWidth "1.5", fill f ] [ elt ] ])
     in
     g
         []
