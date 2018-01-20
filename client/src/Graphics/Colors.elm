@@ -8,7 +8,7 @@ colors =
     , classicPurple = "rgb(116,44,177)"
 
     -- playroom palette from colourlovers.com
-    , playGreen = "rgb(5,135,137"
+    , playGreen = "rgb(5,135,137)"
     , playDark = "rgb(80,61,46)"
     , playRed = "rgb(200,64,34)"
     , playYellow = "rgb(227,167,47)"
