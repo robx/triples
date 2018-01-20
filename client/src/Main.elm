@@ -320,10 +320,13 @@ score log =
 
         totalsecs =
             secs + baddealsecs - gooddealsecs
+
+        pts =
+            10000 // totalsecs
     in
     ( totalsecs
-    , String.join " " [ "Your time:", format totalsecs, "=", format secs, "+", format baddealsecs, "-", format gooddealsecs ]
-    , 10000 // totalsecs
+    , String.join " " [ "Your time:", format totalsecs, "=", format secs, "+", format baddealsecs, "-", format gooddealsecs, "(" ++ toString pts ++ ")" ]
+    , pts
     )
 
 
