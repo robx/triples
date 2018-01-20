@@ -517,8 +517,8 @@ type Update interface {
 func makeFull(g *Game, present map[string]struct{}) Update {
 	var (
 		deckSize = 0
-		cards    map[Position]int
-		scores   map[string]Score
+		cards    =  map[Position]int{}
+		scores   = map[string]Score{}
 	)
 	if g == nil {
 		for p := range present {

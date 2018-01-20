@@ -21,7 +21,8 @@ import List.Extra
 import Play
 import Proto.Triples as Proto
 import WebSocket
-
+import Parse
+import Parser
 
 type alias Model =
     { wsURL : String
@@ -88,13 +89,14 @@ update msg model =
 
         WSUpdate u ->
             case
-                Decode.decodeString Proto.updateDecoder u
+                Parser.run Parse.value u
             of
                 Err e ->
-                    Debug.crash e
+                    Debug.crash <| toString e
 
-                Ok upd ->
-                    ( applyUpdate upd model, Cmd.none )
+                Ok v ->
+                    Debug.crash <| toString v
+                    --( applyUpdate upd model, Cmd.none )
 
 
 applyUpdate : Proto.Update -> Model -> Model

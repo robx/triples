@@ -4,7 +4,8 @@
     "repository": "https://github.com/robx/noexist.git",
     "license": "BSD3",
     "source-directories": [
-        "src"
+        "src",
+        "/s/elm-edn/src"
     ],
     "exposed-modules": [],
     "dependencies": {
@@ -17,7 +18,8 @@
         "elm-lang/navigation": "2.1.0 <= v < 3.0.0",
         "evancz/url-parser": "2.0.0 <= v < 3.0.0",
         "elm-lang/websocket": "1.0.2 <= v < 2.0.0",
-        "tiziano88/elm-protobuf": "2.0.1 <= v < 3.0.0"
+        "tiziano88/elm-protobuf": "2.0.1 <= v < 3.0.0",
+        "elm-tools/parser": "2.0.1 <= v < 3.0.0"
     },
     "elm-version": "0.18.0 <= v < 0.19.0"
 }
