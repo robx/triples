@@ -39,6 +39,7 @@ colors =
     , openGray2 = "rgb(233,236,239)"
     , openGray1 = "rgb(241,243,245)"
     , openLime5 = "rgb(148,216,45)"
+    , openPink7 = "#d6336c"
     }
 
 
@@ -64,6 +65,16 @@ classic =
 play : Scheme
 play =
     { symbols = ( colors.playGreen, colors.playRed, colors.lighterYellow )
+    , foreground = colors.playDark
+    , background = colors.lighterPale
+    , table = colors.slategray
+    , select = colors.orange
+    }
+
+
+playv : Scheme
+playv =
+    { symbols = ( colors.playGreen, colors.openPink7, colors.lighterYellow )
     , foreground = colors.playDark
     , background = colors.lighterPale
     , table = colors.slategray

@@ -30,7 +30,7 @@ modified =
 
 square : Style
 square =
-    { colors = Colors.play
+    { colors = Colors.playv
     , shapes = Shapes.squared
     , layout = Layout.square
     }
