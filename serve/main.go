@@ -122,33 +122,15 @@ func handleUpdate(bot *tgbotapi.BotAPI, callbacks []CallbackHandler, update tgbo
 			ID:            "0",
 			GameShortName: "triples",
 		}
-		m := tgbotapi.NewInlineKeyboardMarkup(
-			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.InlineKeyboardButton{
-					Text:         "Play Quadruples!",
-					CallbackGame: &tgbotapi.CallbackGame{},
-				},
-			),
-		)
 		g2 := tgbotapi.InlineQueryResultGame{
 			Type:          "game",
 			ID:            "1",
 			GameShortName: "quadruples",
-			ReplyMarkup:   &m,
 		}
-		start := tgbotapi.NewInlineKeyboardMarkup(
-			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.InlineKeyboardButton{
-					Text:         "Start multiplayer game",
-					CallbackGame: &tgbotapi.CallbackGame{},
-				},
-			),
-		)
 		g3 := tgbotapi.InlineQueryResultGame{
 			Type:          "game",
 			ID:            "2",
 			GameShortName: "triplesmulti",
-			ReplyMarkup:   &start,
 		}
 		ic := tgbotapi.InlineConfig{
 			InlineQueryID: q.ID,
