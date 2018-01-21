@@ -89,7 +89,7 @@ update msg model =
 
         WSUpdate u ->
             case
-                Parser.run Parse.value u
+                Parser.run Parse.element u
             of
                 Err e ->
                     Debug.crash <| toString e

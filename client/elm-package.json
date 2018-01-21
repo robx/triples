@@ -5,7 +5,9 @@
     "license": "BSD3",
     "source-directories": [
         "src",
-        "/s/elm-edn/src"
+        "/s/elm-edn/src",
+        "/s/parser/src",
+        "/s/parser/src/Parser"
     ],
     "exposed-modules": [],
     "dependencies": {
@@ -19,7 +21,7 @@
         "evancz/url-parser": "2.0.0 <= v < 3.0.0",
         "elm-lang/websocket": "1.0.2 <= v < 2.0.0",
         "tiziano88/elm-protobuf": "2.0.1 <= v < 3.0.0",
-        "elm-tools/parser": "2.0.1 <= v < 3.0.0"
+        "elm-tools/parser-primitives": "1.0.0 <= v < 2.0.0"
     },
     "elm-version": "0.18.0 <= v < 0.19.0"
 }
