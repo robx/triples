@@ -569,6 +569,9 @@ func init() {
 	if err := commandTagMap.AddTagStruct("triples/claim", CmdClaim{}); err != nil {
 		panic(err)
 	}
+	if err := commandTagMap.AddTagStruct("triples/start", CmdStart{}); err != nil {
+		panic(err)
+	}
 }
 
 func (r *Room) Serve(b Blob, w http.ResponseWriter, req *http.Request) {
