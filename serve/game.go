@@ -465,7 +465,8 @@ type EventJoin struct {
 	Name string
 }
 
-func (u EventJoin) isUpdate() {}
+func (u EventJoin) isUpdate()   {}
+func (u EventJoin) tag() string { return "eventJoin" }
 
 type EventClaimed struct {
 	Name   string
@@ -474,19 +475,22 @@ type EventClaimed struct {
 	Score  Score
 }
 
-func (u EventClaimed) isUpdate() {}
+func (u EventClaimed) isUpdate()   {}
+func (u EventClaimed) tag() string { return "eventClaimed" }
 
 type ChangeMatch struct {
 	Positions []Position
 }
 
-func (u ChangeMatch) isUpdate() {}
+func (u ChangeMatch) isUpdate()   {}
+func (u ChangeMatch) tag() string { return "changeMatch" }
 
 type ChangeDeal struct {
 	Cards map[Position]int
 }
 
-func (u ChangeDeal) isUpdate() {}
+func (u ChangeDeal) isUpdate()   {}
+func (u ChangeDeal) tag() string { return "changeDeal" }
 
 type Move struct {
 	From Position
@@ -497,7 +501,8 @@ type ChangeMove struct {
 	Moves []Move
 }
 
-func (u ChangeMove) isUpdate() {}
+func (u ChangeMove) isUpdate()   {}
+func (u ChangeMove) tag() string { return "changeMove" }
 
 type Full struct {
 	Cols      int
@@ -508,16 +513,18 @@ type Full struct {
 	Scores    map[string]Score
 }
 
-func (u Full) isUpdate() {}
+func (u Full) isUpdate()   {}
+func (u Full) tag() string { return "full" }
 
 type Update interface {
 	isUpdate()
+	tag() string
 }
 
 func makeFull(g *Game, present map[string]struct{}) Update {
 	var (
 		deckSize = 0
-		cards    =  map[Position]int{}
+		cards    = map[Position]int{}
 		scores   = map[string]Score{}
 	)
 	if g == nil {
@@ -618,5 +625,5 @@ func writeUpdate(conn *websocket.Conn, u Update) error {
 		return err
 	}
 	defer w.Close()
-	return edn.NewEncoder(w).Encode(u)
+	return edn.NewEncoder(w).Encode(edn.Tag{"triples/" + u.tag(), u})
 }

@@ -9,20 +9,20 @@ module MultiPlay
         )
 
 import Card
+import Decode
 import Dict
 import Game
 import Graphics
 import Graphics.Style as Style
 import Html
 import Html.Attributes as HtmlA
-import Json.Decode as Decode
 import Json.Encode as Encode
 import List.Extra
+import Parser
 import Play
 import Proto.Triples as Proto
 import WebSocket
-import Parse
-import Parser
+
 
 type alias Model =
     { wsURL : String
@@ -89,115 +89,164 @@ update msg model =
 
         WSUpdate u ->
             case
-                Parser.run Parse.element u
+                Decode.decodeString updateDecoder u
             of
                 Err e ->
                     Debug.crash <| toString e
 
-                Ok v ->
-                    Debug.crash <| toString v
-                    --( applyUpdate upd model, Cmd.none )
+                Ok upd ->
+                    ( applyUpdate upd model, Cmd.none )
 
 
-applyUpdate : Proto.Update -> Model -> Model
+type alias Score =
+    { match : Int
+    , matchWrong : Int
+    , noMatch : Int
+    , noMatchWrong : Int
+    }
+
+
+type Update
+    = Full FullRecord
+    | EventJoin String
+
+
+
+{- record alias for Decode.map -}
+
+
+type alias FullRecord =
+    { cols : Int
+    , rows : Int
+    , matchSize : Int
+    , deckSize : Int
+    , cards : Dict.Dict Game.Pos Card.Card
+    , scores : Dict.Dict String Score
+    }
+
+
+posDecoder : Decode.Decoder Game.Pos
+posDecoder =
+    Decode.map2
+        (,)
+        (Decode.field "x" Decode.int)
+        (Decode.field "y" Decode.int)
+
+
+cardDecoder : Decode.Decoder Card.Card
+cardDecoder =
+    Decode.map Card.fromInt Decode.int
+
+
+scoreDecoder : Decode.Decoder Score
+scoreDecoder =
+    Decode.map4
+        Score
+        (Decode.field "match" Decode.int)
+        (Decode.field "matchWrong" Decode.int)
+        (Decode.field "noMatch" Decode.int)
+        (Decode.field "noMatchWrong" Decode.int)
+
+
+updateDecoder : Decode.Decoder Update
+updateDecoder =
+    let
+        fullDecoder =
+            Decode.map6
+                FullRecord
+                (Decode.field "cols" Decode.int)
+                (Decode.field "rows" Decode.int)
+                (Decode.field "matchSize" Decode.int)
+                (Decode.field "deckSize" Decode.int)
+                (Decode.field "cards" (Decode.dict posDecoder cardDecoder))
+                (Decode.field "scores" (Decode.dict Decode.string scoreDecoder))
+
+        eventJoinDecoder =
+            Decode.field "name" Decode.string
+    in
+    Decode.tagged
+        [ ( "triples/full", Decode.map Full fullDecoder )
+        , ( "triples/eventJoin", Decode.map EventJoin eventJoinDecoder )
+        ]
+
+
+applyUpdate : Update -> Model -> Model
 applyUpdate update model =
     let
-        getScore s =
-            case s of
-                Nothing ->
-                    0
-
-                Just ss ->
-                    ss.match - ss.matchwrong + ss.nomatch - ss.nomatchwrong
-
-        toScore ps =
-            ( ps.name, getScore ps.score )
-
-        getPosition p =
-            case p of
-                Nothing ->
-                    ( 0, 0 )
-
-                Just pp ->
-                    ( pp.x, pp.y )
-
-        toList pcs =
-            List.map (\pc -> ( getPosition pc.position, Card.fromInt pc.card )) <|
-                pcs
-
-        toDict pcs =
-            Dict.fromList <| toList pcs
+        calcScore s =
+            s.match - s.matchWrong + s.noMatch - s.noMatchWrong
     in
-    case update.updateOneof of
-        Proto.Full full ->
+    case update of
+        Full full ->
             { model
                 | game =
                     { mincols = full.cols
                     , rows = full.rows
-                    , table = toDict full.cards
+                    , table = full.cards
                     , deckSize = full.deckSize
                     , matchSize = full.matchSize
                     }
-                , scores = List.map toScore full.scores
+                , scores = Dict.toList (Dict.map (always calcScore) full.scores)
             }
 
-        Proto.Change change ->
-            let
-                action =
-                    case change.changeOneof of
-                        Proto.Deal deal ->
-                            Game.Deal <| toList deal.cards
+        EventJoin name ->
+            { model
+                | log = (name ++ " joined!") :: model.log
+                , scores = addPlayer name model.scores
+            }
 
-                        Proto.Match match ->
-                            Game.Match <| List.map (getPosition << Just) match.positions
 
-                        Proto.Move move ->
-                            Game.Move <| List.map (\m -> ( getPosition m.from, getPosition m.to )) move.moves
 
-                        _ ->
-                            Debug.crash "unknown change"
-            in
-            { model | game = Game.viewApply action model.game }
+{-
+   Proto.Change change ->
+       let
+           action =
+               case change.changeOneof of
+                   Proto.Deal deal ->
+                       Game.Deal <| toList deal.cards
 
-        Proto.Event event ->
-            case event.eventOneof of
-                Proto.Join join ->
-                    { model
-                        | log = (join.name ++ " joined!") :: model.log
-                        , scores = addPlayer join.name model.scores
-                    }
+                   Proto.Match match ->
+                       Game.Match <| List.map (getPosition << Just) match.positions
 
-                Proto.Claimed claimed ->
-                    let
-                        res =
-                            case claimed.result of
-                                Proto.UpdateEvent_EventClaimed_Correct ->
-                                    "correct"
+                   Proto.Move move ->
+                       Game.Move <| List.map (\m -> ( getPosition m.from, getPosition m.to )) move.moves
 
-                                Proto.UpdateEvent_EventClaimed_Wrong ->
-                                    "wrong"
+                   _ ->
+                       Debug.crash "unknown change"
+       in
+       { model | game = Game.viewApply action model.game }
 
-                                Proto.UpdateEvent_EventClaimed_Late ->
-                                    "late"
+   Proto.Event event ->
+       case event.eventOneof of
+           Proto.Claimed claimed ->
+               let
+                   res =
+                       case claimed.result of
+                           Proto.UpdateEvent_EventClaimed_Correct ->
+                               "correct"
 
-                        typ =
-                            case claimed.type_ of
-                                Proto.ClaimMatch ->
-                                    "a triple"
+                           Proto.UpdateEvent_EventClaimed_Wrong ->
+                               "wrong"
 
-                                Proto.ClaimNomatch ->
-                                    "no triple"
-                    in
-                    { model
-                        | log = (claimed.name ++ " claimed " ++ typ ++ " (" ++ res ++ ")") :: model.log
-                        , scores = updateScores (toScore claimed) model.scores
-                    }
+                           Proto.UpdateEvent_EventClaimed_Late ->
+                               "late"
 
-                _ ->
-                    Debug.crash "unknown event"
+                   typ =
+                       case claimed.type_ of
+                           Proto.ClaimMatch ->
+                               "a triple"
 
-        _ ->
-            Debug.crash "unknown update"
+                           Proto.ClaimNomatch ->
+                               "no triple"
+               in
+               { model
+                   | log = (claimed.name ++ " claimed " ++ typ ++ " (" ++ res ++ ")") :: model.log
+                   , scores = updateScores (toScore claimed) model.scores
+               }
+
+           _ ->
+               Debug.crash "unknown event"
+-}
 
 
 updateScores : ( String, Int ) -> List ( String, Int ) -> List ( String, Int )
