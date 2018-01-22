@@ -11,16 +11,15 @@ module MultiPlay
 import Card
 import Decode
 import Dict
+import Encode
 import Game
 import Graphics
 import Graphics.Style as Style
 import Html
 import Html.Attributes as HtmlA
-import Json.Encode as Encode
 import List.Extra
 import Parser
 import Play
-import Proto.Triples as Proto
 import WebSocket
 
 
@@ -325,17 +324,45 @@ addPlayer n scores =
     Dict.fromList scores |> Dict.update n add |> Dict.toList |> List.sortBy (\( n, s ) -> ( s, n )) |> List.reverse
 
 
+type alias Claim =
+    { type_ : ClaimType
+    , cards : List Card.Card
+    }
+
+
+encodeClaim : Claim -> Encode.Element
+encodeClaim claim =
+    let
+        claimType ct =
+            case ct of
+                ClaimMatch ->
+                    Encode.string "match"
+
+                ClaimNoMatch ->
+                    Encode.string "nomatch"
+
+        card c =
+            Encode.int <| Card.toInt c
+    in
+    Encode.tag "triples/claim" <|
+        Encode.object
+            [ ( "type", claimType claim.type_ )
+            , ( "cards", Encode.list <| List.map card claim.cards )
+            ]
+
+
 claim : String -> Bool -> List Card.Card -> Cmd msg
 claim wsUrl match cards =
     WebSocket.send wsUrl <|
-        (Encode.encode 0 << Proto.claimEncoder) <|
-            { type_ =
-                if match then
-                    Proto.ClaimMatch
-                else
-                    Proto.ClaimNomatch
-            , cards = List.map Card.toInt cards
-            }
+        Encode.encode <|
+            encodeClaim <|
+                { type_ =
+                    if match then
+                        ClaimMatch
+                    else
+                        ClaimNoMatch
+                , cards = cards
+                }
 
 
 subscriptions : Model -> Sub Msg

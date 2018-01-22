@@ -566,7 +566,7 @@ func (r *Room) connect(b Blob) (<-chan Update, chan<- *cmd, <-chan int) {
 var commandTagMap edn.TagMap
 
 func init() {
-	if err := commandTagMap.AddTagStruct("claim", CmdClaim{}); err != nil {
+	if err := commandTagMap.AddTagStruct("triples/claim", CmdClaim{}); err != nil {
 		panic(err)
 	}
 }
