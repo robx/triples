@@ -28,7 +28,6 @@ type alias Model =
     , game : Game.GameView
     , scores : List ( String, Int )
     , selected : List Game.Pos
-    , answer : Maybe Int
     , log : List String
     }
 
@@ -39,13 +38,18 @@ init game wsURL =
     , game = game
     , scores = []
     , selected = []
-    , answer = Nothing
     , log = []
     }
 
 
+type UserMsg
+    = Choose Game.Pos
+    | UserDeal
+    | UserStart
+
+
 type Msg
-    = User Play.UserMsg
+    = User UserMsg
     | WSUpdate String
 
 
@@ -56,8 +60,21 @@ view style model =
             { style = style
             , game = model.game
             , selected = model.selected
-            , disableMore = False
-            , answer = model.answer
+            , button =
+                { message =
+                    if Dict.size model.game.table == 0 then
+                        Just UserStart
+                    else
+                        Just UserDeal
+                , label =
+                    if Dict.size model.game.table == 0 then
+                        ">"
+                    else if model.game.deckSize == 0 then
+                        "."
+                    else
+                        "+"
+                }
+            , choose = Choose
             , info = Just { scores = model.scores, events = model.log }
             }
 
@@ -65,25 +82,37 @@ view style model =
 update : Msg -> Model -> ( Model, Cmd msg )
 update msg model =
     case msg of
-        User (Play.Choose p) ->
-            if Game.viewPosEmpty model.game p then
-                ( model, Cmd.none )
-            else if List.member p model.selected then
-                ( { model | selected = List.Extra.remove p model.selected }, Cmd.none )
-            else if List.length model.selected < (model.game.matchSize - 1) then
-                ( { model | selected = p :: model.selected }, Cmd.none )
-            else
-                let
-                    claimed =
-                        p :: model.selected
-                in
-                ( { model | selected = [] }
-                , claim model.wsURL True <| List.filterMap (flip Dict.get model.game.table) <| claimed
-                )
+        User (Choose p) ->
+            Debug.log ("got a choose message: " ++ toString p) <|
+                if Game.viewPosEmpty model.game p then
+                    ( model, Cmd.none )
+                else if List.member p model.selected then
+                    ( { model | selected = List.Extra.remove p model.selected }, Cmd.none )
+                else if List.length model.selected < (model.game.matchSize - 1) then
+                    ( { model | selected = p :: model.selected }, Cmd.none )
+                else
+                    let
+                        claimed =
+                            p :: model.selected
+                    in
+                    ( { model | selected = [] }
+                    , sendCommand model.wsURL <|
+                        Claim
+                            ClaimMatch
+                            (List.filterMap (flip Dict.get model.game.table) claimed)
+                    )
 
-        User Play.UserDeal ->
+        User UserDeal ->
             ( model
-            , claim model.wsURL False <| Dict.values model.game.table
+            , sendCommand model.wsURL <|
+                Claim
+                    ClaimNoMatch
+                    (Dict.values model.game.table)
+            )
+
+        User UserStart ->
+            ( model
+            , sendCommand model.wsURL <| Start
             )
 
         WSUpdate u ->
@@ -324,45 +353,40 @@ addPlayer n scores =
     Dict.fromList scores |> Dict.update n add |> Dict.toList |> List.sortBy (\( n, s ) -> ( s, n )) |> List.reverse
 
 
-type alias Claim =
-    { type_ : ClaimType
-    , cards : List Card.Card
-    }
+type Command
+    = Claim ClaimType (List Card.Card)
+    | Start
 
 
-encodeClaim : Claim -> Encode.Element
-encodeClaim claim =
-    let
-        claimType ct =
-            case ct of
-                ClaimMatch ->
-                    Encode.string "match"
+encodeCommand : Command -> Encode.Element
+encodeCommand cmd =
+    case cmd of
+        Claim ct cs ->
+            let
+                claimType =
+                    case ct of
+                        ClaimMatch ->
+                            Encode.string "match"
 
-                ClaimNoMatch ->
-                    Encode.string "nomatch"
+                        ClaimNoMatch ->
+                            Encode.string "nomatch"
 
-        card c =
-            Encode.int <| Card.toInt c
-    in
-    Encode.tag "triples/claim" <|
-        Encode.object
-            [ ( "type", claimType claim.type_ )
-            , ( "cards", Encode.list <| List.map card claim.cards )
-            ]
+                card c =
+                    Encode.int <| Card.toInt c
+            in
+            Encode.tag "triples/claim" <|
+                Encode.object
+                    [ ( "type", claimType )
+                    , ( "cards", Encode.list <| List.map card cs )
+                    ]
+
+        Start ->
+            Encode.tag "triples/start" (Encode.object [])
 
 
-claim : String -> Bool -> List Card.Card -> Cmd msg
-claim wsUrl match cards =
-    WebSocket.send wsUrl <|
-        Encode.encode <|
-            encodeClaim <|
-                { type_ =
-                    if match then
-                        ClaimMatch
-                    else
-                        ClaimNoMatch
-                , cards = cards
-                }
+sendCommand : String -> Command -> Cmd msg
+sendCommand wsUrl =
+    WebSocket.send wsUrl << Encode.encode << encodeCommand
 
 
 subscriptions : Model -> Sub Msg

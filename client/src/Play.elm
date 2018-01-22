@@ -69,23 +69,43 @@ type UserMsg
 
 view : Style.Style -> Model -> Html.Html Msg
 view style model =
+    let
+        gameView =
+            Game.toView model.game
+    in
     Html.map User <|
         viewGame
             { style = style
-            , game = Game.toView model.game
+            , game = gameView
             , selected = model.selected
-            , disableMore = model.dealing
-            , answer = model.answer
+            , button =
+                { message =
+                    if model.dealing || model.answer /= Nothing then
+                        Nothing
+                    else
+                        Just UserDeal
+                , label =
+                    case model.answer of
+                        Just n ->
+                            toString n
+
+                        Nothing ->
+                            if gameView.deckSize == 0 then
+                                "."
+                            else
+                                "+"
+                }
+            , choose = Choose
             , info = Nothing
             }
 
 
-type alias ViewGameModel =
+type alias ViewGameModel msg =
     { style : Style.Style
     , game : Game.GameView
     , selected : List Game.Pos
-    , disableMore : Bool
-    , answer : Maybe Int
+    , button : { message : Maybe msg, label : String }
+    , choose : Game.Pos -> msg
     , info :
         Maybe
             { scores : List ( String, Int )
@@ -94,7 +114,7 @@ type alias ViewGameModel =
     }
 
 
-viewGame : ViewGameModel -> Html.Html UserMsg
+viewGame : ViewGameModel msg -> Html.Html msg
 viewGame model =
     let
         cols =
@@ -107,7 +127,7 @@ viewGame model =
             in
             Svg.g
                 [ SvgA.transform (trans ( toFloat x, toFloat y ))
-                , SvgE.onClick (Choose pos)
+                , SvgE.onClick (model.choose pos)
                 , SvgA.style "cursor: pointer;"
                 ]
                 [ Graphics.draw model.style (List.member pos model.selected) card ]
@@ -115,36 +135,21 @@ viewGame model =
         gs =
             Dict.toList model.game.table |> List.map d
 
-        more =
+        button =
             let
-                text =
-                    case model.answer of
-                        Just n ->
-                            toString n
-
-                        Nothing ->
-                            if Dict.size model.game.table == 0 then
-                                -- hacky, start/end of multiplayer game
-                                ">"
-                            else if model.game.deckSize == 0 then
-                                "."
-                            else
-                                "+"
-
-                disabled =
-                    model.disableMore || model.answer /= Nothing
-
                 handler =
-                    if disabled then
-                        []
-                    else
-                        [ SvgE.onClick UserDeal
-                        , SvgA.style "cursor: pointer;"
-                        ]
+                    case model.button.message of
+                        Nothing ->
+                            []
+
+                        Just msg ->
+                            [ SvgE.onClick msg
+                            , SvgA.style "cursor: pointer;"
+                            ]
             in
             Svg.g
                 (SvgA.transform (trans ( toFloat cols, 0 )) :: handler)
-                [ Graphics.button model.style text ]
+                [ Graphics.button model.style model.button.label ]
 
         trans ( c, r ) =
             let
@@ -216,7 +221,7 @@ viewGame model =
         , HtmlA.id "main"
         , HtmlA.style [ ( "background", model.style.colors.table ) ]
         ]
-        (Graphics.svgDefs model.style :: more :: infobox ++ gs)
+        (Graphics.svgDefs model.style :: button :: infobox ++ gs)
 
 
 update : Time.Time -> Msg -> Model -> ( Model, Maybe (Result Msg) )
