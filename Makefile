@@ -1,4 +1,4 @@
-.PHONY: all build format test protoc deploy
+.PHONY: all build format test deploy
 
 all: build
 
@@ -13,12 +13,6 @@ format:
 test:
 	make -C client test
 	make -C serve test
-
-.protoc:
-	protoc --elm_out=client/src proto/triples.proto
-	protoc --go_out=serve proto/triples.proto
-
-protoc: .protoc format
 
 DEPLOY_DEST ?= arp:triples/
 

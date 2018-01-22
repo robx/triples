@@ -8,10 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang/protobuf/jsonpb"
 	"github.com/gorilla/websocket"
-
-	pb "gitlab.com/rrrob/triples/serve/proto"
+	"gopkg.in/edn.v1"
 )
 
 func init() {
@@ -49,17 +47,17 @@ func (rs *Rooms) Get(blob Blob) *Room {
 type Room struct {
 	creator  Blob
 	connects chan *client
-	claims   chan *claim
+	cmds     chan *cmd
 }
 
-type claim struct {
+type cmd struct {
 	clientId int
-	claim    *pb.Claim
+	command  Command
 }
 
 type client struct {
 	blob    Blob
-	updates chan<- *pb.Update
+	updates chan<- Update
 	sendId  chan<- int
 }
 
@@ -67,59 +65,46 @@ func newRoom(blob Blob) *Room {
 	r := &Room{
 		creator:  blob,
 		connects: make(chan *client),
-		claims:   make(chan *claim),
+		cmds:     make(chan *cmd),
 	}
 	go r.loop()
 	return r
 }
 
-type game struct {
-	deck   []uint32
-	cards  map[pos]uint32
-	scores map[string]score
+type Game struct {
+	Deck   []int
+	Cards  map[Position]int
+	Scores map[string]Score
 }
 
-func newGame() *game {
-	var (
-		deck []uint32
-		d    = rand.Perm(81)
-	)
-	for _, i := range d {
-		deck = append(deck, uint32(i))
-	}
-	return &game{
-		deck:   deck,
-		cards:  map[pos]uint32{},
-		scores: map[string]score{},
+func newGame() *Game {
+	return &Game{
+		Deck:   rand.Perm(81),
+		Cards:  map[Position]int{},
+		Scores: map[string]Score{},
 	}
 }
 
-func (g *game) deckSize() uint32 {
-	return uint32(len(g.deck))
+func (g *Game) deckSize() int {
+	return len(g.Deck)
 }
 
-func (g *game) add(player string) {
-	s := g.scores[player]
-	g.scores[player] = s
+func (g *Game) add(player string) {
+	s := g.Scores[player]
+	g.Scores[player] = s
 }
 
-func (g *game) findCard(c uint32) (pos, bool) {
-	for p, cc := range g.cards {
+func (g *Game) findCard(c int) (Position, bool) {
+	for p, cc := range g.Cards {
 		if cc == c {
 			return p, true
 		}
 	}
-	return pos{}, false
+	return Position{}, false
 }
 
-const (
-	LATE  = 0
-	RIGHT = 1
-	WRONG = -1
-)
-
-func isMatch(x, y, z uint32) bool {
-	check := func(a, b, c uint32) bool {
+func isMatch(x, y, z int) bool {
+	check := func(a, b, c int) bool {
 		return a == b && b == c || a != b && b != c && a != c
 	}
 	for i := 0; i < 4; i++ {
@@ -133,15 +118,15 @@ func isMatch(x, y, z uint32) bool {
 	return true
 }
 
-func (g *game) listCards() []uint32 {
-	var cs []uint32
-	for _, c := range g.cards {
+func (g *Game) listCards() []int {
+	var cs []int
+	for _, c := range g.Cards {
 		cs = append(cs, c)
 	}
 	return cs
 }
 
-func (g *game) countMatches() int {
+func (g *Game) countMatches() int {
 	var (
 		count = 0
 		cards = g.listCards()
@@ -158,115 +143,95 @@ func (g *game) countMatches() int {
 	return count
 }
 
-func (g *game) gameover() bool {
-	if len(g.deck) > 0 {
+func (g *Game) gameover() bool {
+	if len(g.Deck) > 0 {
 		return false
 	}
 	return g.countMatches() == 0
 }
 
-func (g *game) claimMatch(name string, cards []uint32) (int, score, *pb.Update) {
-	var ps []pos
+func (g *Game) claimMatch(name string, cards []int) (ResultType, Score, Update) {
+	var ps []Position
 	if g.gameover() {
-		return LATE, g.scores[name], nil
+		return ResultLate, g.Scores[name], nil
 	}
 	for _, c := range cards {
 		if p, ok := g.findCard(c); !ok {
-			return LATE, g.scores[name], nil
+			return ResultLate, g.Scores[name], nil
 		} else {
 			ps = append(ps, p)
 		}
 	}
 	if len(cards) == 3 && isMatch(cards[0], cards[1], cards[2]) {
 		for _, p := range ps {
-			delete(g.cards, p)
+			delete(g.Cards, p)
 		}
-		s := g.scores[name]
-		s.match += 1
-		g.scores[name] = s
-		return RIGHT, s, &pb.Update{
-			UpdateOneof: &pb.Update_Change{
-				Change: &pb.UpdateChange{
-					ChangeOneof: &pb.UpdateChange_Match{
-						Match: &pb.UpdateChange_ChangeMatch{
-							Positions: toPbPositions(ps),
-						},
-					},
-				},
-			},
-		}
+		s := g.Scores[name]
+		s.Match += 1
+		g.Scores[name] = s
+		return ResultCorrect, s, ChangeMatch(ps)
 	}
-	s := g.scores[name]
-	s.matchwrong += 1
-	g.scores[name] = s
-	return WRONG, s, nil
+	s := g.Scores[name]
+	s.MatchWrong += 1
+	g.Scores[name] = s
+	return ResultWrong, s, nil
 }
 
-func (g *game) claimNomatch(name string, cards []uint32) (int, score, *pb.Update) {
+func (g *Game) claimNomatch(name string, cards []int) (ResultType, Score, Update) {
 	if g.gameover() || len(cards) < 12 {
-		return LATE, g.scores[name], nil
+		return ResultLate, g.Scores[name], nil
 	}
 	cs := g.listCards()
-	equal := func(as, bs []uint32) bool {
+	equal := func(as, bs []int) bool {
 		if len(as) != len(bs) {
 			return false
 		}
-		var (
-			xs []int
-			ys []int
-		)
-		for _, a := range as {
-			xs = append(xs, int(a))
-		}
-		for _, b := range bs {
-			ys = append(ys, int(b))
-		}
-		sort.Ints(xs)
-		sort.Ints(ys)
-		for i := 0; i < len(xs); i++ {
-			if xs[i] != ys[i] {
+		sort.Ints(as)
+		sort.Ints(bs)
+		for i := 0; i < len(as); i++ {
+			if as[i] != bs[i] {
 				return false
 			}
 		}
 		return true
 	}
 	if !equal(cs, cards) {
-		return LATE, g.scores[name], nil
+		return ResultLate, g.Scores[name], nil
 	}
 	c := g.countMatches()
 	if c == 0 {
-		s := g.scores[name]
-		s.nomatch += 1
-		g.scores[name] = s
-		return RIGHT, s, g.dealMore()
+		s := g.Scores[name]
+		s.NoMatch += 1
+		g.Scores[name] = s
+		return ResultCorrect, s, g.dealMore()
 	}
 	log.Printf("wrong nomatch claim, %d matches, these cards %+v", c, cards)
-	s := g.scores[name]
-	s.nomatchwrong += 1
-	g.scores[name] = s
-	return WRONG, s, makeRevealCount(c)
+	s := g.Scores[name]
+	s.NoMatchWrong += 1
+	g.Scores[name] = s
+	return ResultWrong, s, makeRevealCount(c)
 }
 
-func (g *game) dealMore() *pb.Update {
-	cs := map[pos]uint32{}
+func (g *Game) dealMore() Update {
+	var cs []PlacedCard
 	x := g.columns()
-	for y := uint32(0); y < 3; y++ {
-		p := pos{x: x, y: y}
-		if len(g.deck) > 0 {
-			c := g.deck[0]
-			g.deck = g.deck[1:]
-			g.cards[p] = c
-			cs[p] = c
+	for y := 0; y < 3; y++ {
+		p := Position{X: x, Y: y}
+		if len(g.Deck) > 0 {
+			c := g.Deck[0]
+			g.Deck = g.Deck[1:]
+			g.Cards[p] = c
+			cs = append(cs, PlacedCard{p, c})
 		}
 	}
-	return makeDeal(cs)
+	return ChangeDeal(cs)
 }
 
-func (g *game) columns() uint32 {
-	var m uint32
-	for p := range g.cards {
-		if p.x+1 > m {
-			m = p.x + 1
+func (g *Game) columns() int {
+	m := -1
+	for p := range g.Cards {
+		if p.X+1 > m {
+			m = p.X + 1
 		}
 	}
 	if m < 4 {
@@ -275,41 +240,41 @@ func (g *game) columns() uint32 {
 	return m
 }
 
-func (g *game) empty(p pos) bool {
-	_, ok := g.cards[p]
+func (g *Game) empty(p Position) bool {
+	_, ok := g.Cards[p]
 	return !ok
 }
 
-func (g *game) compact() *pb.Update {
+func (g *Game) compact() Update {
 	cols := g.columns()
-	up := func(p pos) pos {
-		if p.y == 2 {
-			return pos{x: p.x + 1, y: 0}
+	up := func(p Position) Position {
+		if p.Y == 2 {
+			return Position{X: p.X + 1, Y: 0}
 		} else {
-			return pos{x: p.x, y: p.y + 1}
+			return Position{X: p.X, Y: p.Y + 1}
 		}
 	}
-	down := func(p pos) pos {
-		if p.y == 0 {
-			return pos{x: p.x - 1, y: 2}
+	down := func(p Position) Position {
+		if p.Y == 0 {
+			return Position{X: p.X - 1, Y: 2}
 		} else {
-			return pos{x: p.x, y: p.y - 1}
+			return Position{X: p.X, Y: p.Y - 1}
 		}
 	}
-	l := pos{x: 0, y: 0}
-	h := pos{x: cols - 1, y: 2}
-	var moves []*pb.UpdateChange_ChangeMove_MoveOne
+	l := Position{X: 0, Y: 0}
+	h := Position{X: cols - 1, Y: 2}
+	var moves []Move
 	for {
-		for ; !g.empty(l) && l.x < cols; l = up(l) {
+		for ; !g.empty(l) && l.X < cols; l = up(l) {
 		}
-		for ; g.empty(h) && h.x > l.x && h.x >= 4; h = down(h) {
+		for ; g.empty(h) && h.X > l.X && h.X >= 4; h = down(h) {
 		}
-		if g.empty(l) && !g.empty(h) && h.x > l.x && h.x >= 4 {
-			g.cards[l] = g.cards[h]
-			delete(g.cards, h)
-			moves = append(moves, &pb.UpdateChange_ChangeMove_MoveOne{
-				From: toPbPosition(h),
-				To:   toPbPosition(l),
+		if g.empty(l) && !g.empty(h) && h.X > l.X && h.X >= 4 {
+			g.Cards[l] = g.Cards[h]
+			delete(g.Cards, h)
+			moves = append(moves, Move{
+				From: h,
+				To:   l,
 			})
 		} else {
 			break
@@ -318,57 +283,33 @@ func (g *game) compact() *pb.Update {
 	if len(moves) == 0 {
 		return nil
 	}
-	return &pb.Update{
-		UpdateOneof: &pb.Update_Change{
-			Change: &pb.UpdateChange{
-				ChangeOneof: &pb.UpdateChange_Move{
-					Move: &pb.UpdateChange_ChangeMove{
-						Moves: moves,
-					},
-				},
-			},
-		},
-	}
+	return ChangeMove(moves)
 }
 
-func (g *game) deal() *pb.Update {
-	d := map[pos]uint32{}
+func (g *Game) deal() Update {
+	var cs []PlacedCard
 	for x := 0; x < 4; x++ {
 		for y := 0; y < 3; y++ {
-			p := pos{x: uint32(x), y: uint32(y)}
-			if _, ok := g.cards[p]; !ok {
-				if len(g.deck) > 0 {
-					c := g.deck[0]
-					g.deck = g.deck[1:]
-					g.cards[p] = c
-					d[p] = c
+			p := Position{X: x, Y: y}
+			if _, ok := g.Cards[p]; !ok {
+				if len(g.Deck) > 0 {
+					c := g.Deck[0]
+					g.Deck = g.Deck[1:]
+					g.Cards[p] = c
+					cs = append(cs, PlacedCard{p, c})
 				}
 			}
 		}
 	}
-	log.Printf("dealing %d cards", len(d))
-	return makeDeal(d)
-}
-
-func makeRevealCount(count int) *pb.Update {
-	return nil
-}
-
-func makeDeal(cs map[pos]uint32) *pb.Update {
 	if len(cs) == 0 {
 		return nil
 	}
-	return &pb.Update{
-		UpdateOneof: &pb.Update_Change{
-			Change: &pb.UpdateChange{
-				ChangeOneof: &pb.UpdateChange_Deal{
-					Deal: &pb.UpdateChange_ChangeDeal{
-						Cards: toPbCards(cs),
-					},
-				},
-			},
-		},
-	}
+	log.Printf("dealing %d cards", len(cs))
+	return ChangeDeal(cs)
+}
+
+func makeRevealCount(count int) Update {
+	return nil
 }
 
 func (r *Room) loop() {
@@ -377,67 +318,81 @@ func (r *Room) loop() {
 		clientId int
 		clients  = map[int]*client{}
 		present  = map[string]struct{}{}
-		g        *game
+		g        *Game
 	)
 	for {
-		var updates []*pb.Update
+		var updates []Update
 		select {
-		case c := <-r.connects:
-			c.sendId <- clientId
-			clients[clientId] = c
+		case cl := <-r.connects:
+			cl.sendId <- clientId
+			clients[clientId] = cl
 			clientId++
-			present[c.blob.FirstName] = struct{}{}
+			present[cl.blob.FirstName] = struct{}{}
 			if g != nil {
-				g.add(c.blob.FirstName)
+				g.add(cl.blob.FirstName)
 			}
-			c.updates <- makeFull(g, present)
-			updates = append(updates, makeJoin(c.blob))
-		case cl := <-r.claims:
-			c := clients[cl.clientId]
-			if cl.claim == nil {
-				log.Printf("removing client %d", cl.clientId)
-				close(c.updates)
-				delete(clients, cl.clientId)
+			cl.updates <- makeFull(g, present)
+			updates = append(updates, EventJoin{Name: cl.blob.FirstName})
+		case c := <-r.cmds:
+			cl := clients[c.clientId]
+			switch cmd := c.command.(type) {
+			case CmdDisconnect:
+				log.Printf("removing client %d", c.clientId)
+				close(cl.updates)
+				delete(clients, c.clientId)
 				// todo: clean-up present?
-			} else {
-				log.Print("received claim")
-				if g == nil || g.gameover() {
-					if cl.claim.Type == pb.ClaimType_CLAIM_NOMATCH && len(cl.claim.Cards) == 0 {
-						log.Printf("starting game on behalf of %s", c.blob.FirstName)
-						g = newGame()
-						for p := range present {
-							g.add(p)
-						}
-						updates = append(updates, makeFull(g, present), g.deal())
-					} else {
-						log.Printf("out of game claim: %+v", cl.claim)
-					}
-				} else {
-					switch cl.claim.Type {
-					case pb.ClaimType_CLAIM_MATCH:
-						res, score, up := g.claimMatch(c.blob.FirstName, cl.claim.Cards)
-						updates = append(updates,
-							up,
-							g.compact(),
-							g.deal(),
-							makeClaimed(c.blob.FirstName, cl.claim.Type, res, score))
-						if g.gameover() {
-							log.Printf("game over")
-							h := &game{
-								scores: g.scores,
-							}
-							g = nil
-							updates = append(updates, makeFull(h, present))
-						}
-					case pb.ClaimType_CLAIM_NOMATCH:
-						res, score, up := g.claimNomatch(c.blob.FirstName, cl.claim.Cards)
-						updates = append(updates,
-							up,
-							makeClaimed(c.blob.FirstName, cl.claim.Type, res, score))
-					default:
-						log.Printf("ignoring claim: %+v", cl.claim)
-					}
+			case CmdStart:
+				if g != nil && !g.gameover() {
+					log.Printf("game in progress, ignoring start message")
+					break
 				}
+				log.Printf("starting game on behalf of %s", cl.blob.FirstName)
+				g = newGame()
+				for p := range present {
+					g.add(p)
+				}
+				updates = append(updates, makeFull(g, present), g.deal())
+			case CmdClaim:
+				if g == nil || g.gameover() {
+					log.Printf("out of game claim: %+v", cmd)
+					break
+				}
+				switch cmd.Type {
+				case ClaimMatch:
+					res, score, up := g.claimMatch(cl.blob.FirstName, cmd.Cards)
+					updates = append(updates,
+						up,
+						g.compact(),
+						g.deal(),
+						EventClaimed{
+							Name:   cl.blob.FirstName,
+							Type:   cmd.Type,
+							Result: res,
+							Score:  score,
+						})
+					if g.gameover() {
+						log.Printf("game over")
+						h := &Game{
+							Scores: g.Scores,
+						}
+						g = nil
+						updates = append(updates, makeFull(h, present))
+					}
+				case ClaimNoMatch:
+					res, score, up := g.claimNomatch(cl.blob.FirstName, cmd.Cards)
+					updates = append(updates,
+						up,
+						EventClaimed{
+							Name:   cl.blob.FirstName,
+							Type:   cmd.Type,
+							Result: res,
+							Score:  score,
+						})
+				default:
+					log.Printf("unknown claim type: %s", cmd.Type)
+				}
+			default:
+				log.Printf("unknown command: %+v", cmd)
 			}
 		}
 		count := 0
@@ -453,152 +408,156 @@ func (r *Room) loop() {
 	}
 }
 
-func makeJoin(b Blob) *pb.Update {
-	return &pb.Update{
-		UpdateOneof: &pb.Update_Event{
-			Event: &pb.UpdateEvent{
-				EventOneof: &pb.UpdateEvent_Join{
-					Join: &pb.UpdateEvent_EventJoin{
-						Name: b.FirstName,
-					},
-				},
-			},
-		},
-	}
+type Position struct {
+	X int
+	Y int
 }
 
-func toPbResult(r int) pb.UpdateEvent_EventClaimed_Result {
-	switch r {
-	case RIGHT:
-		return pb.UpdateEvent_EventClaimed_CORRECT
-	case WRONG:
-		return pb.UpdateEvent_EventClaimed_WRONG
-	default:
-		return pb.UpdateEvent_EventClaimed_LATE
-	}
+type Score struct {
+	Match        int
+	MatchWrong   int
+	NoMatch      int
+	NoMatchWrong int
 }
 
-func makeClaimed(name string, typ pb.ClaimType, res int, s score) *pb.Update {
-	return &pb.Update{
-		UpdateOneof: &pb.Update_Event{
-			Event: &pb.UpdateEvent{
-				EventOneof: &pb.UpdateEvent_Claimed{
-					Claimed: &pb.UpdateEvent_EventClaimed{
-						Name:   name,
-						Type:   typ,
-						Result: toPbResult(res),
-						Score:  toPbScore(s),
-					},
-				},
-			},
-		},
-	}
+type ClaimType string
+
+const (
+	ClaimMatch   ClaimType = "match"
+	ClaimNoMatch ClaimType = "nomatch"
+)
+
+type ResultType string
+
+const (
+	ResultCorrect = "correct"
+	ResultWrong   = "wrong"
+	ResultLate    = "late"
+)
+
+type Command interface {
+	isCommand()
 }
 
-type pos struct {
-	x uint32
-	y uint32
+type CmdDisconnect struct{}        //synthetic
+func (c CmdDisconnect) isCommand() {}
+
+type CmdStart struct{}
+
+func (c CmdStart) isCommand() {}
+
+type CmdClaim struct {
+	Type  ClaimType
+	Cards []int
 }
 
-type score struct {
-	match        uint32
-	matchwrong   uint32
-	nomatch      uint32
-	nomatchwrong uint32
+func (c CmdClaim) isCommand() {}
+
+type EventJoin struct {
+	Name string
 }
 
-func toPbPosition(p pos) *pb.Position {
-	return &pb.Position{
-		X: p.x,
-		Y: p.y,
-	}
+func (u EventJoin) isUpdate()   {}
+func (u EventJoin) tag() string { return "eventJoin" }
+
+type EventClaimed struct {
+	Name   string
+	Type   ClaimType
+	Result ResultType
+	Score  Score
 }
 
-func toPbPositions(ps []pos) []*pb.Position {
-	var out []*pb.Position
-	for _, p := range ps {
-		out = append(out, toPbPosition(p))
-	}
-	return out
+func (u EventClaimed) isUpdate()   {}
+func (u EventClaimed) tag() string { return "eventClaimed" }
+
+type ChangeMatch []Position
+
+func (u ChangeMatch) isUpdate()   {}
+func (u ChangeMatch) tag() string { return "changeMatch" }
+
+type PlacedCard struct {
+	Position Position
+	Card     int
 }
 
-func toPbCards(cards map[pos]uint32) []*pb.PlacedCard {
-	var out []*pb.PlacedCard
-	for p, c := range cards {
-		out = append(out, &pb.PlacedCard{
-			Position: toPbPosition(p),
-			Card:     c,
-		})
-	}
-	return out
+type ChangeDeal []PlacedCard
+
+func (u ChangeDeal) isUpdate()   {}
+func (u ChangeDeal) tag() string { return "changeDeal" }
+
+type Move struct {
+	From Position
+	To   Position
 }
 
-func toPbPlayerScores(scores map[string]score) []*pb.UpdateFull_PlayerScore {
-	var out []*pb.UpdateFull_PlayerScore
-	for p, s := range scores {
-		out = append(out, &pb.UpdateFull_PlayerScore{
-			Name:  p,
-			Score: toPbScore(s),
-		})
-	}
-	return out
+type ChangeMove []Move
+
+func (u ChangeMove) isUpdate()   {}
+func (u ChangeMove) tag() string { return "changeMove" }
+
+type Full struct {
+	Cols      int
+	Rows      int
+	MatchSize int
+	DeckSize  int
+	Cards     map[Position]int
+	Scores    map[string]Score
 }
 
-func toZeroPbPlayerScores(scores map[string]struct{}) []*pb.UpdateFull_PlayerScore {
-	var out []*pb.UpdateFull_PlayerScore
-	for p := range scores {
-		out = append(out, &pb.UpdateFull_PlayerScore{
-			Name:  p,
-			Score: &pb.Score{},
-		})
-	}
-	return out
+func (u Full) isUpdate()   {}
+func (u Full) tag() string { return "full" }
+
+type Update interface {
+	isUpdate()
+	tag() string
 }
 
-func toPbScore(s score) *pb.Score {
-	return &pb.Score{
-		Match:        s.match,
-		Matchwrong:   s.matchwrong,
-		Nomatch:      s.nomatch,
-		Nomatchwrong: s.nomatchwrong,
-	}
-}
-
-func makeFull(g *game, present map[string]struct{}) *pb.Update {
+func makeFull(g *Game, present map[string]struct{}) Update {
 	var (
-		deckSize uint32 = 0
-		cards    []*pb.PlacedCard
-		scores   = toZeroPbPlayerScores(present)
+		deckSize = 0
+		cards    = map[Position]int{}
+		scores   = map[string]Score{}
 	)
-	if g != nil {
+	if g == nil {
+		for p := range present {
+			scores[p] = Score{}
+		}
+	} else {
 		deckSize = g.deckSize()
-		scores = toPbPlayerScores(g.scores)
-		cards = toPbCards(g.cards)
+		scores = g.Scores
+		cards = g.Cards
 	}
-	return &pb.Update{
-		UpdateOneof: &pb.Update_Full{
-			Full: &pb.UpdateFull{
-				Cols:      4,
-				Rows:      3,
-				MatchSize: 3,
-				DeckSize:  deckSize,
-				Cards:     cards,
-				Scores:    scores,
-			},
-		},
+	return Full{
+		Cols:      4,
+		Rows:      3,
+		MatchSize: 3,
+		DeckSize:  deckSize,
+		Cards:     cards,
+		Scores:    scores,
 	}
 }
 
-func (r *Room) connect(b Blob) (<-chan *pb.Update, chan<- *claim, <-chan int) {
+func (r *Room) connect(b Blob) (<-chan Update, chan<- *cmd, <-chan int) {
 	log.Printf("player connecting: %s", b.FirstName)
-	updates := make(chan *pb.Update)
+	updates := make(chan Update)
 	sendId := make(chan int)
 	r.connects <- &client{
 		blob:    b,
 		updates: updates,
 		sendId:  sendId,
 	}
-	return updates, r.claims, sendId
+	return updates, r.cmds, sendId
+}
+
+var commandTagMap edn.TagMap
+
+func init() {
+	if err := commandTagMap.AddTagStruct("triples/claim", CmdClaim{}); err != nil {
+		panic(err)
+	}
+	if err := commandTagMap.AddTagStruct("triples/start", CmdStart{}); err != nil {
+		panic(err)
+	}
 }
 
 func (r *Room) Serve(b Blob, w http.ResponseWriter, req *http.Request) {
@@ -609,18 +568,18 @@ func (r *Room) Serve(b Blob, w http.ResponseWriter, req *http.Request) {
 	}
 	defer conn.Close()
 
-	updates, claims, getId := r.connect(b)
+	updates, cmds, getId := r.connect(b)
 
 	go func() {
 		clientId := <-getId
 		defer func() {
-			claims <- &claim{
+			cmds <- &cmd{
 				clientId: clientId,
-				claim:    nil,
+				command:  CmdDisconnect{},
 			}
 		}()
 		for {
-			t, m, err := conn.NextReader()
+			t, r, err := conn.NextReader()
 			if err != nil {
 				log.Printf("conn err: %s", err)
 				return
@@ -628,14 +587,16 @@ func (r *Room) Serve(b Blob, w http.ResponseWriter, req *http.Request) {
 			switch t {
 			case websocket.TextMessage:
 				log.Printf("receiving message from %s", b.FirstName)
-				cl := &pb.Claim{}
-				if err := jsonpb.Unmarshal(m, cl); err != nil {
-					log.Printf("proto err: %s", err)
+				d := edn.NewDecoder(r)
+				d.UseTagMap(&commandTagMap)
+				var c Command
+				if err := d.Decode(&c); err != nil {
+					log.Printf("decode err: %s", err)
 					return
 				}
-				claims <- &claim{
+				cmds <- &cmd{
 					clientId: clientId,
-					claim:    cl,
+					command:  c,
 				}
 			default:
 				log.Printf("ignoring message type: %d", t)
@@ -652,12 +613,11 @@ func (r *Room) Serve(b Blob, w http.ResponseWriter, req *http.Request) {
 	log.Print("left room")
 }
 
-func writeUpdate(conn *websocket.Conn, u *pb.Update) error {
+func writeUpdate(conn *websocket.Conn, u Update) error {
 	w, err := conn.NextWriter(websocket.TextMessage)
 	if err != nil {
 		return err
 	}
 	defer w.Close()
-	m := jsonpb.Marshaler{}
-	return m.Marshal(w, u)
+	return edn.NewEncoder(w).Encode(edn.Tag{"triples/" + u.tag(), u})
 }
