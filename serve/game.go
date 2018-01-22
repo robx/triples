@@ -215,7 +215,7 @@ func (g *Game) claimNomatch(name string, cards []int) (ResultType, Score, Update
 }
 
 func (g *Game) dealMore() Update {
-	cs := map[Position]int{}
+	var cs []PlacedCard
 	x := g.columns()
 	for y := 0; y < 3; y++ {
 		p := Position{X: x, Y: y}
@@ -223,7 +223,7 @@ func (g *Game) dealMore() Update {
 			c := g.Deck[0]
 			g.Deck = g.Deck[1:]
 			g.Cards[p] = c
-			cs[p] = c
+			cs = append(cs, PlacedCard{p, c})
 		}
 	}
 	return ChangeDeal{
@@ -293,7 +293,7 @@ func (g *Game) compact() Update {
 }
 
 func (g *Game) deal() Update {
-	d := map[Position]int{}
+	var cs []PlacedCard
 	for x := 0; x < 4; x++ {
 		for y := 0; y < 3; y++ {
 			p := Position{X: x, Y: y}
@@ -302,17 +302,17 @@ func (g *Game) deal() Update {
 					c := g.Deck[0]
 					g.Deck = g.Deck[1:]
 					g.Cards[p] = c
-					d[p] = c
+					cs = append(cs, PlacedCard{p, c})
 				}
 			}
 		}
 	}
-	if len(d) == 0 {
+	if len(cs) == 0 {
 		return nil
 	}
-	log.Printf("dealing %d cards", len(d))
+	log.Printf("dealing %d cards", len(cs))
 	return ChangeDeal{
-		Cards: d,
+		Cards: cs,
 	}
 }
 
@@ -485,8 +485,13 @@ type ChangeMatch struct {
 func (u ChangeMatch) isUpdate()   {}
 func (u ChangeMatch) tag() string { return "changeMatch" }
 
+type PlacedCard struct {
+	Position Position
+	Card     int
+}
+
 type ChangeDeal struct {
-	Cards map[Position]int
+	Cards []PlacedCard
 }
 
 func (u ChangeDeal) isUpdate()   {}

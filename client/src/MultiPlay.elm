@@ -98,6 +98,13 @@ update msg model =
                     ( applyUpdate upd model, Cmd.none )
 
 
+type Update
+    = Full FullRecord
+    | EventJoin String
+    | EventClaimed ClaimRecord
+    | Change Game.Action
+
+
 type alias Score =
     { match : Int
     , matchWrong : Int
@@ -106,13 +113,23 @@ type alias Score =
     }
 
 
-type Update
-    = Full FullRecord
-    | EventJoin String
+type ClaimType
+    = ClaimMatch
+    | ClaimNoMatch
 
 
+type ResultType
+    = ResultCorrect
+    | ResultWrong
+    | ResultLate
 
-{- record alias for Decode.map -}
+
+type alias ClaimRecord =
+    { name : String
+    , type_ : ClaimType
+    , result : ResultType
+    , score : Score
+    }
 
 
 type alias FullRecord =
@@ -125,48 +142,117 @@ type alias FullRecord =
     }
 
 
-posDecoder : Decode.Decoder Game.Pos
-posDecoder =
-    Decode.map2
-        (,)
-        (Decode.field "x" Decode.int)
-        (Decode.field "y" Decode.int)
-
-
-cardDecoder : Decode.Decoder Card.Card
-cardDecoder =
-    Decode.map Card.fromInt Decode.int
-
-
-scoreDecoder : Decode.Decoder Score
-scoreDecoder =
-    Decode.map4
-        Score
-        (Decode.field "match" Decode.int)
-        (Decode.field "matchWrong" Decode.int)
-        (Decode.field "noMatch" Decode.int)
-        (Decode.field "noMatchWrong" Decode.int)
-
-
 updateDecoder : Decode.Decoder Update
 updateDecoder =
     let
-        fullDecoder =
-            Decode.map6
-                FullRecord
-                (Decode.field "cols" Decode.int)
-                (Decode.field "rows" Decode.int)
-                (Decode.field "matchSize" Decode.int)
-                (Decode.field "deckSize" Decode.int)
-                (Decode.field "cards" (Decode.dict posDecoder cardDecoder))
-                (Decode.field "scores" (Decode.dict Decode.string scoreDecoder))
+        pos =
+            Decode.map2
+                (,)
+                (Decode.field "x" Decode.int)
+                (Decode.field "y" Decode.int)
 
-        eventJoinDecoder =
-            Decode.field "name" Decode.string
+        card =
+            Decode.map Card.fromInt Decode.int
+
+        placedCard =
+            Decode.map2
+                (,)
+                (Decode.field "position" pos)
+                (Decode.field "card" card)
+
+        cards =
+            Decode.dict pos card
+
+        score =
+            Decode.map4
+                Score
+                (Decode.field "match" Decode.int)
+                (Decode.field "matchWrong" Decode.int)
+                (Decode.field "noMatch" Decode.int)
+                (Decode.field "noMatchWrong" Decode.int)
+
+        full =
+            Decode.map Full <|
+                Decode.map6
+                    FullRecord
+                    (Decode.field "cols" Decode.int)
+                    (Decode.field "rows" Decode.int)
+                    (Decode.field "matchSize" Decode.int)
+                    (Decode.field "deckSize" Decode.int)
+                    (Decode.field "cards" cards)
+                    (Decode.field "scores" (Decode.dict Decode.string score))
+
+        eventJoin =
+            Decode.map EventJoin
+                (Decode.field "name" Decode.string)
+
+        claimType =
+            Decode.string
+                |> Decode.andThen
+                    (\s ->
+                        case s of
+                            "match" ->
+                                Decode.succeed ClaimMatch
+
+                            "nomatch" ->
+                                Decode.succeed ClaimNoMatch
+
+                            _ ->
+                                Decode.fail <| "unknown claim type: " ++ s
+                    )
+
+        resultType =
+            Decode.string
+                |> Decode.andThen
+                    (\s ->
+                        case s of
+                            "correct" ->
+                                Decode.succeed ResultCorrect
+
+                            "wrong" ->
+                                Decode.succeed ResultWrong
+
+                            "late" ->
+                                Decode.succeed ResultLate
+
+                            _ ->
+                                Decode.fail <| "unknown result type: " ++ s
+                    )
+
+        eventClaimed =
+            Decode.map EventClaimed <|
+                Decode.map4
+                    ClaimRecord
+                    (Decode.field "name" Decode.string)
+                    (Decode.field "type" claimType)
+                    (Decode.field "result" resultType)
+                    (Decode.field "score" score)
+
+        changeMatch =
+            Decode.map (Change << Game.Match)
+                (Decode.list pos)
+
+        changeDeal =
+            Decode.map (Change << Game.Deal)
+                (Decode.list placedCard)
+
+        move =
+            Decode.map2
+                (,)
+                (Decode.field "from" pos)
+                (Decode.field "to" pos)
+
+        changeMove =
+            Decode.map (Change << Game.Move)
+                (Decode.list move)
     in
     Decode.tagged
-        [ ( "triples/full", Decode.map Full fullDecoder )
-        , ( "triples/eventJoin", Decode.map EventJoin eventJoinDecoder )
+        [ ( "triples/full", full )
+        , ( "triples/eventJoin", eventJoin )
+        , ( "triples/eventClaimed", eventClaimed )
+        , ( "triples/changeMatch", changeMatch )
+        , ( "triples/changeDeal", changeDeal )
+        , ( "triples/changeMove", changeMove )
         ]
 
 
@@ -189,64 +275,40 @@ applyUpdate update model =
                 , scores = Dict.toList (Dict.map (always calcScore) full.scores)
             }
 
+        Change action ->
+            { model | game = Game.viewApply action model.game }
+
         EventJoin name ->
             { model
                 | log = (name ++ " joined!") :: model.log
                 , scores = addPlayer name model.scores
             }
 
+        EventClaimed claimed ->
+            let
+                typ =
+                    case claimed.type_ of
+                        ClaimMatch ->
+                            "a triple"
 
+                        ClaimNoMatch ->
+                            "no triple"
 
-{-
-   Proto.Change change ->
-       let
-           action =
-               case change.changeOneof of
-                   Proto.Deal deal ->
-                       Game.Deal <| toList deal.cards
+                res =
+                    case claimed.result of
+                        ResultCorrect ->
+                            "correct"
 
-                   Proto.Match match ->
-                       Game.Match <| List.map (getPosition << Just) match.positions
+                        ResultWrong ->
+                            "wrong"
 
-                   Proto.Move move ->
-                       Game.Move <| List.map (\m -> ( getPosition m.from, getPosition m.to )) move.moves
-
-                   _ ->
-                       Debug.crash "unknown change"
-       in
-       { model | game = Game.viewApply action model.game }
-
-   Proto.Event event ->
-       case event.eventOneof of
-           Proto.Claimed claimed ->
-               let
-                   res =
-                       case claimed.result of
-                           Proto.UpdateEvent_EventClaimed_Correct ->
-                               "correct"
-
-                           Proto.UpdateEvent_EventClaimed_Wrong ->
-                               "wrong"
-
-                           Proto.UpdateEvent_EventClaimed_Late ->
-                               "late"
-
-                   typ =
-                       case claimed.type_ of
-                           Proto.ClaimMatch ->
-                               "a triple"
-
-                           Proto.ClaimNomatch ->
-                               "no triple"
-               in
-               { model
-                   | log = (claimed.name ++ " claimed " ++ typ ++ " (" ++ res ++ ")") :: model.log
-                   , scores = updateScores (toScore claimed) model.scores
-               }
-
-           _ ->
-               Debug.crash "unknown event"
--}
+                        ResultLate ->
+                            "late"
+            in
+            { model
+                | log = (claimed.name ++ " claimed " ++ typ ++ " (" ++ res ++ ")") :: model.log
+                , scores = updateScores ( claimed.name, calcScore claimed.score ) model.scores
+            }
 
 
 updateScores : ( String, Int ) -> List ( String, Int ) -> List ( String, Int )
