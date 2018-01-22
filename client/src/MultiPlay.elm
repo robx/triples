@@ -83,24 +83,23 @@ update : Msg -> Model -> ( Model, Cmd msg )
 update msg model =
     case msg of
         User (Choose p) ->
-            Debug.log ("got a choose message: " ++ toString p) <|
-                if Game.viewPosEmpty model.game p then
-                    ( model, Cmd.none )
-                else if List.member p model.selected then
-                    ( { model | selected = List.Extra.remove p model.selected }, Cmd.none )
-                else if List.length model.selected < (model.game.matchSize - 1) then
-                    ( { model | selected = p :: model.selected }, Cmd.none )
-                else
-                    let
-                        claimed =
-                            p :: model.selected
-                    in
-                    ( { model | selected = [] }
-                    , sendCommand model.wsURL <|
-                        Claim
-                            ClaimMatch
-                            (List.filterMap (flip Dict.get model.game.table) claimed)
-                    )
+            if Game.viewPosEmpty model.game p then
+                ( model, Cmd.none )
+            else if List.member p model.selected then
+                ( { model | selected = List.Extra.remove p model.selected }, Cmd.none )
+            else if List.length model.selected < (model.game.matchSize - 1) then
+                ( { model | selected = p :: model.selected }, Cmd.none )
+            else
+                let
+                    claimed =
+                        p :: model.selected
+                in
+                ( { model | selected = [] }
+                , sendCommand model.wsURL <|
+                    Claim
+                        ClaimMatch
+                        (List.filterMap (flip Dict.get model.game.table) claimed)
+                )
 
         User UserDeal ->
             ( model
@@ -258,11 +257,11 @@ updateDecoder =
 
         changeMatch =
             Decode.map (Change << Game.Match)
-                (Decode.list pos)
+                (Decode.vector pos)
 
         changeDeal =
             Decode.map (Change << Game.Deal)
-                (Decode.list placedCard)
+                (Decode.vector placedCard)
 
         move =
             Decode.map2
@@ -272,7 +271,7 @@ updateDecoder =
 
         changeMove =
             Decode.map (Change << Game.Move)
-                (Decode.list move)
+                (Decode.vector move)
     in
     Decode.tagged
         [ ( "triples/full", full )

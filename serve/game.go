@@ -169,9 +169,7 @@ func (g *Game) claimMatch(name string, cards []int) (ResultType, Score, Update) 
 		s := g.Scores[name]
 		s.Match += 1
 		g.Scores[name] = s
-		return ResultCorrect, s, ChangeMatch{
-			Positions: ps,
-		}
+		return ResultCorrect, s, ChangeMatch(ps)
 	}
 	s := g.Scores[name]
 	s.MatchWrong += 1
@@ -226,9 +224,7 @@ func (g *Game) dealMore() Update {
 			cs = append(cs, PlacedCard{p, c})
 		}
 	}
-	return ChangeDeal{
-		Cards: cs,
-	}
+	return ChangeDeal(cs)
 }
 
 func (g *Game) columns() int {
@@ -287,9 +283,7 @@ func (g *Game) compact() Update {
 	if len(moves) == 0 {
 		return nil
 	}
-	return ChangeMove{
-		Moves: moves,
-	}
+	return ChangeMove(moves)
 }
 
 func (g *Game) deal() Update {
@@ -311,9 +305,7 @@ func (g *Game) deal() Update {
 		return nil
 	}
 	log.Printf("dealing %d cards", len(cs))
-	return ChangeDeal{
-		Cards: cs,
-	}
+	return ChangeDeal(cs)
 }
 
 func makeRevealCount(count int) Update {
@@ -478,9 +470,7 @@ type EventClaimed struct {
 func (u EventClaimed) isUpdate()   {}
 func (u EventClaimed) tag() string { return "eventClaimed" }
 
-type ChangeMatch struct {
-	Positions []Position
-}
+type ChangeMatch []Position
 
 func (u ChangeMatch) isUpdate()   {}
 func (u ChangeMatch) tag() string { return "changeMatch" }
@@ -490,9 +480,7 @@ type PlacedCard struct {
 	Card     int
 }
 
-type ChangeDeal struct {
-	Cards []PlacedCard
-}
+type ChangeDeal []PlacedCard
 
 func (u ChangeDeal) isUpdate()   {}
 func (u ChangeDeal) tag() string { return "changeDeal" }
@@ -502,9 +490,7 @@ type Move struct {
 	To   Position
 }
 
-type ChangeMove struct {
-	Moves []Move
-}
+type ChangeMove []Move
 
 func (u ChangeMove) isUpdate()   {}
 func (u ChangeMove) tag() string { return "changeMove" }
