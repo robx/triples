@@ -120,17 +120,25 @@ viewGame model =
         cols =
             Game.viewColumns model.game
 
-        d ( pos, card ) =
+        position pos =
             let
                 ( x, y ) =
                     pos
             in
-            Svg.g
-                [ SvgA.transform (trans ( toFloat x, toFloat y ))
-                , SvgE.onClick (model.choose pos)
-                , SvgA.style "cursor: pointer;"
+            [ ( "grid-column", toString (x + 1) ++ "/" ++ toString (x + 2) )
+            , ( "grid-row", toString (y + 1) ++ "/" ++ toString (y + 2) )
+            ]
+
+        d ( pos, card ) =
+            Svg.svg [ HtmlA.style <| position pos, SvgA.viewBox "-30 -30 60 60" ]
+                [ Svg.g
+                    [ SvgE.onClick (model.choose pos)
+                    , HtmlA.style [ ( "cursor", "pointer" ) ]
+                    ]
+                    [ Graphics.svgDefs model.style
+                    , Graphics.draw model.style (List.member pos model.selected) card
+                    ]
                 ]
-                [ Graphics.draw model.style (List.member pos model.selected) card ]
 
         gs =
             Dict.toList model.game.table |> List.map d
@@ -147,81 +155,64 @@ viewGame model =
                             , SvgA.style "cursor: pointer;"
                             ]
             in
-            Svg.g
-                (SvgA.transform (trans ( toFloat cols, 0 )) :: handler)
-                [ Graphics.button model.style model.button.label ]
-
-        trans ( c, r ) =
-            let
-                x =
-                    (c + 0.5) * (10 + model.style.layout.w)
-
-                y =
-                    (r + 0.5) * (10 + model.style.layout.h)
-            in
-            "translate(" ++ toString x ++ "," ++ toString y ++ ")"
-
-        viewBox =
-            let
-                width =
-                    (model.style.layout.w + 10) * (toFloat cols + 1)
-
-                height =
-                    (model.style.layout.h + 10) * toFloat model.game.rows
-            in
-            "0 0 " ++ toString width ++ " " ++ toString height
-
-        infobox =
-            case model.info of
-                Nothing ->
-                    []
-
-                Just info ->
-                    let
-                        w =
-                            model.style.layout.w
-
-                        h =
-                            2 * model.style.layout.h + 10
-                    in
-                    [ Svg.g [ SvgA.transform (trans ( toFloat cols, 1.5 )) ]
-                        [ Svg.rect
-                            [ SvgA.width (toString w)
-                            , SvgA.height (toString h)
-                            , SvgA.x (toString (-w / 2))
-                            , SvgA.y (toString (-h / 2))
-                            , SvgA.rx "6"
-                            , SvgA.ry "6"
-                            , SvgA.fill "lightgray"
-                            ]
-                            []
-                        , Svg.g [ SvgA.transform "scale(0.333333)" ]
-                            [ Svg.foreignObject
-                                [ SvgA.width (toString (3 * (w - 5)))
-                                , SvgA.height (toString (3 * (h - 5)))
-                                , SvgA.x (toString (-3 / 2 * (w - 5)))
-                                , SvgA.y (toString (-3 / 2 * (h - 5)))
-                                ]
-                                [ Html.div
-                                    [ HtmlA.id "infobox" ]
-                                    [ Html.table []
-                                        (List.map (\( n, s ) -> Html.tr [] [ Html.td [] [ Html.text <| n ], Html.td [] [ Html.text <| toString s ] ]) info.scores)
-                                    , Html.ul [] <|
-                                        List.map (\e -> Html.li [] [ Html.text e ]) info.events
-                                    ]
-                                ]
-                            ]
-                        ]
+            Svg.svg [ HtmlA.style <| position ( cols, 0 ), SvgA.viewBox "-30 -30 60 60" ]
+                [ Svg.g
+                    handler
+                    [ Graphics.svgDefs model.style
+                    , Graphics.button model.style model.button.label
                     ]
+                ]
+
+        {-
+           infobox =
+               case model.info of
+                   Nothing ->
+                       []
+
+                   Just info ->
+                       let
+                           w =
+                               model.style.layout.w
+
+                           h =
+                               2 * model.style.layout.h + 10
+                       in
+                       [ Svg.g [ SvgA.transform (trans ( toFloat cols, 1.5 )) ]
+                           [ Svg.rect
+                               [ SvgA.width (toString w)
+                               , SvgA.height (toString h)
+                               , SvgA.x (toString (-w / 2))
+                               , SvgA.y (toString (-h / 2))
+                               , SvgA.rx "6"
+                               , SvgA.ry "6"
+                               , SvgA.fill "lightgray"
+                               ]
+                               []
+                           , Svg.g [ SvgA.transform "scale(0.333333)" ]
+                               [ Svg.foreignObject
+                                   [ SvgA.width (toString (3 * (w - 5)))
+                                   , SvgA.height (toString (3 * (h - 5)))
+                                   , SvgA.x (toString (-3 / 2 * (w - 5)))
+                                   , SvgA.y (toString (-3 / 2 * (h - 5)))
+                                   ]
+                                   [ Html.div
+                                       [ HtmlA.id "infobox" ]
+                                       [ Html.table []
+                                           (List.map (\( n, s ) -> Html.tr [] [ Html.td [] [ Html.text <| n ], Html.td [] [ Html.text <| toString s ] ]) info.scores)
+                                       , Html.ul [] <|
+                                           List.map (\e -> Html.li [] [ Html.text e ]) info.events
+                                       ]
+                                   ]
+                               ]
+                           ]
+                       ]
+        -}
     in
-    Svg.svg
-        [ SvgA.viewBox viewBox
-        , SvgA.width "800px"
-        , SvgA.height "600px"
-        , HtmlA.id "main"
-        , HtmlA.style [ ( "background", model.style.colors.table ) ]
+    Html.div
+        [ HtmlA.id "main"
+        , HtmlA.style [ ( "background", model.style.colors.table ), ( "display", "grid" ) ]
         ]
-        (Graphics.svgDefs model.style :: button :: infobox ++ gs)
+        (button :: gs)
 
 
 update : Time.Time -> Msg -> Model -> ( Model, Maybe (Result Msg) )
