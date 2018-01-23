@@ -619,5 +619,5 @@ func writeUpdate(conn *websocket.Conn, u Update) error {
 		return err
 	}
 	defer w.Close()
-	return edn.NewEncoder(w).Encode(edn.Tag{"triples/" + u.tag(), u})
+	return edn.NewEncoder(w).Encode(edn.Tag{Tagname: "triples/" + u.tag(), Value: u})
 }
