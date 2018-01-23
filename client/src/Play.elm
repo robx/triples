@@ -209,10 +209,13 @@ viewGame model =
         -}
     in
     Html.div
-        [ HtmlA.id "main"
-        , HtmlA.style [ ( "background", model.style.colors.table ), ( "display", "grid" ) ]
+        [ HtmlA.class "main" ]
+        [ Html.div
+            [ HtmlA.id "game"
+            , HtmlA.style [ ( "display", "grid" ) ]
+            ]
+            (button :: gs)
         ]
-        (button :: gs)
 
 
 update : Time.Time -> Msg -> Model -> ( Model, Maybe (Result Msg) )

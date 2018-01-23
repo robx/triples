@@ -4,14 +4,17 @@ html, body, div#container {
     margin: 0;
 }
 
-#main {
+.main {
     width: 100vw;
     height: 100vh;
     margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 @media (min-width: 800px) {
-    #main {
+    .main {
         width: 800px;
     }
 }
@@ -22,7 +25,7 @@ div#container {
     align-items: center;
 }
 
-div#main {
+#menu {
     display: flex;
     justify-content: center;
     align-items: center;
