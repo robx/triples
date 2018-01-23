@@ -11,3 +11,24 @@
 <script>
   var app = Elm.Main.fullscreen();
 </script>
+<script>
+function rescale() {
+  var grid = document.getElementById("game");
+  if (grid === null) {
+    return;
+  }
+  var maxw = 800;
+
+  var w = Math.min(Math.max(document.documentElement.clientWidth, window.innerWidth || 0), maxw);
+  var h = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
+
+  var gh = grid.offsetHeight;
+  var gw = grid.offsetWidth;
+
+  var f = Math.min(w / gw, h / gh);
+
+  grid.style.transform = "scale(" + f + ")";
+}
+window.addEventListener('resize', () => { rescale(); });
+rescale();
+</script>

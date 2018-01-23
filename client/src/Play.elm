@@ -130,10 +130,11 @@ viewGame model =
             ]
 
         d ( pos, card ) =
-            Svg.svg [ HtmlA.style <| position pos, SvgA.viewBox "-30 -30 60 60" ]
+            Svg.svg [ HtmlA.style <| position pos, SvgA.viewBox "0 0 60 60" ]
                 [ Svg.g
                     [ SvgE.onClick (model.choose pos)
                     , HtmlA.style [ ( "cursor", "pointer" ) ]
+                    , SvgA.transform "translate(30,30)"
                     ]
                     [ Graphics.svgDefs model.style
                     , Graphics.draw model.style (List.member pos model.selected) card
@@ -155,9 +156,9 @@ viewGame model =
                             , SvgA.style "cursor: pointer;"
                             ]
             in
-            Svg.svg [ HtmlA.style <| position ( cols, 0 ), SvgA.viewBox "-30 -30 60 60" ]
+            Svg.svg [ HtmlA.style <| position ( cols, 0 ), SvgA.viewBox "0 0 60 60" ]
                 [ Svg.g
-                    handler
+                    ((SvgA.transform "translate(30,30)"):: handler)
                     [ Graphics.svgDefs model.style
                     , Graphics.button model.style model.button.label
                     ]
@@ -209,13 +210,10 @@ viewGame model =
         -}
     in
     Html.div
-        [ HtmlA.class "main" ]
-        [ Html.div
-            [ HtmlA.id "game"
-            , HtmlA.style [ ( "display", "grid" ) ]
-            ]
-            (button :: gs)
+        [ HtmlA.id "game"
+        , HtmlA.style [ ( "display", "grid" ) ]
         ]
+        (button :: gs)
 
 
 update : Time.Time -> Msg -> Model -> ( Model, Maybe (Result Msg) )

@@ -79,15 +79,17 @@ newMenu params msg =
 view : Model -> Html.Html Msg
 view model =
     Html.div [ HtmlA.id "container", HtmlA.style [ ( "background", model.params.style.colors.table ) ] ]
-        [ case model.page of
-            Menu menu ->
-                Menu.view Go menu
+        [ Html.div [ HtmlA.id "main" ]
+            [ case model.page of
+                Menu menu ->
+                    Menu.view Go menu
 
-            Play game ->
-                Html.map (\m -> GetTimeAndThen (PlayMsg m)) <| Play.view model.params.style game
+                Play game ->
+                    Html.map (\m -> GetTimeAndThen (PlayMsg m)) <| Play.view model.params.style game
 
-            MultiPlay game ->
-                Html.map MultiPlayMsg <| MultiPlay.view model.params.style game
+                MultiPlay game ->
+                    Html.map MultiPlayMsg <| MultiPlay.view model.params.style game
+            ]
         ]
 
 

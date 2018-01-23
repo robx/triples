@@ -52,7 +52,7 @@ view go model =
         def =
             { type_ = Game.Triples, short = False, multi = False }
     in
-    Html.div [ HtmlA.class "main", HtmlA.id "menu" ] <|
+    Html.div [ HtmlA.id "menu" ] <|
         addScore
             [ Html.div
                 [ HtmlA.class "msg", HtmlA.style [ ( "background", trd model.style.colors.symbols ) ] ]
