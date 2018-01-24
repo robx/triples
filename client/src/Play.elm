@@ -4,6 +4,7 @@ module Play
         , Model
         , Msg(..)
         , Result(..)
+        , Size
         , UserMsg(..)
         , init
         , update
@@ -67,8 +68,14 @@ type UserMsg
     | UserDeal
 
 
-view : Style.Style -> Model -> Html.Html Msg
-view style model =
+type alias Size =
+    { w : Int
+    , h : Int
+    }
+
+
+view : Style.Style -> Size -> Model -> Html.Html Msg
+view style maxSize model =
     let
         gameView =
             Game.toView model.game
@@ -76,6 +83,7 @@ view style model =
     Html.map User <|
         viewGame
             { style = style
+            , maxSize = maxSize
             , game = gameView
             , selected = model.selected
             , button =
@@ -102,6 +110,7 @@ view style model =
 
 type alias ViewGameModel msg =
     { style : Style.Style
+    , maxSize : Size
     , game : Game.GameView
     , selected : List Game.Pos
     , button : { message : Maybe msg, label : String }
@@ -120,6 +129,27 @@ viewGame model =
         cols =
             Game.viewColumns model.game
 
+        rows =
+            model.game.rows
+
+        h =
+            toFloat rows
+
+        w =
+            toFloat (cols + 1)
+
+        width =
+            min model.maxSize.w <| round (toFloat model.maxSize.h / h * w)
+
+        height =
+            min model.maxSize.h <| round (toFloat model.maxSize.w / w * h)
+
+        f =
+            toFloat width / w
+
+        px n =
+            toString n ++ "px"
+
         position pos =
             let
                 ( x, y ) =
@@ -130,11 +160,11 @@ viewGame model =
             ]
 
         d ( pos, card ) =
-            Svg.svg [ HtmlA.style <| position pos, SvgA.viewBox "0 0 60 60" ]
+            Svg.svg [ HtmlA.style <| position pos, SvgA.width (px f), SvgA.height (px f), SvgA.viewBox "0 0 60 60" ]
                 [ Svg.g
                     [ SvgE.onClick (model.choose pos)
                     , HtmlA.style [ ( "cursor", "pointer" ) ]
-                    , SvgA.transform "translate(30,30)"
+                    , SvgA.transform "translate(30, 30)"
                     ]
                     [ Graphics.svgDefs model.style
                     , Graphics.draw model.style (List.member pos model.selected) card
@@ -156,9 +186,9 @@ viewGame model =
                             , SvgA.style "cursor: pointer;"
                             ]
             in
-            Svg.svg [ HtmlA.style <| position ( cols, 0 ), SvgA.viewBox "0 0 60 60" ]
+            Svg.svg [ HtmlA.style <| position ( cols, 0 ), SvgA.width (px f), SvgA.height (px f), SvgA.viewBox "0 0 60 60" ]
                 [ Svg.g
-                    ((SvgA.transform "translate(30,30)"):: handler)
+                    (SvgA.transform "translate(30, 30)" :: handler)
                     [ Graphics.svgDefs model.style
                     , Graphics.button model.style model.button.label
                     ]
@@ -211,7 +241,11 @@ viewGame model =
     in
     Html.div
         [ HtmlA.id "game"
-        , HtmlA.style [ ( "display", "grid" ) ]
+        , HtmlA.style
+            [ ( "display", "grid" )
+            , ( "width", px width )
+            , ( "height", px height )
+            ]
         ]
         (button :: gs)
 

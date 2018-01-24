@@ -53,11 +53,12 @@ type Msg
     | WSUpdate String
 
 
-view : Style.Style -> Model -> Html.Html Msg
-view style model =
+view : Style.Style -> Play.Size -> Model -> Html.Html Msg
+view style maxSize model =
     Html.map User <|
         Play.viewGame
             { style = style
+            , maxSize = maxSize
             , game = model.game
             , selected = model.selected
             , button =

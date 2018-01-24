@@ -5,18 +5,10 @@ html, body, #container {
 }
 
 #main {
-    width: 100vw;
-    height: 100vh;
     margin: 0;
     display: flex;
     justify-content: center;
     align-items: center;
-}
-
-@media (min-width: 800px) {
-    #main {
-        width: 800px;
-    }
 }
 
 #container {
@@ -34,10 +26,6 @@ html, body, #container {
     margin: 0;
 }
 
-#game {
-    width: 100%;
-}
-
 div.msg {
     padding: 5px 0;
     margin: 5px;
@@ -48,6 +36,11 @@ div.msg {
 div.buttons {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
+}
+
+#game {
+    grid-column-gap: 0;
+    grid-row-gap: 0;
 }
 
 svg {

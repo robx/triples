@@ -1,4 +1,4 @@
-module Main exposing (..)
+port module Main exposing (..)
 
 import Card exposing (..)
 import Debug
@@ -22,6 +22,18 @@ import Time
 import UrlParser exposing ((<?>))
 
 
+port getSize : () -> Cmd msg
+
+
+type alias Size =
+    { w : Int
+    , h : Int
+    }
+
+
+port size : (Size -> msg) -> Sub msg
+
+
 main =
     Navigation.program (always Ignore)
         { init = init
@@ -34,6 +46,7 @@ main =
 type alias Model =
     { location : Navigation.Location
     , params : Params
+    , size : Size
     , page : Page
     }
 
@@ -61,8 +74,9 @@ init loc =
     ( { location = loc
       , params = params
       , page = newMenu params Nothing
+      , size = { w = 0, h = 0 }
       }
-    , Cmd.none
+    , getSize ()
     )
 
 
@@ -78,17 +92,24 @@ newMenu params msg =
 
 view : Model -> Html.Html Msg
 view model =
+    let
+        maxSize =
+            { w = min model.size.w 800, h = model.size.h }
+    in
     Html.div [ HtmlA.id "container", HtmlA.style [ ( "background", model.params.style.colors.table ) ] ]
-        [ Html.div [ HtmlA.id "main" ]
+        [ Html.div
+            [ HtmlA.id "main"
+            , HtmlA.style [ ( "width", toString maxSize.w ++ "px" ), ( "height", toString maxSize.h ++ "px" ) ]
+            ]
             [ case model.page of
                 Menu menu ->
                     Menu.view Go menu
 
                 Play game ->
-                    Html.map (\m -> GetTimeAndThen (PlayMsg m)) <| Play.view model.params.style game
+                    Html.map (\m -> GetTimeAndThen (PlayMsg m)) <| Play.view model.params.style maxSize game
 
                 MultiPlay game ->
-                    Html.map MultiPlayMsg <| MultiPlay.view model.params.style game
+                    Html.map MultiPlayMsg <| MultiPlay.view model.params.style maxSize game
             ]
         ]
 
@@ -115,6 +136,7 @@ type Msg
     | MultiPlayMsg MultiPlay.Msg
     | Ignore
     | APIResult (Result Http.Error String)
+    | Resize Size
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -132,6 +154,9 @@ update msg model =
 
         ( GetTimeAndThen m, _ ) ->
             ( model, Task.perform m Time.now )
+
+        ( Resize size, _ ) ->
+            ( { model | size = size }, Cmd.none )
 
         ( Go def, _ ) ->
             if def.multi then
@@ -334,9 +359,12 @@ score log =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    case model.page of
-        MultiPlay m ->
-            Sub.map MultiPlayMsg <| MultiPlay.subscriptions m
+    Sub.batch
+        [ size Resize
+        , case model.page of
+            MultiPlay m ->
+                Sub.map MultiPlayMsg <| MultiPlay.subscriptions m
 
-        _ ->
-            Sub.none
+            _ ->
+                Sub.none
+        ]
