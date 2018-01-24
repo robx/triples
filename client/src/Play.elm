@@ -223,9 +223,10 @@ viewGame model =
                                 , ( "width", px (0.7 * f) )
                                 , ( "height", px (1.7 * f) )
                                 , ( "z-index", "1" )
+                                , ( "font-size", px (0.1 * f) )
                                 ]
                             ]
-                            [ Html.table []
+                            [ Html.table [ HtmlA.style [( "font-size", px (0.1 * f) )] ]
                                 (List.map (\( n, s ) -> Html.tr [] [ Html.td [] [ Html.text <| n ], Html.td [] [ Html.text <| toString s ] ]) info.scores)
                             , Html.ul [] <|
                                 List.map (\e -> Html.li [] [ Html.text e ]) info.events

@@ -19,5 +19,8 @@
   window.addEventListener('resize', (ev) => {
     sendSize();
   });
+  window.addEventListener('orientationchange', (ev) => {
+    sendSize();
+  });
   app.ports.getSize.subscribe(sendSize)
 </script>
