@@ -150,17 +150,8 @@ viewGame model =
         px n =
             toString n ++ "px"
 
-        position pos =
-            let
-                ( x, y ) =
-                    pos
-            in
-            [ ( "grid-column", toString (x + 1) ++ "/" ++ toString (x + 2) )
-            , ( "grid-row", toString (y + 1) ++ "/" ++ toString (y + 2) )
-            ]
-
-        d pos g =
-            Svg.svg [ HtmlA.style <| position pos, SvgA.width (px f), SvgA.height (px f), SvgA.viewBox "0 0 60 60" ]
+        d g =
+            Svg.svg [ SvgA.width (px f), SvgA.height (px f), SvgA.viewBox "0 0 60 60" ]
                 [ g ]
 
         dcard pos card =
@@ -191,7 +182,7 @@ viewGame model =
                                     Dict.get ( x, y ) model.game.table
                                         |> Maybe.map (dcard ( x, y ))
                                         |> Maybe.withDefault dempty
-                                        |> d ( x, y )
+                                        |> d
                                 )
                     )
                 |> List.concat
@@ -208,7 +199,7 @@ viewGame model =
                             , SvgA.style "cursor: pointer;"
                             ]
             in
-            d ( cols + 1, 0 ) <|
+            d <|
                 Svg.g
                     (SvgA.transform "translate(30, 30)" :: handler)
                     [ Graphics.svgDefs model.style
@@ -230,10 +221,7 @@ viewGame model =
                     in
                     [ Html.div
                         [ HtmlA.style
-                            [ ( "grid-column", toString (cols + 1) ++ "/" ++ toString (cols + 2) )
-                            , ( "grid-row", "2/4" )
-                            , ( "position", "relative" )
-                            ]
+                            [ ( "position", "relative" ) ]
                         ]
                         [ Html.div
                             [ HtmlA.id "infobox"
@@ -247,8 +235,12 @@ viewGame model =
                                 , ( "font-size", px (0.1 * f) )
                                 ]
                             ]
-                            [ Html.table [ HtmlA.style [ ( "font-size", px (0.1 * f) ) ] ]
-                                (List.map (\( n, s ) -> Html.tr [] [ Html.td [] [ Html.text <| n ], Html.td [] [ Html.text <| toString s ] ]) info.scores)
+                            [ Html.table
+                                [ HtmlA.style [ ( "font-size", px (0.1 * f) ) ] ]
+                                (info.scores |> List.map (\( n, s ) ->
+                                    Html.tr []
+                                        [ Html.td [] [ Html.text <| n ]
+                                        , Html.td [] [ Html.text <| toString s ] ]))
                             , Html.ul [] <|
                                 List.map (\e -> Html.li [] [ Html.text e ]) info.events
                             ]
@@ -287,7 +279,7 @@ viewGame model =
            ]
         -}
         ]
-        (button :: (infobox ++ gs))
+        (gs ++ (button :: infobox))
 
 
 update : Time.Time -> Msg -> Model -> ( Model, Maybe (Result Msg) )
