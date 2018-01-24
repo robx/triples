@@ -374,7 +374,7 @@ func (r *Room) loop() {
 						log.Printf("game over")
 						h := &Game{
 							Scores: g.Scores,
-							Cards: map[Position]int{},
+							Cards:  map[Position]int{},
 						}
 						g = nil
 						updates = append(updates, makeFull(h, present))
