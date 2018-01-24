@@ -194,60 +194,78 @@ viewGame model =
                     ]
                 ]
 
-        {-
-           infobox =
-               case model.info of
-                   Nothing ->
-                       []
+        infobox =
+            case model.info of
+                Nothing ->
+                    []
 
-                   Just info ->
-                       let
-                           w =
-                               model.style.layout.w
+                Just info ->
+                    let
+                        iw =
+                            px f
 
-                           h =
-                               2 * model.style.layout.h + 10
-                       in
-                       [ Svg.g [ SvgA.transform (trans ( toFloat cols, 1.5 )) ]
-                           [ Svg.rect
-                               [ SvgA.width (toString w)
-                               , SvgA.height (toString h)
-                               , SvgA.x (toString (-w / 2))
-                               , SvgA.y (toString (-h / 2))
-                               , SvgA.rx "6"
-                               , SvgA.ry "6"
-                               , SvgA.fill "lightgray"
-                               ]
-                               []
-                           , Svg.g [ SvgA.transform "scale(0.333333)" ]
-                               [ Svg.foreignObject
-                                   [ SvgA.width (toString (3 * (w - 5)))
-                                   , SvgA.height (toString (3 * (h - 5)))
-                                   , SvgA.x (toString (-3 / 2 * (w - 5)))
-                                   , SvgA.y (toString (-3 / 2 * (h - 5)))
-                                   ]
-                                   [ Html.div
-                                       [ HtmlA.id "infobox" ]
-                                       [ Html.table []
-                                           (List.map (\( n, s ) -> Html.tr [] [ Html.td [] [ Html.text <| n ], Html.td [] [ Html.text <| toString s ] ]) info.scores)
-                                       , Html.ul [] <|
-                                           List.map (\e -> Html.li [] [ Html.text e ]) info.events
-                                       ]
-                                   ]
-                               ]
-                           ]
-                       ]
-        -}
+                        ih =
+                            px (2 * f)
+                    in
+                    [ Html.div
+                        [ HtmlA.style
+                            [ ( "grid-column", toString (cols + 1) ++ "/" ++ toString (cols + 2) )
+                            , ( "grid-row", "2/4" )
+                            , ( "position", "relative" )
+                            ]
+                        ]
+                        [ Html.div
+                            [ HtmlA.id "infobox"
+                            , HtmlA.style
+                                [ ( "position", "absolute" )
+                                , ( "top", px (0.15 * f) )
+                                , ( "left", px (0.15 * f) )
+                                , ( "width", px (0.7 * f) )
+                                , ( "height", px (1.7 * f) )
+                                , ( "z-index", "1" )
+                                ]
+                            ]
+                            [ Html.table []
+                                (List.map (\( n, s ) -> Html.tr [] [ Html.td [] [ Html.text <| n ], Html.td [] [ Html.text <| toString s ] ]) info.scores)
+                            , Html.ul [] <|
+                                List.map (\e -> Html.li [] [ Html.text e ]) info.events
+                            ]
+                        , Svg.svg
+                            [ SvgA.width iw
+                            , SvgA.height ih
+                            , SvgA.viewBox "0 0 60 120"
+                            , HtmlA.style [ ( "position", "absolute" ), ( "top", "0" ), ( "left", "0" ) ]
+                            ]
+                            [ Svg.rect
+                                [ SvgA.width "50"
+                                , SvgA.height "110"
+                                , SvgA.x "5"
+                                , SvgA.y "5"
+                                , SvgA.rx "6"
+                                , SvgA.ry "6"
+                                , SvgA.fill "lightgray"
+                                ]
+                                []
+                            ]
+                        ]
+                    ]
     in
     Html.div
         [ HtmlA.id "game"
-        , HtmlA.style
-            [ ( "display", "grid" )
-            , ( "width", px width )
-            , ( "height", px height )
-            ]
+        , SvgA.style <| "display: grid; grid-template-columns: repeat(" ++ toString (cols + 1) ++ ",1fr); grid-template-rows: repeat(3,1fr); width: " ++ px width ++ "; height: " ++ px height ++ ";"
+
+        {- , HtmlA.style
+           [ ( "display", "grid" )
+           , ( "grid-template-columns", "repeat(" ++ toString (cols + 1) ++ ",fr)" )
+           , ( "grid-template-rows", "repeat(3,fr)" )
+           , ( "grrrrr", "grrrrr")
+           , ( "background-color", "green" )
+           , ( "width", px width )
+           , ( "height", px height )
+           ]
+        -}
         ]
-        (button :: gs)
+        (button :: (infobox ++ gs))
 
 
 update : Time.Time -> Msg -> Model -> ( Model, Maybe (Result Msg) )

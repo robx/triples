@@ -58,13 +58,10 @@ svg text {
 }
 
 #infobox {
-    box-sizing: border-box;
-    width: 100%;
-    height: 100%;
-    padding-left: 20px;
     overflow-y: scroll;
 }
 
 #infobox ul {
     padding: 0;
+    list-style: none;
 }
