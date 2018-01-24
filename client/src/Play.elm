@@ -55,6 +55,7 @@ type Event
 type Msg
     = StartGame
     | AutoDeal
+    | AutoCompact
     | User UserMsg
 
 
@@ -288,16 +289,22 @@ update now msg model =
         StartGame ->
             ( { model | log = [ ( now, EStart ) ] }, Nothing )
 
-        AutoDeal ->
+        AutoCompact ->
             let
                 ( gamecpct, moves ) =
                     Game.compact model.game
             in
             ( { model
-                | game = Game.deal gamecpct
-                , dealing = False
+                | game = gamecpct
                 , selected = List.map moves model.selected
-                , answer = Nothing
+              }
+            , Just <| After 250 AutoDeal
+            )
+
+        AutoDeal ->
+            ( { model
+                | game = Game.deal model.game
+                , dealing = False
               }
             , Nothing
             )
@@ -320,7 +327,7 @@ update now msg model =
                             ( now, ESet ) :: model.log
                     in
                     ( { model | game = newgame, selected = [], dealing = True, answer = Nothing, log = log }
-                    , Just (After 500 AutoDeal)
+                    , Just (After 250 AutoCompact)
                     )
                 else
                     ( model, Nothing )
