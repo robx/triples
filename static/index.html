@@ -12,8 +12,8 @@
   var app = Elm.Main.fullscreen();
   function sendSize() {
     app.ports.size.send({
-      w: window.innerWidth,
-      h: window.innerHeight,
+      w: document.documentElement.clientWidth,
+      h: document.documentElement.clientHeight
     });
   }
   window.addEventListener('resize', (ev) => {

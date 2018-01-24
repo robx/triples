@@ -159,20 +159,42 @@ viewGame model =
             , ( "grid-row", toString (y + 1) ++ "/" ++ toString (y + 2) )
             ]
 
-        d ( pos, card ) =
+        d pos g =
             Svg.svg [ HtmlA.style <| position pos, SvgA.width (px f), SvgA.height (px f), SvgA.viewBox "0 0 60 60" ]
-                [ Svg.g
-                    [ SvgE.onClick (model.choose pos)
-                    , HtmlA.style [ ( "cursor", "pointer" ) ]
-                    , SvgA.transform "translate(30, 30)"
-                    ]
-                    [ Graphics.svgDefs model.style
-                    , Graphics.draw model.style (List.member pos model.selected) card
-                    ]
+                [ g ]
+
+        dcard pos card =
+            Svg.g
+                [ SvgE.onClick (model.choose pos)
+                , HtmlA.style [ ( "cursor", "pointer" ) ]
+                , SvgA.transform "translate(30, 30)"
+                ]
+                [ Graphics.svgDefs model.style
+                , Graphics.draw model.style (List.member pos model.selected) card
+                ]
+
+        dempty =
+            Svg.g
+                [ SvgA.transform "translate(30, 30)"
+                ]
+                [ Graphics.svgDefs model.style
+                , Graphics.button model.style ""
                 ]
 
         gs =
-            Dict.toList model.game.table |> List.map d
+            List.range 0 (cols - 1)
+                |> List.map
+                    (\x ->
+                        List.range 0 (rows - 1)
+                            |> List.map
+                                (\y ->
+                                    Dict.get ( x, y ) model.game.table
+                                        |> Maybe.map (dcard ( x, y ))
+                                        |> Maybe.withDefault dempty
+                                        |> d ( x, y )
+                                )
+                    )
+                |> List.concat
 
         button =
             let
@@ -186,13 +208,12 @@ viewGame model =
                             , SvgA.style "cursor: pointer;"
                             ]
             in
-            Svg.svg [ HtmlA.style <| position ( cols, 0 ), SvgA.width (px f), SvgA.height (px f), SvgA.viewBox "0 0 60 60" ]
-                [ Svg.g
+            d ( cols + 1, 0 ) <|
+                Svg.g
                     (SvgA.transform "translate(30, 30)" :: handler)
                     [ Graphics.svgDefs model.style
                     , Graphics.button model.style model.button.label
                     ]
-                ]
 
         infobox =
             case model.info of
@@ -226,7 +247,7 @@ viewGame model =
                                 , ( "font-size", px (0.1 * f) )
                                 ]
                             ]
-                            [ Html.table [ HtmlA.style [( "font-size", px (0.1 * f) )] ]
+                            [ Html.table [ HtmlA.style [ ( "font-size", px (0.1 * f) ) ] ]
                                 (List.map (\( n, s ) -> Html.tr [] [ Html.td [] [ Html.text <| n ], Html.td [] [ Html.text <| toString s ] ]) info.scores)
                             , Html.ul [] <|
                                 List.map (\e -> Html.li [] [ Html.text e ]) info.events
