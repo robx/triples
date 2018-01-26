@@ -72,9 +72,10 @@ func newRoom(blob Blob) *Room {
 }
 
 type Game struct {
-	Deck   []int
-	Cards  map[Position]int
-	Scores map[string]Score
+	Deck           []int
+	Cards          map[Position]int
+	Scores         map[string]Score
+	ClaimedNoMatch bool
 }
 
 func newGame() *Game {
@@ -178,7 +179,7 @@ func (g *Game) claimMatch(name string, cards []int) (ResultType, Score, Update) 
 }
 
 func (g *Game) claimNomatch(name string, cards []int) (ResultType, Score, Update) {
-	if g.gameover() || len(cards) < 12 {
+	if g.gameover() || len(cards) < 12 || g.ClaimedNoMatch {
 		return ResultLate, g.Scores[name], nil
 	}
 	cs := g.listCards()
@@ -206,6 +207,7 @@ func (g *Game) claimNomatch(name string, cards []int) (ResultType, Score, Update
 		return ResultCorrect, s, g.dealMore()
 	}
 	log.Printf("wrong nomatch claim, %d matches, these cards %+v", c, cards)
+	g.ClaimedNoMatch = true
 	s := g.Scores[name]
 	s.NoMatchWrong += 1
 	g.Scores[name] = s
@@ -224,6 +226,7 @@ func (g *Game) dealMore() Update {
 			cs = append(cs, PlacedCard{p, c})
 		}
 	}
+	g.ClaimedNoMatch = false
 	return ChangeDeal(cs)
 }
 
@@ -305,6 +308,7 @@ func (g *Game) deal() Update {
 		return nil
 	}
 	log.Printf("dealing %d cards", len(cs))
+	g.ClaimedNoMatch = false
 	return ChangeDeal(cs)
 }
 
