@@ -39,8 +39,11 @@ div.buttons {
 }
 
 #game {
-    grid-template-rows: repeat(3, 1fr);
-    grid-auto-flow: column;
+    position: relative;
+}
+
+#game > svg, #game > div {
+    position: absolute;
 }
 
 svg {

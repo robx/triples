@@ -151,8 +151,16 @@ viewGame model =
         px n =
             toString n ++ "px"
 
-        d g =
-            Svg.svg [ SvgA.width (px f), SvgA.height (px f), SvgA.viewBox "0 0 60 60" ]
+        offset ( x, y ) =
+            [ ( "left", toString <| toFloat x * f ), ( "top", toString <| toFloat y * f ) ]
+
+        d pos g =
+            Svg.svg
+                [ SvgA.width (px f)
+                , SvgA.height (px f)
+                , SvgA.viewBox "0 0 60 60"
+                , HtmlA.style (offset pos)
+                ]
                 [ g ]
 
         dcard pos card =
@@ -183,12 +191,12 @@ viewGame model =
                                     Dict.get ( x, y ) model.game.table
                                         |> Maybe.map (dcard ( x, y ))
                                         |> Maybe.withDefault dempty
-                                        |> d
+                                        |> d ( x, y )
                                 )
                     )
                 |> List.concat
 
-        button =
+        button pos =
             let
                 handler =
                     case model.button.message of
@@ -200,14 +208,14 @@ viewGame model =
                             , SvgA.style "cursor: pointer;"
                             ]
             in
-            d <|
+            d pos <|
                 Svg.g
                     (SvgA.transform "translate(30, 30)" :: handler)
                     [ Graphics.svgDefs model.style
                     , Graphics.button model.style model.button.label
                     ]
 
-        infobox =
+        infobox pos =
             case model.info of
                 Nothing ->
                     []
@@ -221,8 +229,7 @@ viewGame model =
                             px (2 * f)
                     in
                     [ Html.div
-                        [ HtmlA.style
-                            [ ( "position", "relative" ) ]
+                        [ HtmlA.style (offset pos)
                         ]
                         [ Html.div
                             [ HtmlA.id "infobox"
@@ -238,10 +245,15 @@ viewGame model =
                             ]
                             [ Html.table
                                 [ HtmlA.style [ ( "font-size", px (0.1 * f) ) ] ]
-                                (info.scores |> List.map (\( n, s ) ->
-                                    Html.tr []
-                                        [ Html.td [] [ Html.text <| n ]
-                                        , Html.td [] [ Html.text <| toString s ] ]))
+                                (info.scores
+                                    |> List.map
+                                        (\( n, s ) ->
+                                            Html.tr []
+                                                [ Html.td [] [ Html.text <| n ]
+                                                , Html.td [] [ Html.text <| toString s ]
+                                                ]
+                                        )
+                                )
                             , Html.ul [] <|
                                 List.map (\e -> Html.li [] [ Html.text e ]) info.events
                             ]
@@ -267,20 +279,9 @@ viewGame model =
     in
     Html.div
         [ HtmlA.id "game"
-        , SvgA.style <| "display: grid; grid-template-columns: repeat(" ++ toString (cols + 1) ++ ",1fr); grid-template-rows: repeat(3,1fr); width: " ++ px width ++ "; height: " ++ px height ++ ";"
-
-        {- , HtmlA.style
-           [ ( "display", "grid" )
-           , ( "grid-template-columns", "repeat(" ++ toString (cols + 1) ++ ",fr)" )
-           , ( "grid-template-rows", "repeat(3,fr)" )
-           , ( "grrrrr", "grrrrr")
-           , ( "background-color", "green" )
-           , ( "width", px width )
-           , ( "height", px height )
-           ]
-        -}
+        , HtmlA.style [ ( "width", px width ), ( "height", px height ) ]
         ]
-        (gs ++ (button :: infobox))
+        (gs ++ (button ( cols, 0 ) :: infobox ( cols, 1 )))
 
 
 update : Time.Time -> Msg -> Model -> ( Model, Maybe (Result Msg) )
