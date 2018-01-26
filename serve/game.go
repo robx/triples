@@ -74,15 +74,15 @@ func newRoom(blob Blob) *Room {
 type Game struct {
 	Deck           []int
 	Cards          map[Position]int
-	Scores         map[string]Score
+	Players        map[string]Status
 	ClaimedNoMatch bool
 }
 
 func newGame() *Game {
 	return &Game{
-		Deck:   rand.Perm(81),
-		Cards:  map[Position]int{},
-		Scores: map[string]Score{},
+		Deck:    rand.Perm(81),
+		Cards:   map[Position]int{},
+		Players: map[string]Status{},
 	}
 }
 
@@ -91,8 +91,8 @@ func (g *Game) deckSize() int {
 }
 
 func (g *Game) add(player string) {
-	s := g.Scores[player]
-	g.Scores[player] = s
+	s := g.Players[player]
+	g.Players[player] = s
 }
 
 func (g *Game) findCard(c int) (Position, bool) {
@@ -151,14 +151,14 @@ func (g *Game) gameover() bool {
 	return g.countMatches() == 0
 }
 
-func (g *Game) claimMatch(name string, cards []int) (ResultType, Score, Update) {
+func (g *Game) claimMatch(name string, cards []int) (ResultType, Status, Update) {
 	var ps []Position
 	if g.gameover() {
-		return ResultLate, g.Scores[name], nil
+		return ResultLate, g.Players[name], nil
 	}
 	for _, c := range cards {
 		if p, ok := g.findCard(c); !ok {
-			return ResultLate, g.Scores[name], nil
+			return ResultLate, g.Players[name], nil
 		} else {
 			ps = append(ps, p)
 		}
@@ -167,20 +167,20 @@ func (g *Game) claimMatch(name string, cards []int) (ResultType, Score, Update) 
 		for _, p := range ps {
 			delete(g.Cards, p)
 		}
-		s := g.Scores[name]
-		s.Match += 1
-		g.Scores[name] = s
+		s := g.Players[name]
+		s.Score += 1
+		g.Players[name] = s
 		return ResultCorrect, s, ChangeMatch(ps)
 	}
-	s := g.Scores[name]
-	s.MatchWrong += 1
-	g.Scores[name] = s
+	s := g.Players[name]
+	s.Score -= 1
+	g.Players[name] = s
 	return ResultWrong, s, nil
 }
 
-func (g *Game) claimNomatch(name string, cards []int) (ResultType, Score, Update) {
+func (g *Game) claimNomatch(name string, cards []int) (ResultType, Status, Update) {
 	if g.gameover() || len(cards) < 12 || g.ClaimedNoMatch {
-		return ResultLate, g.Scores[name], nil
+		return ResultLate, g.Players[name], nil
 	}
 	cs := g.listCards()
 	equal := func(as, bs []int) bool {
@@ -197,20 +197,20 @@ func (g *Game) claimNomatch(name string, cards []int) (ResultType, Score, Update
 		return true
 	}
 	if !equal(cs, cards) {
-		return ResultLate, g.Scores[name], nil
+		return ResultLate, g.Players[name], nil
 	}
 	c := g.countMatches()
 	if c == 0 {
-		s := g.Scores[name]
-		s.NoMatch += 1
-		g.Scores[name] = s
+		s := g.Players[name]
+		s.Score += 1
+		g.Players[name] = s
 		return ResultCorrect, s, g.dealMore()
 	}
 	log.Printf("wrong nomatch claim, %d matches, these cards %+v", c, cards)
 	g.ClaimedNoMatch = true
-	s := g.Scores[name]
-	s.NoMatchWrong += 1
-	g.Scores[name] = s
+	s := g.Players[name]
+	s.Score -= 1
+	g.Players[name] = s
 	return ResultWrong, s, makeRevealCount(c)
 }
 
@@ -372,19 +372,19 @@ func (r *Room) loop() {
 				}
 				switch cmd.Type {
 				case ClaimMatch:
-					res, score, up := g.claimMatch(cl.blob.FirstName, cmd.Cards)
+					res, status, up := g.claimMatch(cl.blob.FirstName, cmd.Cards)
 					send(up, 0)
 					send(EventClaimed{
 						Name:   cl.blob.FirstName,
 						Type:   cmd.Type,
 						Result: res,
-						Score:  score,
+						Score:  status.Score,
 					}, 0)
 					gameover := func() {
 						log.Printf("game over")
 						h := &Game{
-							Scores: g.Scores,
-							Cards:  map[Position]int{},
+							Players: g.Players,
+							Cards:   map[Position]int{},
 						}
 						g = nil
 						send(makeFull(h, present), 250*time.Millisecond)
@@ -399,13 +399,13 @@ func (r *Room) loop() {
 						}
 					}
 				case ClaimNoMatch:
-					res, score, up := g.claimNomatch(cl.blob.FirstName, cmd.Cards)
+					res, status, up := g.claimNomatch(cl.blob.FirstName, cmd.Cards)
 					send(up, 0)
 					send(EventClaimed{
 						Name:   cl.blob.FirstName,
 						Type:   cmd.Type,
 						Result: res,
-						Score:  score,
+						Score:  status.Score,
 					}, 0)
 				default:
 					log.Printf("unknown claim type: %s", cmd.Type)
@@ -422,11 +422,9 @@ type Position struct {
 	Y int
 }
 
-type Score struct {
-	Match        int
-	MatchWrong   int
-	NoMatch      int
-	NoMatchWrong int
+type Status struct {
+	Present bool
+	Score   int
 }
 
 type ClaimType string
@@ -473,7 +471,7 @@ type EventClaimed struct {
 	Name   string
 	Type   ClaimType
 	Result ResultType
-	Score  Score
+	Score  int
 }
 
 func (u EventClaimed) isUpdate()   {}
@@ -510,7 +508,7 @@ type Full struct {
 	MatchSize int
 	DeckSize  int
 	Cards     map[Position]int
-	Scores    map[string]Score
+	Players   map[string]Status
 }
 
 func (u Full) isUpdate()   {}
@@ -525,15 +523,15 @@ func makeFull(g *Game, present map[string]struct{}) Update {
 	var (
 		deckSize = 0
 		cards    = map[Position]int{}
-		scores   = map[string]Score{}
+		players  = map[string]Status{}
 	)
 	if g == nil {
 		for p := range present {
-			scores[p] = Score{}
+			players[p] = Status{}
 		}
 	} else {
 		deckSize = g.deckSize()
-		scores = g.Scores
+		players = g.Players
 		cards = g.Cards
 	}
 	return Full{
@@ -542,7 +540,7 @@ func makeFull(g *Game, present map[string]struct{}) Update {
 		MatchSize: 3,
 		DeckSize:  deckSize,
 		Cards:     cards,
-		Scores:    scores,
+		Players:   players,
 	}
 }
 

@@ -133,11 +133,9 @@ type Update
     | Change Game.Action
 
 
-type alias Score =
-    { match : Int
-    , matchWrong : Int
-    , noMatch : Int
-    , noMatchWrong : Int
+type alias Status =
+    { present : Bool
+    , score : Int
     }
 
 
@@ -156,7 +154,7 @@ type alias ClaimRecord =
     { name : String
     , type_ : ClaimType
     , result : ResultType
-    , score : Score
+    , score : Int
     }
 
 
@@ -166,7 +164,7 @@ type alias FullRecord =
     , matchSize : Int
     , deckSize : Int
     , cards : Dict.Dict Game.Pos Card.Card
-    , scores : Dict.Dict String Score
+    , players : Dict.Dict String Status
     }
 
 
@@ -191,13 +189,11 @@ updateDecoder =
         cards =
             Decode.dict pos card
 
-        score =
-            Decode.map4
-                Score
-                (Decode.field "match" Decode.int)
-                (Decode.field "matchWrong" Decode.int)
-                (Decode.field "noMatch" Decode.int)
-                (Decode.field "noMatchWrong" Decode.int)
+        status =
+            Decode.map2
+                Status
+                (Decode.field "present" Decode.bool)
+                (Decode.field "score" Decode.int)
 
         full =
             Decode.map Full <|
@@ -208,7 +204,7 @@ updateDecoder =
                     (Decode.field "matchSize" Decode.int)
                     (Decode.field "deckSize" Decode.int)
                     (Decode.field "cards" cards)
-                    (Decode.field "scores" (Decode.dict Decode.string score))
+                    (Decode.field "players" (Decode.dict Decode.string status))
 
         eventJoin =
             Decode.map EventJoin
@@ -254,7 +250,7 @@ updateDecoder =
                     (Decode.field "name" Decode.string)
                     (Decode.field "type" claimType)
                     (Decode.field "result" resultType)
-                    (Decode.field "score" score)
+                    (Decode.field "score" Decode.int)
 
         changeMatch =
             Decode.map (Change << Game.Match)
@@ -286,10 +282,6 @@ updateDecoder =
 
 applyUpdate : Update -> Model -> Model
 applyUpdate update model =
-    let
-        calcScore s =
-            s.match - s.matchWrong + s.noMatch - s.noMatchWrong
-    in
     case update of
         Full full ->
             { model
@@ -300,7 +292,7 @@ applyUpdate update model =
                     , deckSize = full.deckSize
                     , matchSize = full.matchSize
                     }
-                , scores = Dict.toList (Dict.map (always calcScore) full.scores)
+                , scores = Dict.toList (Dict.map (always .score) full.players)
                 , selected = []
             }
 
@@ -336,7 +328,7 @@ applyUpdate update model =
             in
             { model
                 | log = (claimed.name ++ " claimed " ++ typ ++ " (" ++ res ++ ")") :: model.log
-                , scores = updateScores ( claimed.name, calcScore claimed.score ) model.scores
+                , scores = updateScores ( claimed.name, claimed.score ) model.scores
             }
 
 
