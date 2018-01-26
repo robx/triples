@@ -273,6 +273,34 @@ viewApply action game =
             List.foldr (<|) game (List.map move1 ms)
 
 
+selectedApply : Action -> List Pos -> List Pos
+selectedApply action selected =
+    let
+        remove1 pos =
+            List.filter ((/=) pos)
+
+        move1 ( from, to ) =
+            List.map <|
+                \pos ->
+                    if pos == from then
+                        to
+                    else
+                        pos
+    in
+    case action of
+        Deal ps ->
+            selected
+
+        Match ps ->
+            if List.any (\s -> List.member s ps) selected then
+                []
+            else
+                selected
+
+        Move ms ->
+            List.foldr (<|) selected (List.map move1 ms)
+
+
 viewColumns : GameView -> Int
 viewColumns g =
     let

@@ -301,10 +301,11 @@ applyUpdate update model =
                     , matchSize = full.matchSize
                     }
                 , scores = Dict.toList (Dict.map (always calcScore) full.scores)
+                , selected = []
             }
 
         Change action ->
-            { model | game = Game.viewApply action model.game }
+            { model | game = Game.viewApply action model.game, selected = Game.selectedApply action model.selected }
 
         EventJoin name ->
             { model
