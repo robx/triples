@@ -343,7 +343,5 @@ update now msg model =
             in
             if over then
                 ( model, Just <| GameOver <| ( now, EEnd ) :: model.log )
-            else if nsets == 0 then
-                ( { model | game = Game.dealMore model.game, answer = Nothing, log = ( now, EDealMoreZero ) :: model.log }, Nothing )
             else
-                ( { model | answer = Just (Game.count model.game), log = ( now, EDealMoreNonzero ) :: model.log }, Nothing )
+                ( { model | game = Game.dealMore model.game, answer = Nothing, log = ( now, EDealMoreZero ) :: model.log }, Nothing )
