@@ -258,11 +258,11 @@ updateDecoder =
 
         changeMatch =
             Decode.map (Change << Game.Match)
-                (Decode.vector pos)
+                (Decode.anyList pos)
 
         changeDeal =
             Decode.map (Change << Game.Deal)
-                (Decode.vector placedCard)
+                (Decode.anyList placedCard)
 
         move =
             Decode.map2
@@ -272,7 +272,7 @@ updateDecoder =
 
         changeMove =
             Decode.map (Change << Game.Move)
-                (Decode.vector move)
+                (Decode.anyList move)
     in
     Decode.tagged
         [ ( "triples/full", full )
