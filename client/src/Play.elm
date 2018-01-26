@@ -12,12 +12,14 @@ module Play
         , viewGame
         )
 
+import Card
 import Dict
 import Game exposing (Game)
 import Graphics
 import Graphics.Style as Style
 import Html
 import Html.Attributes as HtmlA
+import Html.Keyed as HtmlK
 import List.Extra
 import Svg
 import Svg.Attributes as SvgA
@@ -154,17 +156,20 @@ viewGame model =
         offset ( x, y ) =
             [ ( "left", toString <| toFloat x * f ), ( "top", toString <| toFloat y * f ) ]
 
-        d pos g =
-            Svg.svg
+        d pos ( k, g ) =
+            ( k
+            , Svg.svg
                 [ SvgA.width (px f)
                 , SvgA.height (px f)
                 , SvgA.viewBox "0 0 60 60"
                 , HtmlA.style (offset pos)
                 ]
                 [ g ]
+            )
 
         dcard pos card =
-            Svg.g
+            ( "card-" ++ (toString <| Card.toInt card)
+            , Svg.g
                 [ SvgE.onClick (model.choose pos)
                 , HtmlA.style [ ( "cursor", "pointer" ) ]
                 , SvgA.transform "translate(30, 30)"
@@ -172,6 +177,7 @@ viewGame model =
                 [ Graphics.svgDefs model.style
                 , Graphics.draw model.style (List.member pos model.selected) card
                 ]
+            )
 
         dempty =
             Svg.g
@@ -190,7 +196,7 @@ viewGame model =
                                 (\y ->
                                     Dict.get ( x, y ) model.game.table
                                         |> Maybe.map (dcard ( x, y ))
-                                        |> Maybe.withDefault dempty
+                                        |> Maybe.withDefault ( "empty-" ++ toString ( x, y ), dempty )
                                         |> d ( x, y )
                                 )
                     )
@@ -209,11 +215,13 @@ viewGame model =
                             ]
             in
             d pos <|
-                Svg.g
+                ( "button"
+                , Svg.g
                     (SvgA.transform "translate(30, 30)" :: handler)
                     [ Graphics.svgDefs model.style
                     , Graphics.button model.style model.button.label
                     ]
+                )
 
         infobox pos =
             case model.info of
@@ -228,56 +236,58 @@ viewGame model =
                         ih =
                             px (2 * f)
                     in
-                    [ Html.div
-                        [ HtmlA.style (offset pos)
-                        ]
-                        [ Html.div
-                            [ HtmlA.id "infobox"
-                            , HtmlA.style
-                                [ ( "position", "absolute" )
-                                , ( "top", px (0.15 * f) )
-                                , ( "left", px (0.15 * f) )
-                                , ( "width", px (0.7 * f) )
-                                , ( "height", px (1.7 * f) )
-                                , ( "z-index", "1" )
-                                , ( "font-size", px (0.1 * f) )
+                    [ ( "infobox"
+                      , Html.div
+                            [ HtmlA.style (offset pos)
+                            ]
+                            [ Html.div
+                                [ HtmlA.id "infobox"
+                                , HtmlA.style
+                                    [ ( "position", "absolute" )
+                                    , ( "top", px (0.15 * f) )
+                                    , ( "left", px (0.15 * f) )
+                                    , ( "width", px (0.7 * f) )
+                                    , ( "height", px (1.7 * f) )
+                                    , ( "z-index", "1" )
+                                    , ( "font-size", px (0.1 * f) )
+                                    ]
+                                ]
+                                [ Html.table
+                                    [ HtmlA.style [ ( "font-size", px (0.1 * f) ) ] ]
+                                    (info.scores
+                                        |> List.map
+                                            (\( n, s ) ->
+                                                Html.tr []
+                                                    [ Html.td [] [ Html.text <| n ]
+                                                    , Html.td [] [ Html.text <| toString s ]
+                                                    ]
+                                            )
+                                    )
+                                , Html.ul [] <|
+                                    List.map (\e -> Html.li [] [ Html.text e ]) info.events
+                                ]
+                            , Svg.svg
+                                [ SvgA.width iw
+                                , SvgA.height ih
+                                , SvgA.viewBox "0 0 60 120"
+                                , HtmlA.style [ ( "position", "absolute" ), ( "top", "0" ), ( "left", "0" ) ]
+                                ]
+                                [ Svg.rect
+                                    [ SvgA.width "50"
+                                    , SvgA.height "110"
+                                    , SvgA.x "5"
+                                    , SvgA.y "5"
+                                    , SvgA.rx "6"
+                                    , SvgA.ry "6"
+                                    , SvgA.fill "lightgray"
+                                    ]
+                                    []
                                 ]
                             ]
-                            [ Html.table
-                                [ HtmlA.style [ ( "font-size", px (0.1 * f) ) ] ]
-                                (info.scores
-                                    |> List.map
-                                        (\( n, s ) ->
-                                            Html.tr []
-                                                [ Html.td [] [ Html.text <| n ]
-                                                , Html.td [] [ Html.text <| toString s ]
-                                                ]
-                                        )
-                                )
-                            , Html.ul [] <|
-                                List.map (\e -> Html.li [] [ Html.text e ]) info.events
-                            ]
-                        , Svg.svg
-                            [ SvgA.width iw
-                            , SvgA.height ih
-                            , SvgA.viewBox "0 0 60 120"
-                            , HtmlA.style [ ( "position", "absolute" ), ( "top", "0" ), ( "left", "0" ) ]
-                            ]
-                            [ Svg.rect
-                                [ SvgA.width "50"
-                                , SvgA.height "110"
-                                , SvgA.x "5"
-                                , SvgA.y "5"
-                                , SvgA.rx "6"
-                                , SvgA.ry "6"
-                                , SvgA.fill "lightgray"
-                                ]
-                                []
-                            ]
-                        ]
+                      )
                     ]
     in
-    Html.div
+    HtmlK.node "div"
         [ HtmlA.id "game"
         , HtmlA.style [ ( "width", px width ), ( "height", px height ) ]
         ]
