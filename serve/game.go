@@ -320,8 +320,16 @@ func (r *Room) loop() {
 		present  = map[string]struct{}{}
 		g        *Game
 	)
+	send := func(u Update, after time.Duration) {
+		if u == nil {
+			return
+		}
+		time.Sleep(after)
+		for _, c := range clients {
+			c.updates <- u
+		}
+	}
 	for {
-		var updates []Update
 		select {
 		case cl := <-r.connects:
 			cl.sendId <- clientId
@@ -332,7 +340,7 @@ func (r *Room) loop() {
 				g.add(cl.blob.FirstName)
 			}
 			cl.updates <- makeFull(g, present)
-			updates = append(updates, EventJoin{Name: cl.blob.FirstName})
+			send(EventJoin{Name: cl.blob.FirstName}, 0)
 		case c := <-r.cmds:
 			cl := clients[c.clientId]
 			switch cmd := c.command.(type) {
@@ -351,7 +359,8 @@ func (r *Room) loop() {
 				for p := range present {
 					g.add(p)
 				}
-				updates = append(updates, makeFull(g, present), g.deal())
+				send(makeFull(g, present), 0)
+				send(g.deal(), 250*time.Millisecond)
 			case CmdClaim:
 				if g == nil || g.gameover() {
 					log.Printf("out of game claim: %+v", cmd)
@@ -360,16 +369,13 @@ func (r *Room) loop() {
 				switch cmd.Type {
 				case ClaimMatch:
 					res, score, up := g.claimMatch(cl.blob.FirstName, cmd.Cards)
-					updates = append(updates,
-						up,
-						g.compact(),
-						g.deal(),
-						EventClaimed{
-							Name:   cl.blob.FirstName,
-							Type:   cmd.Type,
-							Result: res,
-							Score:  score,
-						})
+					send(up, 0)
+					send(EventClaimed{
+						Name:   cl.blob.FirstName,
+						Type:   cmd.Type,
+						Result: res,
+						Score:  score,
+					}, 0)
 					if g.gameover() {
 						log.Printf("game over")
 						h := &Game{
@@ -377,18 +383,20 @@ func (r *Room) loop() {
 							Cards:  map[Position]int{},
 						}
 						g = nil
-						updates = append(updates, makeFull(h, present))
+						send(makeFull(h, present), 250*time.Millisecond)
+					} else {
+						send(g.compact(), 250*time.Millisecond)
+						send(g.deal(), 250*time.Millisecond)
 					}
 				case ClaimNoMatch:
 					res, score, up := g.claimNomatch(cl.blob.FirstName, cmd.Cards)
-					updates = append(updates,
-						up,
-						EventClaimed{
-							Name:   cl.blob.FirstName,
-							Type:   cmd.Type,
-							Result: res,
-							Score:  score,
-						})
+					send(up, 0)
+					send(EventClaimed{
+						Name:   cl.blob.FirstName,
+						Type:   cmd.Type,
+						Result: res,
+						Score:  score,
+					}, 0)
 				default:
 					log.Printf("unknown claim type: %s", cmd.Type)
 				}
@@ -396,16 +404,6 @@ func (r *Room) loop() {
 				log.Printf("unknown command: %+v", cmd)
 			}
 		}
-		count := 0
-		for _, update := range updates {
-			if update == nil {
-				continue
-			}
-			for _, c := range clients {
-				c.updates <- update
-			}
-		}
-		log.Printf("sent %d messages to %d clients", count, len(clients))
 	}
 }
 
