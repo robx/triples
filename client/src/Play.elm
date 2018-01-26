@@ -204,8 +204,7 @@ viewGame model =
             Svg.g
                 [ SvgA.transform "translate(30, 30)"
                 ]
-                [ Graphics.svgDefs model.style
-                , Graphics.button model.style ""
+                [ Graphics.button model.style ""
                 ]
 
         gs =
@@ -239,8 +238,7 @@ viewGame model =
                 ( "button"
                 , Svg.g
                     (SvgA.transform "translate(30, 30)" :: handler)
-                    [ Graphics.svgDefs model.style
-                    , Graphics.button model.style model.button.label
+                    [ Graphics.button model.style model.button.label
                     ]
                 )
 
