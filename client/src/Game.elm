@@ -106,14 +106,28 @@ gameMatchSize g =
     matchSize g.type_
 
 
+fullDeckSize : Int
+fullDeckSize =
+    81
+
+
+smallDeckSize : Int
+smallDeckSize =
+    21
+
+
 deck : List Card
 deck =
-    List.map fromInt (List.range 0 80)
+    List.map fromInt (List.range 0 (fullDeckSize - 1))
 
 
 empty : GameDef -> GameView
 empty def =
-    { deckSize = 81
+    { deckSize =
+        if def.short then
+            smallDeckSize
+        else
+            fullDeckSize
     , table = Dict.empty
     , mincols = defaultColumns def.type_
     , rows = rows
@@ -126,7 +140,7 @@ init def =
     shuffled
         |> Random.map
             (if def.short then
-                List.drop 60
+                List.drop (fullDeckSize - smallDeckSize)
              else
                 \x -> x
             )
