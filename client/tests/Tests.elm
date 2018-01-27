@@ -57,4 +57,9 @@ suite =
                 Expect.equal
                     (Main.stat [ 1, 3, 4, 5 ])
                     { average = 3.25, median = 3.5, min = 1, max = 5 }
+        , test "uptos" <|
+            \() ->
+                Expect.equal
+                    (Main.uptos (\n -> n % 2 == 0) [ 0, 2, 1, 3, 5, 4, 6, 7 ])
+                    [ [ 0 ], [ 2 ], [ 1, 3, 5, 4 ], [ 6 ] ]
         ]

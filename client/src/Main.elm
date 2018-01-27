@@ -346,18 +346,6 @@ analyze rlog =
 
         deltas l =
             List.map2 (\e1 e2 -> { time = e2.time - e1.time, event = e2.event }) l (List.drop 1 l)
-
-        uptos p l =
-            let
-                ( prefix, rest ) =
-                    List.Extra.break (not << p) l
-            in
-            case List.Extra.uncons rest of
-                Just ( v, vs ) ->
-                    (prefix ++ [ v ]) :: uptos p vs
-
-                Nothing ->
-                    []
     in
     { start = start
     , end = end
@@ -388,6 +376,20 @@ analyze rlog =
                     }
                 )
     }
+
+
+uptos : (a -> Bool) -> List a -> List (List a)
+uptos p l =
+    let
+        ( prefix, rest ) =
+            List.Extra.break p l
+    in
+    case List.Extra.uncons rest of
+        Just ( v, vs ) ->
+            (prefix ++ [ v ]) :: uptos p vs
+
+        Nothing ->
+            []
 
 
 stat : List Float -> { average : Float, median : Float, max : Float, min : Float }
