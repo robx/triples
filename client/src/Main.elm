@@ -73,17 +73,17 @@ init loc =
     in
     ( { location = loc
       , params = params
-      , page = newMenu params Nothing
+      , page = newMenu params []
       , size = { w = 0, h = 0 }
       }
     , getSize ()
     )
 
 
-newMenu : Params -> Maybe String -> Page
-newMenu params msg =
+newMenu : Params -> List String -> Page
+newMenu params msgs =
     Menu
-        { score = msg
+        { score = msgs
         , name = params.name
         , telegramGame = params.telegramGame
         , style = params.style
@@ -205,7 +205,7 @@ update msg model =
                             else
                                 Cmd.none
                     in
-                    ( { model | page = newMenu model.params (Just sc.message) }, send )
+                    ( { model | page = newMenu model.params sc.messages }, send )
 
         ( MultiPlayMsg pmsg, MultiPlay pmodel ) ->
             let
@@ -334,8 +334,11 @@ type alias Stats =
 
 
 analyze : List Play.LogEntry -> Stats
-analyze log =
+analyze rlog =
     let
+        log =
+            List.reverse rlog
+
         filter e l =
             List.map .time <| List.filter ((==) e << .event) <| l
 
@@ -396,14 +399,59 @@ analyze log =
     }
 
 
-score : Game.GameDef -> List Play.LogEntry -> { points : Int, message : String }
+stat : List Float -> { average : Float, median : Float, max : Float, min : Float }
+stat vs =
+    let
+        n =
+            List.length vs
+    in
+    { average = List.sum vs / toFloat n
+    , max = List.maximum vs |> Maybe.withDefault 0
+    , min = List.minimum vs |> Maybe.withDefault 0
+    , median =
+        let
+            sorted =
+                List.sort vs
+        in
+        case n % 2 of
+            0 ->
+                case List.Extra.getAt (n // 2) vs of
+                    Just v ->
+                        v
+
+                    Nothing ->
+                        0
+
+            _ ->
+                case ( List.Extra.getAt (n // 2) vs, List.Extra.getAt (n // 2 + 1) vs ) of
+                    ( Just v1, Just v2 ) ->
+                        (v1 + v2) / 2
+
+                    _ ->
+                        0
+    }
+
+
+score : Game.GameDef -> List Play.LogEntry -> { points : Int, messages : List String }
 score def log =
     let
         stats =
             analyze log
 
-        secs =
-            round <| Time.inSeconds stats.total
+        matchStats =
+            stats.matches |> List.map (Time.inSeconds << .time) |> stat
+
+        cards =
+            .deckSize <| Game.empty def
+
+        cpm =
+            toFloat cards / Time.inMinutes stats.total
+
+        discountCpm =
+            toFloat cards / Time.inMinutes (stats.total - stats.noMatchTime)
+
+        seconds =
+            round << Time.inSeconds
 
         format secs =
             let
@@ -415,20 +463,29 @@ score def log =
             in
             toString m ++ ":" ++ (String.padLeft 2 '0' <| toString s)
 
-        baddealsecs =
-            stats.noMatchWrong * 60
+        fseconds =
+            format << seconds
 
-        gooddealsecs =
-            stats.noMatch * 45
-
-        totalsecs =
-            secs + baddealsecs - gooddealsecs
+        mistakeFactor =
+            0.9 ^ toFloat stats.noMatchWrong * 0.95 ^ toFloat stats.matchWrong
 
         pts =
-            10000 // totalsecs
+            round <| 10 * discountCpm * mistakeFactor
+
+        fsec s =
+            toString (toFloat (round (s * 10)) / 10) ++ "s"
+
+        ffloat n f =
+            toString <| toFloat (round (f * 10 ^ n)) / 10 ^ n
     in
     { points = pts
-    , message = String.join " " [ "Your time:", format totalsecs, "=", format secs, "+", format baddealsecs, "-", format gooddealsecs, "(" ++ toString pts ++ ")" ]
+    , messages =
+        [ String.join " " [ "Your total time:", fseconds stats.total, "(" ++ ffloat 1 cpm ++ " cards/minute)" ]
+        , String.join " " [ "Effective time:", fseconds (stats.total - stats.noMatchTime), "(" ++ ffloat 1 cpm ++ " cards/minute)" ]
+        , String.join " " [ "Wrong claims:", "match", toString stats.matchWrong, "no match", toString stats.noMatchWrong ]
+        , String.join " " [ "Points:", toString pts, "=", ffloat 2 mistakeFactor, "*", ffloat 0 (discountCpm * 10) ]
+        , String.join " " [ "Match find stats:", "average", fsec matchStats.average, "median", fsec matchStats.median, "minimum", fsec matchStats.min, "maximum", fsec matchStats.max ]
+        ]
     }
 
 

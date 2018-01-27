@@ -12,7 +12,7 @@ import Html.Events as HtmlE
 
 
 type alias Model =
-    { score : Maybe String
+    { score : List String
     , telegramGame : Maybe Game.GameDef
     , name : Maybe String
     , style : Style.Style
@@ -24,11 +24,13 @@ view go model =
     let
         addScore h =
             case model.score of
-                Just m ->
-                    Html.div [ HtmlA.class "msg", HtmlA.style [ ( "background", snd model.style.colors.symbols ) ] ] [ Html.text m ] :: h
-
-                Nothing ->
+                [] ->
                     h
+
+                ms ->
+                    Html.div [ HtmlA.class "msg", HtmlA.style [ ( "background", snd model.style.colors.symbols ) ] ]
+                        (ms |> List.map (\m -> Html.p [] [ Html.text m ]))
+                        :: h
 
         prompt =
             "Choose a game"
