@@ -311,7 +311,18 @@ sendScore location key score =
                 ++ toString score
 
 
-analyze : List Play.LogEntry -> { start : Time.Time, end : Time.Time, total : Time.Time, match : Int, matchWrong : Int, noMatch : Int, noMatchWrong : Int }
+analyze :
+    List Play.LogEntry
+    ->
+        { start : Time.Time
+        , end : Time.Time
+        , total : Time.Time
+        , match : Int
+        , matchWrong : Int
+        , noMatch : Int
+        , noMatchWrong : Int
+        , noMatchTime : Time.Time
+        }
 analyze log =
     let
         filter e =
@@ -328,6 +339,9 @@ analyze log =
 
         end =
             one Play.EEnd
+
+        deltas l =
+            List.map2 (\e1 e2 -> { delta = e2.time - e1.time, event = e2.event }) l (List.drop 1 l)
     in
     { start = start
     , end = end
@@ -336,6 +350,13 @@ analyze log =
     , matchWrong = count Play.EMatchWrong
     , noMatch = count Play.ENoMatch
     , noMatchWrong = count Play.ENoMatchWrong
+    , noMatchTime =
+        log
+            |> List.filter (\e -> e.event == Play.EStart || e.event == Play.EMatch || e.event == Play.ENoMatch)
+            |> deltas
+            |> List.filter (\e -> e.event == Play.ENoMatch)
+            |> List.map .delta
+            |> List.sum
     }
 
 
