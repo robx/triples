@@ -3,6 +3,7 @@ module Tests exposing (..)
 import Dict
 import Expect
 import Game
+import Main
 import Test exposing (..)
 
 
@@ -41,4 +42,19 @@ suite =
                 Expect.equal
                     (List.length Game.deck)
                     81
+        , test "statistics work" <|
+            \() ->
+                Expect.equal
+                    (Main.stat [ 2, 2, 1, 4, 4 ])
+                    { average = 2.6, median = 2, min = 1, max = 4 }
+        , test "statistics work, v 2" <|
+            \() ->
+                Expect.equal
+                    (Main.stat [ 1, 2, 3, 4, 5 ])
+                    { average = 3, median = 3, min = 1, max = 5 }
+        , test "statistics work, v 3" <|
+            \() ->
+                Expect.equal
+                    (Main.stat [ 1, 3, 4, 5 ])
+                    { average = 3.25, median = 3.5, min = 1, max = 5 }
         ]
