@@ -380,7 +380,7 @@ func (r *Room) loop() {
 						Result: res,
 						Score:  score,
 					}, 0)
-					if g.gameover() {
+					gameover := func() {
 						log.Printf("game over")
 						h := &Game{
 							Scores: g.Scores,
@@ -388,9 +388,15 @@ func (r *Room) loop() {
 						}
 						g = nil
 						send(makeFull(h, present), 250*time.Millisecond)
+					}
+					if g.gameover() {
+						gameover()
 					} else {
 						send(g.compact(), 250*time.Millisecond)
 						send(g.deal(), 250*time.Millisecond)
+						if g.gameover() {
+							gameover()
+						}
 					}
 				case ClaimNoMatch:
 					res, score, up := g.claimNomatch(cl.blob.FirstName, cmd.Cards)
