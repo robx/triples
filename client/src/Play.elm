@@ -1,6 +1,7 @@
 module Play
     exposing
         ( Event(..)
+        , LogEntry
         , Model
         , Msg(..)
         , Result(..)
@@ -56,9 +57,10 @@ type alias LogEntry =
 
 type Event
     = EStart
-    | ESet
-    | EDealMoreZero
-    | EDealMoreNonzero
+    | EMatch
+    | EMatchWrong
+    | ENoMatch
+    | ENoMatchWrong
     | EEnd
 
 
@@ -343,13 +345,21 @@ update now msg model =
                 if isset then
                     let
                         log =
-                            { time = now, event = ESet } :: model.log
+                            { time = now, event = EMatch } :: model.log
                     in
-                    ( { model | game = newgame, selected = [], dealing = True, answer = Nothing, log = log }
+                    ( { model
+                        | game = newgame
+                        , selected = []
+                        , dealing = True
+                        , answer = Nothing
+                        , log = { time = now, event = EMatch } :: model.log
+                      }
                     , Just (After 250 AutoCompact)
                     )
                 else
-                    ( model, Nothing )
+                    ( { model | log = { time = now, event = EMatchWrong } :: model.log }
+                    , Nothing
+                    )
 
         User UserDeal ->
             let
@@ -362,6 +372,6 @@ update now msg model =
             if over then
                 ( model, Just <| GameOver <| { time = now, event = EEnd } :: model.log )
             else if nsets == 0 then
-                ( { model | game = Game.dealMore model.game, answer = Nothing, log = { time = now, event = EDealMoreZero } :: model.log }, Nothing )
+                ( { model | game = Game.dealMore model.game, answer = Nothing, log = { time = now, event = ENoMatch } :: model.log }, Nothing )
             else
-                ( { model | answer = Just (Game.count model.game), log = { time = now, event = EDealMoreNonzero } :: model.log }, Nothing )
+                ( { model | answer = Just (Game.count model.game), log = { time = now, event = ENoMatchWrong } :: model.log }, Nothing )

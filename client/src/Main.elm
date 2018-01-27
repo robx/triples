@@ -311,17 +311,42 @@ sendScore location key score =
                 ++ toString score
 
 
-score : Game.GameDef -> List { time : Time.Time, event : Play.Event } -> { points : Int, message : String }
-score def log =
+analyze : List Play.LogEntry -> { start : Time.Time, end : Time.Time, total : Time.Time, match : Int, matchWrong : Int, noMatch : Int, noMatchWrong : Int }
+analyze log =
     let
-        end =
-            Maybe.withDefault 0 <| Maybe.map .time <| List.head <| log
+        filter e =
+            List.map .time <| List.filter ((==) e << .event) <| log
+
+        one e =
+            Maybe.withDefault 0 <| List.head <| filter e
+
+        count e =
+            List.length <| filter e
 
         start =
-            Maybe.withDefault 0 <| Maybe.map .time <| List.head <| List.reverse <| log
+            one Play.EStart
+
+        end =
+            one Play.EEnd
+    in
+    { start = start
+    , end = end
+    , total = end - start
+    , match = count Play.EMatch
+    , matchWrong = count Play.EMatchWrong
+    , noMatch = count Play.ENoMatch
+    , noMatchWrong = count Play.ENoMatchWrong
+    }
+
+
+score : Game.GameDef -> List Play.LogEntry -> { points : Int, message : String }
+score def log =
+    let
+        stats =
+            analyze log
 
         secs =
-            round <| Time.inSeconds (end - start)
+            round <| Time.inSeconds stats.total
 
         format secs =
             let
@@ -333,17 +358,11 @@ score def log =
             in
             toString m ++ ":" ++ (String.padLeft 2 '0' <| toString s)
 
-        baddeals =
-            List.length <| List.filter (.event >> (==) Play.EDealMoreNonzero) <| log
-
-        gooddeals =
-            List.length <| List.filter (.event >> (==) Play.EDealMoreZero) <| log
-
         baddealsecs =
-            baddeals * 60
+            stats.noMatchWrong * 60
 
         gooddealsecs =
-            gooddeals * 45
+            stats.noMatch * 45
 
         totalsecs =
             secs + baddealsecs - gooddealsecs
