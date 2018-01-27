@@ -311,14 +311,14 @@ sendScore location key score =
                 ++ toString score
 
 
-score : Game.GameDef -> List ( Time.Time, Play.Event ) -> { points : Int, message : String }
+score : Game.GameDef -> List { time : Time.Time, event : Play.Event } -> { points : Int, message : String }
 score def log =
     let
         end =
-            Maybe.withDefault 0 <| Maybe.map Tuple.first <| List.head <| log
+            Maybe.withDefault 0 <| Maybe.map .time <| List.head <| log
 
         start =
-            Maybe.withDefault 0 <| Maybe.map Tuple.first <| List.head <| List.reverse <| log
+            Maybe.withDefault 0 <| Maybe.map .time <| List.head <| List.reverse <| log
 
         secs =
             round <| Time.inSeconds (end - start)
@@ -334,10 +334,10 @@ score def log =
             toString m ++ ":" ++ (String.padLeft 2 '0' <| toString s)
 
         baddeals =
-            List.length <| List.filter (Tuple.second >> (==) Play.EDealMoreNonzero) <| log
+            List.length <| List.filter (.event >> (==) Play.EDealMoreNonzero) <| log
 
         gooddeals =
-            List.length <| List.filter (Tuple.second >> (==) Play.EDealMoreZero) <| log
+            List.length <| List.filter (.event >> (==) Play.EDealMoreZero) <| log
 
         baddealsecs =
             baddeals * 60

@@ -30,7 +30,7 @@ import Time
 type alias Model =
     { def : GameDef
     , game : Game
-    , log : List ( Time.Time, Event )
+    , log : List LogEntry
     , selected : List Game.Pos
     , dealing : Bool
     , answer : Maybe Int
@@ -45,6 +45,12 @@ init def game =
     , selected = []
     , dealing = False
     , answer = Nothing
+    }
+
+
+type alias LogEntry =
+    { time : Time.Time
+    , event : Event
     }
 
 
@@ -65,7 +71,7 @@ type Msg
 
 type Result msg
     = After Time.Time msg
-    | GameOver (List ( Time.Time, Event ))
+    | GameOver (List LogEntry)
 
 
 type UserMsg
@@ -300,7 +306,7 @@ update : Time.Time -> Msg -> Model -> ( Model, Maybe (Result Msg) )
 update now msg model =
     case msg of
         StartGame ->
-            ( { model | log = [ ( now, EStart ) ] }, Nothing )
+            ( { model | log = [ { time = now, event = EStart } ] }, Nothing )
 
         AutoCompact ->
             let
@@ -337,7 +343,7 @@ update now msg model =
                 if isset then
                     let
                         log =
-                            ( now, ESet ) :: model.log
+                            { time = now, event = ESet } :: model.log
                     in
                     ( { model | game = newgame, selected = [], dealing = True, answer = Nothing, log = log }
                     , Just (After 250 AutoCompact)
@@ -354,8 +360,8 @@ update now msg model =
                     Game.count model.game
             in
             if over then
-                ( model, Just <| GameOver <| ( now, EEnd ) :: model.log )
+                ( model, Just <| GameOver <| { time = now, event = EEnd } :: model.log )
             else if nsets == 0 then
-                ( { model | game = Game.dealMore model.game, answer = Nothing, log = ( now, EDealMoreZero ) :: model.log }, Nothing )
+                ( { model | game = Game.dealMore model.game, answer = Nothing, log = { time = now, event = EDealMoreZero } :: model.log }, Nothing )
             else
-                ( { model | answer = Just (Game.count model.game), log = ( now, EDealMoreNonzero ) :: model.log }, Nothing )
+                ( { model | answer = Just (Game.count model.game), log = { time = now, event = EDealMoreNonzero } :: model.log }, Nothing )
