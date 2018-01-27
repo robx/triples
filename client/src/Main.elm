@@ -189,7 +189,7 @@ update msg model =
                 Just (Play.GameOver log) ->
                     let
                         sc =
-                            score log
+                            score pmodel.def log
 
                         scored =
                             model.params.telegramGame /= Nothing
@@ -311,8 +311,8 @@ sendScore location key score =
                 ++ toString score
 
 
-score : List ( Time.Time, Play.Event ) -> { points : Int, message : String }
-score log =
+score : Game.GameDef -> List ( Time.Time, Play.Event ) -> { points : Int, message : String }
+score def log =
     let
         end =
             Maybe.withDefault 0 <| Maybe.map Tuple.first <| List.head <| log
