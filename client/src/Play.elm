@@ -400,7 +400,13 @@ update now msg model =
             if over then
                 ( model, Just <| GameOver <| { time = now, event = EEnd } :: model.log )
             else if nmatches == 0 then
-                ( { model | game = Game.dealMore model.game, answer = Nothing, log = { time = now, event = ENoMatch } :: model.log }, Nothing )
+                let
+                    game =
+                        Game.dealMore model.game
+                in
+                ( { model | game = game, answer = Nothing, log = { time = now, event = ENoMatch } :: model.log }
+                , Just <| Command <| Random.generate ChooseHint (Game.randomMatch game)
+                )
             else
                 ( { model | answer = Just (Game.count model.game), log = { time = now, event = ENoMatchWrong } :: model.log }, Nothing )
 
