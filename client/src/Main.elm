@@ -311,52 +311,88 @@ sendScore location key score =
                 ++ toString score
 
 
-analyze :
-    List Play.LogEntry
-    ->
-        { start : Time.Time
-        , end : Time.Time
-        , total : Time.Time
-        , match : Int
-        , matchWrong : Int
-        , noMatch : Int
-        , noMatchWrong : Int
-        , noMatchTime : Time.Time
-        }
+type alias MatchStats =
+    { time : Time.Time
+    , event : Play.Event -- EMatch or EEnd
+    , matchWrong : Int
+    , noMatch : Int
+    , noMatchWrong : Int
+    }
+
+
+type alias Stats =
+    { start : Time.Time
+    , end : Time.Time
+    , total : Time.Time
+    , match : Int
+    , matchWrong : Int
+    , noMatch : Int
+    , noMatchWrong : Int
+    , noMatchTime : Time.Time
+    , matches : List MatchStats
+    }
+
+
+analyze : List Play.LogEntry -> Stats
 analyze log =
     let
-        filter e =
-            List.map .time <| List.filter ((==) e << .event) <| log
+        filter e l =
+            List.map .time <| List.filter ((==) e << .event) <| l
 
-        one e =
-            Maybe.withDefault 0 <| List.head <| filter e
+        one e l =
+            Maybe.withDefault 0 <| List.head <| filter e l
 
-        count e =
-            List.length <| filter e
+        count e l =
+            List.length <| filter e l
 
         start =
-            one Play.EStart
+            one Play.EStart log
 
         end =
-            one Play.EEnd
+            one Play.EEnd log
 
         deltas l =
-            List.map2 (\e1 e2 -> { delta = e2.time - e1.time, event = e2.event }) l (List.drop 1 l)
+            List.map2 (\e1 e2 -> { time = e2.time - e1.time, event = e2.event }) l (List.drop 1 l)
+
+        uptos p l =
+            let
+                ( prefix, rest ) =
+                    List.Extra.break (not << p) l
+            in
+            case List.Extra.uncons rest of
+                Just ( v, vs ) ->
+                    (prefix ++ [ v ]) :: uptos p vs
+
+                Nothing ->
+                    []
     in
     { start = start
     , end = end
     , total = end - start
-    , match = count Play.EMatch
-    , matchWrong = count Play.EMatchWrong
-    , noMatch = count Play.ENoMatch
-    , noMatchWrong = count Play.ENoMatchWrong
+    , match = count Play.EMatch log
+    , matchWrong = count Play.EMatchWrong log
+    , noMatch = count Play.ENoMatch log
+    , noMatchWrong = count Play.ENoMatchWrong log
     , noMatchTime =
         log
             |> List.filter (\e -> e.event == Play.EStart || e.event == Play.EMatch || e.event == Play.ENoMatch)
             |> deltas
             |> List.filter (\e -> e.event == Play.ENoMatch)
-            |> List.map .delta
+            |> List.map .time
             |> List.sum
+    , matches =
+        log
+            |> deltas
+            |> uptos (\e -> e.event == Play.EMatch || e.event == Play.EEnd)
+            |> List.map
+                (\es ->
+                    { time = es |> List.map .time |> List.sum
+                    , event = es |> List.reverse |> List.head |> Maybe.map .event |> Maybe.withDefault Play.EMatch
+                    , matchWrong = count Play.EMatchWrong es
+                    , noMatch = count Play.ENoMatch es
+                    , noMatchWrong = count Play.ENoMatchWrong es
+                    }
+                )
     }
 
 
