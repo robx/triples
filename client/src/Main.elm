@@ -188,7 +188,7 @@ update msg model =
 
                 Just (Play.GameOver log) ->
                     let
-                        ( secs, msg, telescore ) =
+                        sc =
                             score log
 
                         scored =
@@ -198,14 +198,14 @@ update msg model =
                             if scored then
                                 case model.params.key of
                                     Just k ->
-                                        sendScore model.location k telescore
+                                        sendScore model.location k sc.points
 
                                     _ ->
                                         Cmd.none
                             else
                                 Cmd.none
                     in
-                    ( { model | page = newMenu model.params (Just msg) }, send )
+                    ( { model | page = newMenu model.params (Just sc.message) }, send )
 
         ( MultiPlayMsg pmsg, MultiPlay pmodel ) ->
             let
@@ -311,7 +311,7 @@ sendScore location key score =
                 ++ toString score
 
 
-score : List ( Time.Time, Play.Event ) -> ( Int, String, Int )
+score : List ( Time.Time, Play.Event ) -> { points: Int, message : String }
 score log =
     let
         end =
@@ -351,11 +351,9 @@ score log =
         pts =
             10000 // totalsecs
     in
-    ( totalsecs
-    , String.join " " [ "Your time:", format totalsecs, "=", format secs, "+", format baddealsecs, "-", format gooddealsecs, "(" ++ toString pts ++ ")" ]
-    , pts
-    )
-
+    { points = pts
+    , message = String.join " " [ "Your time:", format totalsecs, "=", format secs, "+", format baddealsecs, "-", format gooddealsecs, "(" ++ toString pts ++ ")" ]
+    }
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
