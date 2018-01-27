@@ -472,7 +472,7 @@ score def log =
     { points = pts
     , messages =
         [ String.join " " [ "Your total time:", fseconds stats.total, "(" ++ ffloat 1 cpm ++ " cards/minute)" ]
-        , String.join " " [ "Effective time:", fseconds (stats.total - stats.noMatchTime), "(" ++ ffloat 1 cpm ++ " cards/minute)" ]
+        , String.join " " [ "Effective time:", fseconds (stats.total - stats.noMatchTime), "(" ++ ffloat 1 discountCpm ++ " cards/minute)" ]
         , String.join " " [ "Deductions:", "match:", toString stats.matchWrong, "no match:", toString stats.noMatchWrong, "hint:", toString stats.hint ]
         , String.join " " [ "Points:", toString pts, "=", ffloat 2 mistakeFactor, "*", ffloat 0 (discountCpm * 10) ]
         , String.join " " [ "Match find stats:", "average", fsec matchStats.average, "median", fsec matchStats.median, "minimum", fsec matchStats.min, "maximum", fsec matchStats.max ]
