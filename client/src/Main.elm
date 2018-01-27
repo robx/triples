@@ -114,20 +114,6 @@ view model =
         ]
 
 
-after : Time.Time -> (Time.Time -> Msg) -> Cmd Msg
-after time msg =
-    let
-        task =
-            Time.now
-                |> Task.andThen
-                    (\now ->
-                        Process.sleep time
-                            |> Task.andThen (\_ -> Task.succeed now)
-                    )
-    in
-    Task.perform msg task
-
-
 type Msg
     = Go Game.GameDef
     | NewGame Game.GameDef Game.Game
@@ -185,6 +171,9 @@ update msg model =
 
                 Just (Play.After delay m) ->
                     ( { model | page = Play newpmodel }, after delay (PlayMsg m) )
+
+                Just (Play.Command cmd) ->
+                    ( { model | page = Play newpmodel }, Cmd.map (GetTimeAndThen << PlayMsg) cmd )
 
                 Just (Play.GameOver log) ->
                     let
@@ -328,6 +317,7 @@ type alias Stats =
     , matchWrong : Int
     , noMatch : Int
     , noMatchWrong : Int
+    , hint : Int
     , noMatchTime : Time.Time
     , matches : List MatchStats
     }
@@ -376,6 +366,7 @@ analyze rlog =
     , matchWrong = count Play.EMatchWrong log
     , noMatch = count Play.ENoMatch log
     , noMatchWrong = count Play.ENoMatchWrong log
+    , hint = count Play.EHint log
     , noMatchTime =
         log
             |> List.filter (\e -> e.event == Play.EStart || e.event == Play.EMatch || e.event == Play.ENoMatch)
@@ -467,7 +458,7 @@ score def log =
             format << seconds
 
         mistakeFactor =
-            0.9 ^ toFloat stats.noMatchWrong * 0.95 ^ toFloat stats.matchWrong
+            0.9 ^ toFloat stats.noMatchWrong * 0.95 ^ toFloat stats.matchWrong * 0.95 ^ toFloat stats.hint
 
         pts =
             round <| 10 * discountCpm * mistakeFactor
@@ -482,7 +473,7 @@ score def log =
     , messages =
         [ String.join " " [ "Your total time:", fseconds stats.total, "(" ++ ffloat 1 cpm ++ " cards/minute)" ]
         , String.join " " [ "Effective time:", fseconds (stats.total - stats.noMatchTime), "(" ++ ffloat 1 cpm ++ " cards/minute)" ]
-        , String.join " " [ "Wrong claims:", "match", toString stats.matchWrong, "no match", toString stats.noMatchWrong ]
+        , String.join " " [ "Deductions:", "match:", toString stats.matchWrong, "no match:", toString stats.noMatchWrong, "hint:", toString stats.hint ]
         , String.join " " [ "Points:", toString pts, "=", ffloat 2 mistakeFactor, "*", ffloat 0 (discountCpm * 10) ]
         , String.join " " [ "Match find stats:", "average", fsec matchStats.average, "median", fsec matchStats.median, "minimum", fsec matchStats.min, "maximum", fsec matchStats.max ]
         ]
@@ -500,3 +491,17 @@ subscriptions model =
             _ ->
                 Sub.none
         ]
+
+
+after : Time.Time -> (Time.Time -> Msg) -> Cmd Msg
+after time msg =
+    let
+        task =
+            Time.now
+                |> Task.andThen
+                    (\now ->
+                        Process.sleep time
+                            |> Task.andThen (\_ -> Task.succeed now)
+                    )
+    in
+    Task.perform msg task

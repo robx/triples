@@ -22,6 +22,7 @@ import Html
 import Html.Attributes as HtmlA
 import Html.Keyed as HtmlK
 import List.Extra
+import Random
 import Svg
 import Svg.Attributes as SvgA
 import Svg.Events as SvgE
@@ -33,6 +34,7 @@ type alias Model =
     , game : Game
     , log : List LogEntry
     , selected : List Game.Pos
+    , hint : { match : List Game.Pos, count : Int }
     , dealing : Bool
     , answer : Maybe Int
     }
@@ -43,6 +45,7 @@ init def game =
     { def = def
     , game = game
     , log = []
+    , hint = { match = [], count = 0 }
     , selected = []
     , dealing = False
     , answer = Nothing
@@ -61,6 +64,7 @@ type Event
     | EMatchWrong
     | ENoMatch
     | ENoMatchWrong
+    | EHint
     | EEnd
 
 
@@ -68,17 +72,20 @@ type Msg
     = StartGame
     | AutoDeal
     | AutoCompact
+    | ChooseHint (List Game.Pos)
     | User UserMsg
 
 
 type Result msg
     = After Time.Time msg
+    | Command (Cmd msg)
     | GameOver (List LogEntry)
 
 
 type UserMsg
     = Choose Game.Pos
     | UserDeal
+    | UserHint
 
 
 type alias Size =
@@ -101,7 +108,11 @@ view style maxSize model =
             , selected = model.selected
             , button =
                 { message =
-                    if model.dealing || model.answer /= Nothing then
+                    if model.dealing then
+                        Nothing
+                    else if model.answer /= Nothing && model.hint.count < gameView.matchSize - 1 then
+                        Just UserHint
+                    else if model.answer /= Nothing then
                         Nothing
                     else
                         Just UserDeal
@@ -308,7 +319,16 @@ update : Time.Time -> Msg -> Model -> ( Model, Maybe (Result Msg) )
 update now msg model =
     case msg of
         StartGame ->
-            ( { model | log = [ { time = now, event = EStart } ] }, Nothing )
+            let
+                game =
+                    Game.deal model.game
+            in
+            ( { model
+                | log = [ { time = now, event = EStart } ]
+                , game = game
+              }
+            , Just <| Command <| Random.generate ChooseHint (Game.randomMatch game)
+            )
 
         AutoCompact ->
             let
@@ -323,12 +343,20 @@ update now msg model =
             )
 
         AutoDeal ->
+            let
+                game =
+                    Game.deal model.game
+            in
             ( { model
-                | game = Game.deal model.game
+                | game = game
                 , dealing = False
               }
-            , Nothing
+            , Just <| Command <| Random.generate ChooseHint (Game.randomMatch game)
             )
+
+        ChooseHint match ->
+            Debug.log ("chose hint: " ++ toString match) <|
+                ( { model | hint = { match = match, count = 0 } }, Nothing )
 
         User (Choose p) ->
             if Game.posEmpty model.game p then
@@ -366,12 +394,28 @@ update now msg model =
                 over =
                     Game.over model.game
 
-                nsets =
+                nmatches =
                     Game.count model.game
             in
             if over then
                 ( model, Just <| GameOver <| { time = now, event = EEnd } :: model.log )
-            else if nsets == 0 then
+            else if nmatches == 0 then
                 ( { model | game = Game.dealMore model.game, answer = Nothing, log = { time = now, event = ENoMatch } :: model.log }, Nothing )
             else
                 ( { model | answer = Just (Game.count model.game), log = { time = now, event = ENoMatchWrong } :: model.log }, Nothing )
+
+        User UserHint ->
+            let
+                oldHint =
+                    model.hint
+
+                count =
+                    oldHint.count + 1
+            in
+            ( { model
+                | hint = { oldHint | count = count }
+                , selected = List.take count oldHint.match
+                , log = { time = now, event = EHint } :: model.log
+              }
+            , Nothing
+            )

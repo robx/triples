@@ -152,7 +152,6 @@ init def =
                 , short = def.short
                 }
             )
-        |> Random.map deal
 
 
 over : Game -> Bool
@@ -163,6 +162,11 @@ over g =
 shuffled : Generator (List Card)
 shuffled =
     shuffle deck
+
+
+randomMatch : Game -> Generator (List Pos)
+randomMatch g =
+    shuffle (matches g) |> Random.map List.head |> Random.map (Maybe.withDefault []) |> Random.andThen shuffle
 
 
 dealToAction : Game -> List Pos -> Action
@@ -387,11 +391,11 @@ take g ps =
         ( False, g )
 
 
-count : Game -> Int
-count g =
+matches : Game -> List (List Pos)
+matches g =
     let
         cards =
-            Dict.values g.table
+            Dict.toList g.table
 
         pairs xs =
             case xs of
@@ -417,10 +421,15 @@ count g =
                 y :: ys ->
                     (List.map ((::) y) <| triples ys) ++ quads ys
     in
-    List.length <|
+    List.map (List.map Tuple.first) <|
         case g.type_ of
             Triples ->
-                List.filter Card.triple <| triples cards
+                List.filter (Card.triple << List.map Tuple.second) <| triples cards
 
             Quadruples ->
-                List.filter Card.quadruple <| quads cards
+                List.filter (Card.quadruple << List.map Tuple.second) <| quads cards
+
+
+count : Game -> Int
+count g =
+    List.length (matches g)
