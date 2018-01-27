@@ -23,10 +23,15 @@ type alias GameView =
     }
 
 
+rows : Int
+rows =
+    3
+
+
 toView : Game -> GameView
 toView g =
     { mincols = defaultColumns g.type_
-    , rows = 3
+    , rows = rows
     , table = g.table
     , deckSize = List.length g.deck
     , matchSize = gameMatchSize g
@@ -111,7 +116,7 @@ empty def =
     { deckSize = 81
     , table = Dict.empty
     , mincols = defaultColumns def.type_
-    , rows = 3
+    , rows = rows
     , matchSize = matchSize def.type_
     }
 
@@ -165,7 +170,7 @@ dealMoreAction : Game -> Action
 dealMoreAction g =
     let
         col c =
-            [ ( c, 0 ), ( c, 1 ), ( c, 2 ) ]
+            List.range 0 (rows - 1) |> List.map (\r -> ( c, r ))
     in
     dealToAction g <| col <| columns g
 
@@ -179,7 +184,7 @@ compactMoves : Game -> List ( Pos, Pos )
 compactMoves g =
     let
         f ( gap, pos ) =
-            if gap < pos && pos > ( 3, 2 ) then
+            if gap < pos && pos >= ( defaultColumns g.type_, 0 ) then
                 Just ( pos, gap )
             else
                 Nothing
