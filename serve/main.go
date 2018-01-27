@@ -239,6 +239,7 @@ func sendScore(blob Blob, score int) BotAction {
 		ChatID:          blob.ChatID,
 		MessageID:       blob.MessageID,
 		InlineMessageID: blob.InlineMessageID,
+		Force:           true,
 	}
 	return func(bot *tgbotapi.BotAPI) {
 		if _, err := bot.Send(sc); err != nil {
