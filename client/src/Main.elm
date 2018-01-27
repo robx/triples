@@ -405,8 +405,8 @@ stat vs =
                 List.sort vs
         in
         case n % 2 of
-            0 ->
-                case List.Extra.getAt (n // 2) vs of
+            1 ->
+                case List.Extra.getAt (n // 2) sorted of
                     Just v ->
                         v
 
@@ -414,7 +414,7 @@ stat vs =
                         0
 
             _ ->
-                case ( List.Extra.getAt (n // 2) vs, List.Extra.getAt (n // 2 + 1) vs ) of
+                case ( List.Extra.getAt (n // 2 - 1) sorted, List.Extra.getAt (n // 2) sorted ) of
                     ( Just v1, Just v2 ) ->
                         (v1 + v2) / 2
 
