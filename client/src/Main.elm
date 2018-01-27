@@ -130,7 +130,7 @@ after time msg =
 
 type Msg
     = Go Game.GameDef
-    | NewGame Game.Game
+    | NewGame Game.GameDef Game.Game
     | GetTimeAndThen (Time.Time -> Msg)
     | PlayMsg Play.Msg Time.Time
     | MultiPlayMsg MultiPlay.Msg
@@ -169,10 +169,10 @@ update msg model =
                 in
                 ( { model | page = MultiPlay m }, Cmd.none )
             else
-                ( model, Cmd.batch [ Random.generate NewGame (Game.init def), Task.perform (PlayMsg Play.StartGame) Time.now ] )
+                ( model, Cmd.batch [ Random.generate (NewGame def) (Game.init def), Task.perform (PlayMsg Play.StartGame) Time.now ] )
 
-        ( NewGame game, _ ) ->
-            ( { model | page = Play (Play.init game) }, Cmd.none )
+        ( NewGame def game, _ ) ->
+            ( { model | page = Play (Play.init def game) }, Cmd.none )
 
         ( PlayMsg pmsg now, Play pmodel ) ->
             let
@@ -311,7 +311,7 @@ sendScore location key score =
                 ++ toString score
 
 
-score : List ( Time.Time, Play.Event ) -> { points: Int, message : String }
+score : List ( Time.Time, Play.Event ) -> { points : Int, message : String }
 score log =
     let
         end =
@@ -354,6 +354,7 @@ score log =
     { points = pts
     , message = String.join " " [ "Your time:", format totalsecs, "=", format secs, "+", format baddealsecs, "-", format gooddealsecs, "(" ++ toString pts ++ ")" ]
     }
+
 
 subscriptions : Model -> Sub Msg
 subscriptions model =

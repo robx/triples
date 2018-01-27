@@ -14,7 +14,7 @@ module Play
 
 import Card
 import Dict
-import Game exposing (Game)
+import Game exposing (Game, GameDef)
 import Graphics
 import Graphics.Style as Style
 import Html
@@ -28,7 +28,8 @@ import Time
 
 
 type alias Model =
-    { game : Game
+    { def : GameDef
+    , game : Game
     , log : List ( Time.Time, Event )
     , selected : List Game.Pos
     , dealing : Bool
@@ -36,9 +37,10 @@ type alias Model =
     }
 
 
-init : Game -> Model
-init game =
-    { game = game
+init : GameDef -> Game -> Model
+init def game =
+    { def = def
+    , game = game
     , log = []
     , selected = []
     , dealing = False
