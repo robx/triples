@@ -61,6 +61,10 @@ type client struct {
 	sendId  chan<- int
 }
 
+func (c client) Name() string {
+	return c.blob.FirstName
+}
+
 func newRoom(blob Blob) *Room {
 	r := &Room{
 		creator:  blob,
@@ -74,15 +78,15 @@ func newRoom(blob Blob) *Room {
 type Game struct {
 	Deck           []int
 	Cards          map[Position]int
-	Players        map[string]Status
+	Scores         map[string]int
 	ClaimedNoMatch bool
 }
 
 func newGame() *Game {
 	return &Game{
-		Deck:    rand.Perm(81),
-		Cards:   map[Position]int{},
-		Players: map[string]Status{},
+		Deck:   rand.Perm(81),
+		Cards:  map[Position]int{},
+		Scores: map[string]int{},
 	}
 }
 
@@ -91,8 +95,7 @@ func (g *Game) deckSize() int {
 }
 
 func (g *Game) add(player string) {
-	s := g.Players[player]
-	g.Players[player] = s
+	g.Scores[player] = g.Scores[player]
 }
 
 func (g *Game) findCard(c int) (Position, bool) {
@@ -151,14 +154,14 @@ func (g *Game) gameover() bool {
 	return g.countMatches() == 0
 }
 
-func (g *Game) claimMatch(name string, cards []int) (ResultType, Status, Update) {
+func (g *Game) claimMatch(name string, cards []int) (ResultType, int, Update) {
 	var ps []Position
 	if g.gameover() {
-		return ResultLate, g.Players[name], nil
+		return ResultLate, g.Scores[name], nil
 	}
 	for _, c := range cards {
 		if p, ok := g.findCard(c); !ok {
-			return ResultLate, g.Players[name], nil
+			return ResultLate, g.Scores[name], nil
 		} else {
 			ps = append(ps, p)
 		}
@@ -167,20 +170,16 @@ func (g *Game) claimMatch(name string, cards []int) (ResultType, Status, Update)
 		for _, p := range ps {
 			delete(g.Cards, p)
 		}
-		s := g.Players[name]
-		s.Score += 1
-		g.Players[name] = s
-		return ResultCorrect, s, ChangeMatch(ps)
+		g.Scores[name] += 1
+		return ResultCorrect, g.Scores[name], ChangeMatch(ps)
 	}
-	s := g.Players[name]
-	s.Score -= 1
-	g.Players[name] = s
-	return ResultWrong, s, nil
+	g.Scores[name] -= 1
+	return ResultWrong, g.Scores[name], nil
 }
 
-func (g *Game) claimNomatch(name string, cards []int) (ResultType, Status, Update) {
+func (g *Game) claimNomatch(name string, cards []int) (ResultType, int, Update) {
 	if g.gameover() || len(cards) < 12 || g.ClaimedNoMatch {
-		return ResultLate, g.Players[name], nil
+		return ResultLate, g.Scores[name], nil
 	}
 	cs := g.listCards()
 	equal := func(as, bs []int) bool {
@@ -197,21 +196,17 @@ func (g *Game) claimNomatch(name string, cards []int) (ResultType, Status, Updat
 		return true
 	}
 	if !equal(cs, cards) {
-		return ResultLate, g.Players[name], nil
+		return ResultLate, g.Scores[name], nil
 	}
 	c := g.countMatches()
 	if c == 0 {
-		s := g.Players[name]
-		s.Score += 1
-		g.Players[name] = s
-		return ResultCorrect, s, g.dealMore()
+		g.Scores[name] += 1
+		return ResultCorrect, g.Scores[name], g.dealMore()
 	}
 	log.Printf("wrong nomatch claim, %d matches, these cards %+v", c, cards)
 	g.ClaimedNoMatch = true
-	s := g.Players[name]
-	s.Score -= 1
-	g.Players[name] = s
-	return ResultWrong, s, makeRevealCount(c)
+	g.Scores[name] -= 1
+	return ResultWrong, g.Scores[name], makeRevealCount(c)
 }
 
 func (g *Game) dealMore() Update {
@@ -321,10 +316,16 @@ func (r *Room) loop() {
 	var (
 		clientId int
 		clients  = map[int]*client{}
-		present  = map[string]struct{}{}
 		g        *Game
 	)
-	send := func(u Update, after time.Duration) {
+	present := func() map[string]struct{} {
+		p := map[string]struct{}{}
+		for _, c := range clients {
+			p[c.Name()] = struct{}{}
+		}
+		return p
+	}
+	sendAfter := func(u Update, after time.Duration) {
 		if u == nil {
 			return
 		}
@@ -333,18 +334,23 @@ func (r *Room) loop() {
 			c.updates <- u
 		}
 	}
+	send := func(u Update) {
+		sendAfter(u, 0)
+	}
 	for {
 		select {
 		case cl := <-r.connects:
 			cl.sendId <- clientId
+			_, alreadyThere := present()[cl.Name()]
 			clients[clientId] = cl
 			clientId++
-			present[cl.blob.FirstName] = struct{}{}
 			if g != nil {
-				g.add(cl.blob.FirstName)
+				g.add(cl.Name())
 			}
-			cl.updates <- makeFull(g, present)
-			send(EventJoin{Name: cl.blob.FirstName}, 0)
+			cl.updates <- makeFull(g, present())
+			if !alreadyThere {
+				send(EventOnline{Name: cl.Name(), Present: true})
+			}
 		case c := <-r.cmds:
 			cl := clients[c.clientId]
 			switch cmd := c.command.(type) {
@@ -352,19 +358,22 @@ func (r *Room) loop() {
 				log.Printf("removing client %d", c.clientId)
 				close(cl.updates)
 				delete(clients, c.clientId)
-				// todo: clean-up present?
+				if _, ok := present()[cl.Name()]; !ok {
+					send(EventOnline{Name: cl.Name(), Present: false})
+				}
 			case CmdStart:
 				if g != nil && !g.gameover() {
 					log.Printf("game in progress, ignoring start message")
 					break
 				}
-				log.Printf("starting game on behalf of %s", cl.blob.FirstName)
+				log.Printf("starting game on behalf of %s", cl.Name())
 				g = newGame()
-				for p := range present {
+				ps := present()
+				for p := range ps {
 					g.add(p)
 				}
-				send(makeFull(g, present), 0)
-				send(g.deal(), 250*time.Millisecond)
+				send(makeFull(g, ps))
+				sendAfter(g.deal(), 250*time.Millisecond)
 			case CmdClaim:
 				if g == nil || g.gameover() {
 					log.Printf("out of game claim: %+v", cmd)
@@ -372,41 +381,41 @@ func (r *Room) loop() {
 				}
 				switch cmd.Type {
 				case ClaimMatch:
-					res, status, up := g.claimMatch(cl.blob.FirstName, cmd.Cards)
-					send(up, 0)
+					res, score, up := g.claimMatch(cl.Name(), cmd.Cards)
+					send(up)
 					send(EventClaimed{
-						Name:   cl.blob.FirstName,
+						Name:   cl.Name(),
 						Type:   cmd.Type,
 						Result: res,
-						Score:  status.Score,
-					}, 0)
+						Score:  score,
+					})
 					gameover := func() {
 						log.Printf("game over")
 						h := &Game{
-							Players: g.Players,
-							Cards:   map[Position]int{},
+							Scores: g.Scores,
+							Cards:  map[Position]int{},
 						}
 						g = nil
-						send(makeFull(h, present), 250*time.Millisecond)
+						sendAfter(makeFull(h, present()), 250*time.Millisecond)
 					}
 					if g.gameover() {
 						gameover()
 					} else {
-						send(g.compact(), 250*time.Millisecond)
-						send(g.deal(), 250*time.Millisecond)
+						sendAfter(g.compact(), 250*time.Millisecond)
+						sendAfter(g.deal(), 250*time.Millisecond)
 						if g.gameover() {
 							gameover()
 						}
 					}
 				case ClaimNoMatch:
-					res, status, up := g.claimNomatch(cl.blob.FirstName, cmd.Cards)
-					send(up, 0)
+					res, score, upd := g.claimNomatch(cl.Name(), cmd.Cards)
+					send(upd)
 					send(EventClaimed{
 						Name:   cl.blob.FirstName,
 						Type:   cmd.Type,
 						Result: res,
-						Score:  status.Score,
-					}, 0)
+						Score:  score,
+					})
 				default:
 					log.Printf("unknown claim type: %s", cmd.Type)
 				}
@@ -460,12 +469,13 @@ type CmdClaim struct {
 
 func (c CmdClaim) isCommand() {}
 
-type EventJoin struct {
-	Name string
+type EventOnline struct {
+	Present bool
+	Name    string
 }
 
-func (u EventJoin) isUpdate()   {}
-func (u EventJoin) tag() string { return "eventJoin" }
+func (u EventOnline) isUpdate()   {}
+func (u EventOnline) tag() string { return "eventOnline" }
 
 type EventClaimed struct {
 	Name   string
@@ -527,11 +537,14 @@ func makeFull(g *Game, present map[string]struct{}) Update {
 	)
 	if g == nil {
 		for p := range present {
-			players[p] = Status{}
+			players[p] = Status{Present: true}
 		}
 	} else {
 		deckSize = g.deckSize()
-		players = g.Players
+		for p, s := range g.Scores {
+			_, ok := present[p]
+			players[p] = Status{Present: ok, Score: s}
+		}
 		cards = g.Cards
 	}
 	return Full{
