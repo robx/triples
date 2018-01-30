@@ -26,7 +26,7 @@ import WebSocket
 type alias Model =
     { wsURL : String
     , game : Game.GameView
-    , scores : List ( String, Int )
+    , scores : Dict.Dict String Status
     , selected : List Game.Pos
     , log : List String
     }
@@ -36,7 +36,7 @@ init : Game.GameView -> String -> Model
 init game wsURL =
     { wsURL = wsURL
     , game = game
-    , scores = []
+    , scores = Dict.empty
     , selected = []
     , log = []
     }
@@ -76,7 +76,7 @@ view style maxSize model =
                         "+"
                 }
             , choose = Choose
-            , info = Just { scores = model.scores, events = model.log }
+            , info = Just { scores = scoreTable model.scores, events = model.log }
             }
 
 
@@ -128,7 +128,7 @@ update msg model =
 
 type Update
     = Full FullRecord
-    | EventJoin String
+    | EventOnline String Bool
     | EventClaimed ClaimRecord
     | Change Game.Action
 
@@ -206,9 +206,10 @@ updateDecoder =
                     (Decode.field "cards" cards)
                     (Decode.field "players" (Decode.dict Decode.string status))
 
-        eventJoin =
-            Decode.map EventJoin
+        eventOnline =
+            Decode.map2 EventOnline
                 (Decode.field "name" Decode.string)
+                (Decode.field "present" Decode.bool)
 
         claimType =
             Decode.string
@@ -272,7 +273,7 @@ updateDecoder =
     in
     Decode.tagged
         [ ( "triples/full", full )
-        , ( "triples/eventJoin", eventJoin )
+        , ( "triples/eventOnline", eventOnline )
         , ( "triples/eventClaimed", eventClaimed )
         , ( "triples/changeMatch", changeMatch )
         , ( "triples/changeDeal", changeDeal )
@@ -292,17 +293,25 @@ applyUpdate update model =
                     , deckSize = full.deckSize
                     , matchSize = full.matchSize
                     }
-                , scores = Dict.toList (Dict.map (always .score) full.players)
+                , scores = full.players
                 , selected = []
             }
 
         Change action ->
             { model | game = Game.viewApply action model.game, selected = Game.selectedApply action model.selected }
 
-        EventJoin name ->
+        EventOnline name online ->
             { model
-                | log = (name ++ " joined!") :: model.log
-                , scores = addPlayer name model.scores
+                | log =
+                    (name
+                        ++ (if online then
+                                " connected"
+                            else
+                                " disconnected"
+                           )
+                    )
+                        :: model.log
+                , scores = updateStatus name (\s -> { s | present = online }) model.scores
             }
 
         EventClaimed claimed ->
@@ -328,22 +337,31 @@ applyUpdate update model =
             in
             { model
                 | log = (claimed.name ++ " claimed " ++ typ ++ " (" ++ res ++ ")") :: model.log
-                , scores = updateScores ( claimed.name, claimed.score ) model.scores
+                , scores = updateStatus claimed.name (\s -> { s | score = claimed.score }) model.scores
             }
 
 
-updateScores : ( String, Int ) -> List ( String, Int ) -> List ( String, Int )
-updateScores ( n, s ) scores =
-    Dict.fromList scores |> Dict.insert n s |> Dict.toList |> List.sortBy (\( n, s ) -> ( s, n )) |> List.reverse
+updateStatus : String -> (Status -> Status) -> Dict.Dict String Status -> Dict.Dict String Status
+updateStatus name f =
+    Dict.update
+        name
+        (\ms -> ms |> Maybe.withDefault { score = 0, present = False } |> f |> Just)
 
 
-addPlayer : String -> List ( String, Int ) -> List ( String, Int )
-addPlayer n scores =
-    let
-        add v =
-            Just <| Maybe.withDefault 0 v
-    in
-    Dict.fromList scores |> Dict.update n add |> Dict.toList |> List.sortBy (\( n, s ) -> ( s, n )) |> List.reverse
+scoreTable : Dict.Dict String Status -> List ( String, Status )
+scoreTable statuses =
+    statuses
+        |> Dict.toList
+        |> List.sortBy
+            (\( n, s ) ->
+                ( -s.score
+                , if s.present then
+                    0
+                  else
+                    1
+                , n
+                )
+            )
 
 
 type Command

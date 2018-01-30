@@ -141,7 +141,7 @@ type alias ViewGameModel msg =
     , choose : Game.Pos -> msg
     , info :
         Maybe
-            { scores : List ( String, Int )
+            { scores : List ( String, { present : Bool, score : Int } )
             , events : List String
             }
     }
@@ -277,8 +277,15 @@ viewGame model =
                                         |> List.map
                                             (\( n, s ) ->
                                                 Html.tr []
-                                                    [ Html.td [] [ Html.text <| n ]
-                                                    , Html.td [] [ Html.text <| toString s ]
+                                                    [ Html.td []
+                                                        [ Html.text <|
+                                                            if s.present then
+                                                                "*"
+                                                            else
+                                                                ""
+                                                        ]
+                                                    , Html.td [] [ Html.text n ]
+                                                    , Html.td [] [ Html.text <| toString s.score ]
                                                     ]
                                             )
                                     )
