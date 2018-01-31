@@ -54,16 +54,29 @@ type alias GameDef =
     }
 
 
-defTriples =
-    { type_ = Triples, short = False, multi = False }
+lookupDef : String -> Maybe GameDef
+lookupDef name =
+    case name of
+        "triples" ->
+            Just { type_ = Triples, short = False, multi = False }
 
+        "quadruples" ->
+            Just { type_ = Quadruples, short = False, multi = False }
 
-defQuadruples =
-    { type_ = Quadruples, short = False, multi = False }
+        "triplessprint" ->
+            Just { type_ = Triples, short = True, multi = False }
 
+        "quadruplessprint" ->
+            Just { type_ = Quadruples, short = True, multi = False }
 
-defTriplesMulti =
-    { type_ = Triples, short = False, multi = True }
+        "triplesmulti" ->
+            Just { type_ = Triples, short = False, multi = True }
+
+        "quadruplesmulti" ->
+            Just { type_ = Quadruples, short = False, multi = True }
+
+        _ ->
+            Nothing
 
 
 deckEmpty : Game -> Bool

@@ -26,20 +26,28 @@ var (
 	bot      = flag.Bool("bot", true, "run the telegram bot")
 )
 
+var (
+	games = []string{
+		"triples",
+		"quadruples",
+		"triplessprint",
+		"quadruplessprint",
+		"triplesmulti",
+		"quadruplesmulti",
+	}
+)
+
 func main() {
 	flag.Parse()
 
 	actions := make(chan BotAction)
 
 	if *bot {
-		go runBot(
-			os.Getenv("TELEGRAM_TOKEN"),
-			[]CallbackHandler{
-				handleGame("triples", *baseURL+"?game=triples"),
-				handleGame("quadruples", *baseURL+"?game=quadruples"),
-				handleGame("triplesmulti", *baseURL+"?game=triplesmulti"),
-			},
-			actions)
+		var callbacks []CallbackHandler
+		for _, g := range games {
+			callbacks = append(callbacks, handleGame(g, *baseURL+"?game="+g))
+		}
+		go runBot(os.Getenv("TELEGRAM_TOKEN"), callbacks, actions)
 	}
 
 	log.Printf("listening on %s...\n", *listen)
@@ -96,17 +104,22 @@ func handleUpdate(bot *tgbotapi.BotAPI, callbacks []CallbackHandler, update tgbo
 			words := strings.Fields(t)
 			if len(words) == 2 && words[0] == "/send" {
 				log.Printf("answering /send: %s", words[1])
-				switch words[1] {
-				case "triples", "quadruples", "triplesmulti":
-					game := tgbotapi.GameConfig{
-						BaseChat: tgbotapi.BaseChat{
-							ChatID:           m.Chat.ID,
-							ReplyToMessageID: 0,
-						},
-						GameShortName: words[1],
+				found := false
+				for _, g := range games {
+					if words[1] == g {
+						cfg := tgbotapi.GameConfig{
+							BaseChat: tgbotapi.BaseChat{
+								ChatID:           m.Chat.ID,
+								ReplyToMessageID: 0,
+							},
+							GameShortName: words[1],
+						}
+						bot.Send(cfg)
+						found = true
+						break
 					}
-					bot.Send(game)
-				default:
+				}
+				if !found {
 					msg := tgbotapi.NewMessage(m.Chat.ID, "I don't know that game")
 					bot.Send(msg)
 				}
@@ -117,28 +130,28 @@ func handleUpdate(bot *tgbotapi.BotAPI, callbacks []CallbackHandler, update tgbo
 	}
 	if q := update.InlineQuery; q != nil {
 		log.Printf("answering inline query")
-		g1 := tgbotapi.InlineQueryResultGame{
-			Type:          "game",
-			ID:            "0",
-			GameShortName: "triples",
+		var gs []string
+		if len(q.Query) < 2 {
+			gs = []string{"triples", "quadruples"}
+		} else {
+			for _, g := range games {
+				if strings.Contains(g, strings.ToLower(q.Query)) {
+					gs = append(gs, g)
+				}
+			}
 		}
-		g2 := tgbotapi.InlineQueryResultGame{
-			Type:          "game",
-			ID:            "1",
-			GameShortName: "quadruples",
-		}
-		g3 := tgbotapi.InlineQueryResultGame{
-			Type:          "game",
-			ID:            "2",
-			GameShortName: "triplesmulti",
+		var results []interface{}
+		for i, g := range games {
+			results = append(results,
+				tgbotapi.InlineQueryResultGame{
+					Type:          "game",
+					ID:            strconv.Itoa(i),
+					GameShortName: g,
+				})
 		}
 		ic := tgbotapi.InlineConfig{
 			InlineQueryID: q.ID,
-			Results: []interface{}{
-				g1,
-				g2,
-				g3,
-			},
+			Results:       results,
 		}
 		bot.AnswerInlineQuery(ic)
 	}
