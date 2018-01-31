@@ -129,7 +129,6 @@ func handleUpdate(bot *tgbotapi.BotAPI, callbacks []CallbackHandler, update tgbo
 		}
 	}
 	if q := update.InlineQuery; q != nil {
-		log.Printf("answering inline query")
 		var gs []string
 		if len(q.Query) < 2 {
 			gs = []string{"triples", "quadruples"}
@@ -140,8 +139,9 @@ func handleUpdate(bot *tgbotapi.BotAPI, callbacks []CallbackHandler, update tgbo
 				}
 			}
 		}
+		log.Printf("answering inline query: %+v", gs)
 		var results []interface{}
-		for i, g := range games {
+		for i, g := range gs {
 			results = append(results,
 				tgbotapi.InlineQueryResultGame{
 					Type:          "game",
@@ -153,7 +153,10 @@ func handleUpdate(bot *tgbotapi.BotAPI, callbacks []CallbackHandler, update tgbo
 			InlineQueryID: q.ID,
 			Results:       results,
 		}
-		bot.AnswerInlineQuery(ic)
+		_, err := bot.AnswerInlineQuery(ic)
+		if err != nil {
+			log.Printf("error answering inline query: %v", err)
+		}
 	}
 	if q := update.CallbackQuery; q != nil {
 		for _, c := range callbacks {
