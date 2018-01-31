@@ -129,19 +129,9 @@ func handleUpdate(bot *tgbotapi.BotAPI, callbacks []CallbackHandler, update tgbo
 		}
 	}
 	if q := update.InlineQuery; q != nil {
-		var gs []string
-		if len(q.Query) < 2 {
-			gs = []string{"triples", "quadruples"}
-		} else {
-			for _, g := range games {
-				if strings.Contains(g, strings.ToLower(q.Query)) {
-					gs = append(gs, g)
-				}
-			}
-		}
-		log.Printf("answering inline query: %+v", gs)
+		log.Printf("answering inline query: %+v", games)
 		var results []interface{}
-		for i, g := range gs {
+		for i, g := range games {
 			results = append(results,
 				tgbotapi.InlineQueryResultGame{
 					Type:          "game",
