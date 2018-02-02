@@ -189,7 +189,11 @@ viewGame model =
             )
 
         dcard pos card =
-            ( "card-" ++ (toString <| Card.toInt card)
+            let
+                sel =
+                    List.member pos model.selected
+            in
+            ( "card-" ++ (toString <| Card.toInt card) ++ "-" ++ toString sel
             , Svg.g
                 [ SvgE.onClick (model.choose pos)
                 , HtmlA.style [ ( "cursor", "pointer" ) ]
@@ -216,7 +220,7 @@ viewGame model =
                                 (\y ->
                                     Dict.get ( x, y ) model.game.table
                                         |> Maybe.map (dcard ( x, y ))
-                                        |> Maybe.withDefault ( "empty-" ++ toString ( x, y ), dempty )
+                                        |> Maybe.withDefault ( "empty-" ++ toString x ++ "-" ++ toString y, dempty )
                                         |> d ( x, y )
                                 )
                     )
@@ -235,7 +239,7 @@ viewGame model =
                             ]
             in
             d pos <|
-                ( "button"
+                ( "button-" ++ model.button.label
                 , Svg.g
                     (SvgA.transform "translate(30, 30)" :: handler)
                     [ Graphics.button model.style model.button.label
