@@ -319,10 +319,10 @@ applyUpdate update model =
                 typ =
                     case claimed.type_ of
                         ClaimMatch ->
-                            "a triple"
+                            "a match"
 
                         ClaimNoMatch ->
-                            "no triple"
+                            "no match"
 
                 res =
                     case claimed.result of

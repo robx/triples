@@ -5,7 +5,7 @@ import (
 )
 
 func TestDealMatches(t *testing.T) {
-	g := newGame()
+	g := newGame(GameTriples)
 	if have, want := len(g.Deck), 81; have != want {
 		t.Errorf("have %v, want %v", have, want)
 	}
@@ -63,7 +63,7 @@ func TestDealMatches(t *testing.T) {
 }
 
 func TestCompact(t *testing.T) {
-	g := newGame()
+	g := newGame(GameTriples)
 	g.deal()
 	g.dealMore()
 	g.dealMore()

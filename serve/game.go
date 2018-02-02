@@ -45,6 +45,7 @@ func (rs *Rooms) Get(blob Blob) *Room {
 }
 
 type Room struct {
+	game     int
 	creator  Blob
 	connects chan *client
 	cmds     chan *cmd
@@ -66,7 +67,12 @@ func (c client) Name() string {
 }
 
 func newRoom(blob Blob) *Room {
+	game := GameTriples
+	if blob.Game == "quadruplesmulti" {
+		game = GameQuadruples
+	}
 	r := &Room{
+		game:     game,
 		creator:  blob,
 		connects: make(chan *client),
 		cmds:     make(chan *cmd),
@@ -75,18 +81,32 @@ func newRoom(blob Blob) *Room {
 	return r
 }
 
+const (
+	GameTriples    = 0
+	GameQuadruples = 1
+)
+
+var (
+	defaultColumns = [2]int{4, 3}
+	matchSize      = [2]int{3, 4}
+)
+
 type Game struct {
+	Type           int
+	DefaultColumns int
 	Deck           []int
 	Cards          map[Position]int
 	Scores         map[string]int
 	ClaimedNoMatch bool
 }
 
-func newGame() *Game {
+func newGame(gameType int) *Game {
 	return &Game{
-		Deck:   rand.Perm(81),
-		Cards:  map[Position]int{},
-		Scores: map[string]int{},
+		Type:           gameType,
+		DefaultColumns: defaultColumns[gameType],
+		Deck:           rand.Perm(81),
+		Cards:          map[Position]int{},
+		Scores:         map[string]int{},
 	}
 }
 
@@ -107,12 +127,9 @@ func (g *Game) findCard(c int) (Position, bool) {
 	return Position{}, false
 }
 
-func isMatch(x, y, z int) bool {
-	check := func(a, b, c int) bool {
-		return a == b && b == c || a != b && b != c && a != c
-	}
+func isTriple(x, y, z int) bool {
 	for i := 0; i < 4; i++ {
-		if !check(x%3, y%3, z%3) {
+		if (x+y+z)%3 != 0 {
 			return false
 		}
 		x /= 3
@@ -120,6 +137,19 @@ func isMatch(x, y, z int) bool {
 		z /= 3
 	}
 	return true
+}
+
+func isQuadruple(x, y, z, w int) bool {
+	missing := func(a, b int) int {
+		c := 0
+		f := 1
+		for i := 0; i < 4; i++ {
+			c += f * ((-a - b) % 3)
+			f *= 3
+		}
+		return c
+	}
+	return missing(x, y) == missing(z, w) || missing(x, z) == missing(y, w) || missing(x, w) == missing(y, z)
 }
 
 func (g *Game) listCards() []int {
@@ -135,11 +165,26 @@ func (g *Game) countMatches() int {
 		count = 0
 		cards = g.listCards()
 	)
-	for i := 0; i < len(cards); i++ {
-		for j := i + 1; j < len(cards); j++ {
-			for k := j + 1; k < len(cards); k++ {
-				if isMatch(cards[i], cards[j], cards[k]) {
-					count++
+	switch g.Type {
+	case GameQuadruples:
+		for i := 0; i < len(cards); i++ {
+			for j := i + 1; j < len(cards); j++ {
+				for k := j + 1; k < len(cards); k++ {
+					for l := k + 1; l < len(cards); l++ {
+						if isQuadruple(cards[i], cards[j], cards[k], cards[l]) {
+							count++
+						}
+					}
+				}
+			}
+		}
+	default:
+		for i := 0; i < len(cards); i++ {
+			for j := i + 1; j < len(cards); j++ {
+				for k := j + 1; k < len(cards); k++ {
+					if isTriple(cards[i], cards[j], cards[k]) {
+						count++
+					}
 				}
 			}
 		}
@@ -154,6 +199,15 @@ func (g *Game) gameover() bool {
 	return g.countMatches() == 0
 }
 
+func (g *Game) isMatch(cards []int) bool {
+	switch g.Type {
+	case GameQuadruples:
+		return len(cards) == 4 && isQuadruple(cards[0], cards[1], cards[2], cards[3])
+	default:
+		return len(cards) == 3 && isTriple(cards[0], cards[1], cards[2])
+	}
+}
+
 func (g *Game) claimMatch(name string, cards []int) (ResultType, int, Update) {
 	var ps []Position
 	if g.gameover() {
@@ -166,7 +220,7 @@ func (g *Game) claimMatch(name string, cards []int) (ResultType, int, Update) {
 			ps = append(ps, p)
 		}
 	}
-	if len(cards) == 3 && isMatch(cards[0], cards[1], cards[2]) {
+	if g.isMatch(cards) {
 		for _, p := range ps {
 			delete(g.Cards, p)
 		}
@@ -178,7 +232,7 @@ func (g *Game) claimMatch(name string, cards []int) (ResultType, int, Update) {
 }
 
 func (g *Game) claimNomatch(name string, cards []int) (ResultType, int, Update) {
-	if g.gameover() || len(cards) < 12 || g.ClaimedNoMatch {
+	if g.gameover() || len(cards) < 3*g.DefaultColumns || g.ClaimedNoMatch {
 		return ResultLate, g.Scores[name], nil
 	}
 	cs := g.listCards()
@@ -232,8 +286,8 @@ func (g *Game) columns() int {
 			m = p.X + 1
 		}
 	}
-	if m < 4 {
-		return 4
+	if dc := g.DefaultColumns; m < dc {
+		return dc
 	}
 	return m
 }
@@ -265,9 +319,9 @@ func (g *Game) compact() Update {
 	for {
 		for ; !g.empty(l) && l.X < cols; l = up(l) {
 		}
-		for ; g.empty(h) && h.X > l.X && h.X >= 4; h = down(h) {
+		for ; g.empty(h) && h.X > l.X && h.X >= g.DefaultColumns; h = down(h) {
 		}
-		if g.empty(l) && !g.empty(h) && h.X > l.X && h.X >= 4 {
+		if g.empty(l) && !g.empty(h) && h.X > l.X && h.X >= g.DefaultColumns {
 			g.Cards[l] = g.Cards[h]
 			delete(g.Cards, h)
 			moves = append(moves, Move{
@@ -286,7 +340,7 @@ func (g *Game) compact() Update {
 
 func (g *Game) deal() Update {
 	var cs []PlacedCard
-	for x := 0; x < 4; x++ {
+	for x := 0; x < g.DefaultColumns; x++ {
 		for y := 0; y < 3; y++ {
 			p := Position{X: x, Y: y}
 			if _, ok := g.Cards[p]; !ok {
@@ -347,7 +401,7 @@ func (r *Room) loop() {
 			if g != nil {
 				g.add(cl.Name())
 			}
-			cl.updates <- makeFull(g, present())
+			cl.updates <- makeFull(g, r.game, present())
 			if !alreadyThere {
 				send(EventOnline{Name: cl.Name(), Present: true})
 			}
@@ -367,12 +421,12 @@ func (r *Room) loop() {
 					break
 				}
 				log.Printf("starting game on behalf of %s", cl.Name())
-				g = newGame()
+				g = newGame(r.game)
 				ps := present()
 				for p := range ps {
 					g.add(p)
 				}
-				send(makeFull(g, ps))
+				send(makeFull(g, r.game, ps))
 				sendAfter(g.deal(), 250*time.Millisecond)
 			case CmdClaim:
 				if g == nil || g.gameover() {
@@ -396,7 +450,7 @@ func (r *Room) loop() {
 							Cards:  map[Position]int{},
 						}
 						g = nil
-						sendAfter(makeFull(h, present()), 250*time.Millisecond)
+						sendAfter(makeFull(h, r.game, present()), 250*time.Millisecond)
 					}
 					if g.gameover() {
 						gameover()
@@ -529,7 +583,7 @@ type Update interface {
 	tag() string
 }
 
-func makeFull(g *Game, present map[string]struct{}) Update {
+func makeFull(g *Game, typ int, present map[string]struct{}) Update {
 	var (
 		deckSize = 0
 		cards    = map[Position]int{}
@@ -546,11 +600,12 @@ func makeFull(g *Game, present map[string]struct{}) Update {
 			players[p] = Status{Present: ok, Score: s}
 		}
 		cards = g.Cards
+		typ = g.Type
 	}
 	return Full{
-		Cols:      4,
+		Cols:      defaultColumns[typ],
 		Rows:      3,
-		MatchSize: 3,
+		MatchSize: matchSize[typ],
 		DeckSize:  deckSize,
 		Cards:     cards,
 		Players:   players,
