@@ -23,17 +23,17 @@ var upgrader = websocket.Upgrader{
 
 type Rooms struct {
 	mu    sync.Mutex
-	rooms map[string]*Room
+	rooms map[[2]string]*Room
 }
 
 func newRooms() *Rooms {
 	return &Rooms{
-		rooms: map[string]*Room{},
+		rooms: map[[2]string]*Room{},
 	}
 }
 
 func (rs *Rooms) Get(blob Blob) *Room {
-	key := blob.ChatInstance
+	key := [2]string{blob.Game, blob.ChatInstance}
 	rs.mu.Lock()
 	defer rs.mu.Unlock()
 	room := rs.rooms[key]
