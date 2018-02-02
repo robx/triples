@@ -385,14 +385,14 @@ encodeCommand cmd =
                 card c =
                     Encode.int <| Card.toInt c
             in
-            Encode.tag "triples/claim" <|
-                Encode.object
+            Encode.mustTag "triples/claim" <|
+                Encode.mustObject
                     [ ( "type", claimType )
                     , ( "cards", Encode.list <| List.map card cs )
                     ]
 
         Start ->
-            Encode.tag "triples/start" (Encode.object [])
+            Encode.mustTag "triples/start" (Encode.object [])
 
 
 sendCommand : String -> Command -> Cmd msg

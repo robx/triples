@@ -5,9 +5,7 @@
     "license": "BSD3",
     "source-directories": [
         "src",
-        "/s/elm-edn/src",
-        "/s/parser/src",
-        "/s/parser/src/Parser"
+        "/s/elm-edn/src"
     ],
     "exposed-modules": [],
     "dependencies": {
