@@ -132,12 +132,14 @@ card st selected =
             ++ [ stroke
                     (if selected then
                         st.colors.select
+
                      else
                         st.colors.foreground
                     )
                , strokeWidth
                     (if selected then
                         "2.5"
+
                      else
                         "0.2"
                     )

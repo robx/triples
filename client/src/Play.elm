@@ -110,10 +110,13 @@ view style maxSize model =
                 { message =
                     if model.dealing then
                         Nothing
+
                     else if model.answer /= Nothing && model.hint.count < gameView.matchSize - 1 then
                         Just UserHint
+
                     else if model.answer /= Nothing then
                         Nothing
+
                     else
                         Just UserDeal
                 , label =
@@ -124,6 +127,7 @@ view style maxSize model =
                         Nothing ->
                             if gameView.deckSize == 0 then
                                 "."
+
                             else
                                 "+"
                 }
@@ -285,6 +289,7 @@ viewGame model =
                                                         [ Html.text <|
                                                             if s.present then
                                                                 "*"
+
                                                             else
                                                                 ""
                                                         ]
@@ -370,10 +375,13 @@ update now msg model =
         User (Choose p) ->
             if Game.posEmpty model.game p then
                 ( model, Nothing )
+
             else if List.member p model.selected then
                 ( { model | selected = List.Extra.remove p model.selected }, Nothing )
+
             else if List.length model.selected < (Game.gameMatchSize model.game - 1) then
                 ( { model | selected = p :: model.selected }, Nothing )
+
             else
                 let
                     ( isset, newgame ) =
@@ -393,6 +401,7 @@ update now msg model =
                       }
                     , Just (After 250 AutoCompact)
                     )
+
                 else
                     ( { model | log = { time = now, event = EMatchWrong } :: model.log }
                     , Nothing
@@ -408,6 +417,7 @@ update now msg model =
             in
             if over then
                 ( model, Just <| GameOver <| { time = now, event = EEnd } :: model.log )
+
             else if nmatches == 0 then
                 let
                     game =
@@ -416,6 +426,7 @@ update now msg model =
                 ( { model | game = game, answer = Nothing, log = { time = now, event = ENoMatch } :: model.log }
                 , Just <| Command <| Random.generate ChooseHint (Game.randomMatch game)
                 )
+
             else
                 ( { model | answer = Just (Game.count model.game), log = { time = now, event = ENoMatchWrong } :: model.log }, Nothing )
 

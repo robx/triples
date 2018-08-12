@@ -139,6 +139,7 @@ empty def =
     { deckSize =
         if def.short then
             smallDeckSize
+
         else
             fullDeckSize
     , table = Dict.empty
@@ -154,6 +155,7 @@ init def =
         |> Random.map
             (if def.short then
                 List.drop (fullDeckSize - smallDeckSize)
+
              else
                 \x -> x
             )
@@ -217,6 +219,7 @@ compactMoves g =
         f ( gap, pos ) =
             if gap < pos && pos >= ( defaultColumns g.type_, 0 ) then
                 Just ( pos, gap )
+
             else
                 Nothing
     in
@@ -320,6 +323,7 @@ selectedApply action selected =
                 \pos ->
                     if pos == from then
                         to
+
                     else
                         pos
     in
@@ -330,6 +334,7 @@ selectedApply action selected =
         Match ps ->
             if List.any (\s -> List.member s ps) selected then
                 []
+
             else
                 selected
 
@@ -383,6 +388,7 @@ match : Game -> List Pos -> Bool
 match g ps =
     if List.length ps /= gameMatchSize g then
         False
+
     else
         let
             cards =
@@ -400,6 +406,7 @@ take : Game -> List Pos -> ( Bool, Game )
 take g ps =
     if match g ps then
         ( True, { g | table = List.foldr (<|) g.table (List.map Dict.remove ps) } )
+
     else
         ( False, g )
 

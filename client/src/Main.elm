@@ -154,6 +154,7 @@ update msg model =
                         MultiPlay.init (Game.empty def) (joinUrl model.location ++ "?key=" ++ k)
                 in
                 ( { model | page = MultiPlay m }, Cmd.none )
+
             else
                 ( model, Cmd.batch [ Random.generate (NewGame def) (Game.init def), Task.perform (PlayMsg Play.StartGame) Time.now ] )
 
@@ -191,6 +192,7 @@ update msg model =
 
                                     _ ->
                                         Cmd.none
+
                             else
                                 Cmd.none
                     in
@@ -277,6 +279,7 @@ joinUrl loc =
         protocol =
             if loc.protocol == "https:" then
                 "wss:"
+
             else
                 "ws:"
     in
