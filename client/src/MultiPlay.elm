@@ -65,13 +65,16 @@ view style maxSize model =
                 { message =
                     if Dict.size model.game.table == 0 then
                         Just UserStart
+
                     else
                         Just UserDeal
                 , label =
                     if Dict.size model.game.table == 0 then
                         ">"
+
                     else if model.game.deckSize == 0 then
                         "."
+
                     else
                         "+"
                 }
@@ -86,10 +89,13 @@ update msg model =
         User (Choose p) ->
             if Game.viewPosEmpty model.game p then
                 ( model, Cmd.none )
+
             else if List.member p model.selected then
                 ( { model | selected = List.Extra.remove p model.selected }, Cmd.none )
+
             else if List.length model.selected < (model.game.matchSize - 1) then
                 ( { model | selected = p :: model.selected }, Cmd.none )
+
             else
                 let
                     claimed =
@@ -306,6 +312,7 @@ applyUpdate update model =
                     (name
                         ++ (if online then
                                 " connected"
+
                             else
                                 " disconnected"
                            )
@@ -357,6 +364,7 @@ scoreTable statuses =
                 ( -s.score
                 , if s.present then
                     0
+
                   else
                     1
                 , n
