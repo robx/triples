@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"math/rand"
 	"net/http"
@@ -45,7 +46,7 @@ func main() {
 	if *bot {
 		var callbacks []CallbackHandler
 		for _, g := range games {
-			callbacks = append(callbacks, handleGame(g, *baseURL+"?game="+g))
+			callbacks = append(callbacks, handleGame(g, *baseURL+"?scored=1&game="+g))
 		}
 		go runBot(os.Getenv("TELEGRAM_TOKEN"), callbacks, actions)
 	}
@@ -64,6 +65,7 @@ func mux(actions chan<- BotAction, static string) *httprouter.Router {
 	}
 	r.GET("/api/win", winHandler(actions))
 	r.GET("/api/join", multiHandler(newRooms()))
+	r.GET("/api/new", newHandler())
 	return r
 }
 
@@ -290,6 +292,38 @@ func multiHandler(rooms *Rooms) httprouter.Handle {
 			http.Error(w, "bad key", http.StatusBadRequest)
 			return
 		}
+		if blob.FirstName != "" {
+			blob.FirstName = r.FormValue("name")
+		}
 		rooms.Get(blob).Serve(blob, w, r)
+	}
+}
+
+func randHex(n int) string {
+	bs := make([]byte, n)
+	_, err := rand.Read(bs)
+	if err != nil {
+		panic(err)
+	}
+	var s string
+	for _, b := range bs {
+		s += fmt.Sprintf("%02x", b)
+	}
+	return s
+}
+
+func newHandler() httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		game := r.FormValue("game")
+		if game == "" {
+			http.Error(w, "missing parameter `game`", http.StatusBadRequest)
+			return
+		}
+		b := Blob{
+			Game:         game,
+			ChatInstance: randHex(50),
+		}
+		key := encode(b)
+		io.WriteString(w, key)
 	}
 }
