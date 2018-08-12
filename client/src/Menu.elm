@@ -23,7 +23,7 @@ type alias Score =
 type alias Model =
     { score : Maybe Score
     , scoreDetails : Bool
-    , telegramGame : Maybe Game.GameDef
+    , game : Maybe Game.GameDef
     , name : Maybe String
     , style : Style.Style
     }
@@ -65,14 +65,19 @@ view wrap go model =
                         :: h
 
         prompt =
-            "Choose a game"
-                ++ (case model.name of
-                        Just n ->
-                            ", " ++ n ++ "!"
+            case model.game of
+                Nothing ->
+                    "Choose a game"
 
-                        Nothing ->
-                            "!"
-                   )
+                Just d ->
+                    "Welcome"
+                        ++ (case model.name of
+                                Just n ->
+                                    ", " ++ n ++ "!"
+
+                                Nothing ->
+                                    "!"
+                           )
 
         fst ( x, y, z ) =
             x
@@ -91,7 +96,7 @@ view wrap go model =
             [ Html.div
                 [ HtmlA.class "msg", HtmlA.style [ ( "background", trd model.style.colors.symbols ) ] ]
                 [ Html.text prompt ]
-            , case model.telegramGame of
+            , case model.game of
                 Nothing ->
                     Html.div [ HtmlA.class "buttons" ] <|
                         [ Html.button [ HtmlE.onClick <| go def ] [ Html.text "Classic" ]

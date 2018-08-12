@@ -61,7 +61,8 @@ type alias Params =
     { style : Style.Style
     , key : Maybe String
     , name : Maybe String
-    , telegramGame : Maybe Game.GameDef
+    , game : Maybe Game.GameDef
+    , scored : Bool
     }
 
 
@@ -86,7 +87,7 @@ newMenu params score =
         { score = score
         , scoreDetails = False
         , name = params.name
-        , telegramGame = params.telegramGame
+        , game = params.game
         , style = params.style
         }
 
@@ -186,11 +187,8 @@ update msg model =
                         sc =
                             score pmodel.def log
 
-                        scored =
-                            model.params.telegramGame /= Nothing
-
                         send =
-                            if scored then
+                            if model.params.scored then
                                 case model.params.key of
                                     Just k ->
                                         sendScore model.location k sc.points
@@ -223,11 +221,12 @@ parseParams loc =
                 <?> UrlParser.stringParam "key"
                 <?> UrlParser.stringParam "name"
                 <?> UrlParser.stringParam "game"
+                <?> UrlParser.stringParam "scored"
 
         parseParams parser location =
             UrlParser.parseHash parser { location | hash = "" }
 
-        f s k n g =
+        f s k n g sc =
             { style =
                 case Maybe.withDefault "square" s of
                     "classic" ->
@@ -240,13 +239,14 @@ parseParams loc =
                         Style.square
             , key = k
             , name = n
-            , telegramGame =
+            , game =
                 case g of
                     Just gg ->
                         Game.lookupDef gg
 
                     Nothing ->
                         Nothing
+            , scored = sc == Just "1"
             }
     in
     case parseParams (UrlParser.map f parser) loc of
