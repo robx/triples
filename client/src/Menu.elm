@@ -1,6 +1,9 @@
 module Menu
     exposing
         ( Model
+        , Msg(..)
+        , Score
+        , update
         , view
         )
 
@@ -11,25 +14,54 @@ import Html.Attributes as HtmlA
 import Html.Events as HtmlE
 
 
+type alias Score =
+    { summary : String
+    , details : List String
+    }
+
+
 type alias Model =
-    { score : List String
+    { score : Maybe Score
+    , scoreDetails : Bool
     , telegramGame : Maybe Game.GameDef
     , name : Maybe String
     , style : Style.Style
     }
 
 
-view : (Game.GameDef -> msg) -> Model -> Html.Html msg
-view go model =
+type Msg
+    = ToggleDetails
+
+
+update : Msg -> Model -> Model
+update msg model =
+    case msg of
+        ToggleDetails ->
+            { model | scoreDetails = not model.scoreDetails }
+
+
+view : (Msg -> msg) -> (Game.GameDef -> msg) -> Model -> Html.Html msg
+view wrap go model =
     let
         addScore h =
             case model.score of
-                [] ->
+                Nothing ->
                     h
 
-                ms ->
+                Just sc ->
+                    let
+                        details =
+                            if model.scoreDetails then
+                                sc.details |> List.map (\m -> Html.p [] [ Html.text m ])
+
+                            else
+                                []
+
+                        head =
+                            Html.h4 [ HtmlE.onClick (wrap ToggleDetails) ] [ Html.text sc.summary ]
+                    in
                     Html.div [ HtmlA.class "msg", HtmlA.style [ ( "background", snd model.style.colors.symbols ) ] ]
-                        (ms |> List.map (\m -> Html.p [] [ Html.text m ]))
+                        (head :: details)
                         :: h
 
         prompt =

@@ -73,17 +73,18 @@ init loc =
     in
     ( { location = loc
       , params = params
-      , page = newMenu params []
+      , page = newMenu params Nothing
       , size = { w = 0, h = 0 }
       }
     , getSize ()
     )
 
 
-newMenu : Params -> List String -> Page
-newMenu params msgs =
+newMenu : Params -> Maybe Menu.Score -> Page
+newMenu params score =
     Menu
-        { score = msgs
+        { score = score
+        , scoreDetails = False
         , name = params.name
         , telegramGame = params.telegramGame
         , style = params.style
@@ -103,7 +104,7 @@ view model =
             ]
             [ case model.page of
                 Menu menu ->
-                    Menu.view Go menu
+                    Menu.view MenuMsg Go menu
 
                 Play game ->
                     Html.map (\m -> GetTimeAndThen (PlayMsg m)) <| Play.view model.params.style maxSize game
@@ -116,6 +117,7 @@ view model =
 
 type Msg
     = Go Game.GameDef
+    | MenuMsg Menu.Msg
     | NewGame Game.GameDef Game.Game
     | GetTimeAndThen (Time.Time -> Msg)
     | PlayMsg Play.Msg Time.Time
@@ -143,6 +145,9 @@ update msg model =
 
         ( Resize size, _ ) ->
             ( { model | size = size }, Cmd.none )
+
+        ( MenuMsg mmsg, Menu menu ) ->
+            ( { model | page = Menu (Menu.update mmsg menu) }, Cmd.none )
 
         ( Go def, _ ) ->
             if def.multi then
@@ -196,7 +201,7 @@ update msg model =
                             else
                                 Cmd.none
                     in
-                    ( { model | page = newMenu model.params sc.messages }, send )
+                    ( { model | page = newMenu model.params (Just sc.messages) }, send )
 
         ( MultiPlayMsg pmsg, MultiPlay pmodel ) ->
             let
@@ -422,7 +427,7 @@ stat vs =
     }
 
 
-score : Game.GameDef -> List Play.LogEntry -> { points : Int, messages : List String }
+score : Game.GameDef -> List Play.LogEntry -> { points : Int, messages : Menu.Score }
 score def log =
     let
         stats =
@@ -470,12 +475,20 @@ score def log =
     in
     { points = pts
     , messages =
-        [ String.join " " [ "Your total time:", fseconds stats.total, "(" ++ ffloat 1 cpm ++ " cards/minute)" ]
-        , String.join " " [ "Effective time:", fseconds (stats.total - stats.noMatchTime), "(" ++ ffloat 1 discountCpm ++ " cards/minute)" ]
-        , String.join " " [ "Deductions:", "match:", toString stats.matchWrong, "no match:", toString stats.noMatchWrong, "hint:", toString stats.hint ]
-        , String.join " " [ "Points:", toString pts, "=", ffloat 2 mistakeFactor, "*", ffloat 0 (discountCpm * 10) ]
-        , String.join " " [ "Match find stats:", "average", fsec matchStats.average, "median", fsec matchStats.median, "minimum", fsec matchStats.min, "maximum", fsec matchStats.max ]
-        ]
+        { summary = "Done! You won " ++ toString pts ++ " points in " ++ fseconds stats.total ++ " minutes."
+        , details =
+            [ String.join " "
+                [ "Your total time:", fseconds stats.total, "(" ++ ffloat 1 cpm ++ " cards/minute)" ]
+            , String.join " "
+                [ "Effective time:", fseconds (stats.total - stats.noMatchTime), "(" ++ ffloat 1 discountCpm ++ " cards/minute)" ]
+            , String.join " "
+                [ "Deductions:", "match", toString stats.matchWrong, "no match", toString stats.noMatchWrong, "hint", toString stats.hint ]
+            , String.join " "
+                [ "Points", toString pts, "=", ffloat 2 mistakeFactor, "*", ffloat 0 (discountCpm * 10) ]
+            , String.join " "
+                [ "Match find stats:", "average", fsec matchStats.average, "median", fsec matchStats.median, "minimum", fsec matchStats.min, "maximum", fsec matchStats.max ]
+            ]
+        }
     }
 
 
