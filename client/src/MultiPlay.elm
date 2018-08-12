@@ -261,11 +261,11 @@ updateDecoder =
 
         changeMatch =
             Decode.map (Change << Game.Match)
-                (Decode.anyList pos)
+                (Decode.vector pos)
 
         changeDeal =
             Decode.map (Change << Game.Deal)
-                (Decode.anyList placedCard)
+                (Decode.vector placedCard)
 
         move =
             Decode.map2
@@ -275,7 +275,7 @@ updateDecoder =
 
         changeMove =
             Decode.map (Change << Game.Move)
-                (Decode.anyList move)
+                (Decode.vector move)
     in
     Decode.tagged
         [ ( "triples/full", full )
@@ -393,14 +393,14 @@ encodeCommand cmd =
                 card c =
                     Encode.int <| Card.toInt c
             in
-            Encode.mustTag "triples/claim" <|
+            Encode.mustTagged "triples/claim" <|
                 Encode.mustObject
                     [ ( "type", claimType )
                     , ( "cards", Encode.list <| List.map card cs )
                     ]
 
         Start ->
-            Encode.mustTag "triples/start" (Encode.object [])
+            Encode.mustTagged "triples/start" (Encode.object [])
 
 
 sendCommand : String -> Command -> Cmd msg
