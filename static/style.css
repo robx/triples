@@ -37,6 +37,10 @@ div.msg h4 {
     cursor: pointer;
 }
 
+div.msg input {
+    margin-left: 10px;
+}
+
 div.buttons {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;

@@ -115,11 +115,6 @@ view wrap go model =
             [ Html.div
                 [ HtmlA.class "msg", HtmlA.style [ ( "background", trd model.style.colors.symbols ) ] ]
                 [ Html.text prompt ]
-            , Html.div
-                [ HtmlA.class "msg", HtmlA.style [ ( "background", trd model.style.colors.symbols ) ] ]
-                [ Html.span [] [ Html.text "Change your name" ]
-                , Html.input [ HtmlA.value (Maybe.withDefault "" model.name), HtmlE.onInput <| wrap << NameChange ] []
-                ]
             , case model.game of
                 Nothing ->
                     Html.div [ HtmlA.class "buttons" ] <|
@@ -134,4 +129,9 @@ view wrap go model =
                 Just d ->
                     Html.div [ HtmlA.class "button" ] <|
                         [ Html.button [ HtmlE.onClick <| gogo d ] [ Html.text "Play!" ] ]
+            , Html.div
+                [ HtmlA.class "msg", HtmlA.style [ ( "background", trd model.style.colors.symbols ) ] ]
+                [ Html.span [] [ Html.text "Set your name (for multiplayer)" ]
+                , Html.input [ HtmlA.value (Maybe.withDefault "" model.name), HtmlE.onInput <| wrap << NameChange ] []
+                ]
             ]
