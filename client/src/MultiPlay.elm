@@ -17,6 +17,7 @@ import Graphics
 import Graphics.Style as Style
 import Html
 import Html.Attributes as HtmlA
+import Html.Events as HtmlE
 import List.Extra
 import Parser
 import Play
@@ -55,6 +56,23 @@ type Msg
 
 view : Style.Style -> Play.Size -> Model -> Html.Html Msg
 view style maxSize model =
+    if Dict.size model.game.table == 0 then
+        viewWait style maxSize model
+
+    else
+        viewPlay style maxSize model
+
+
+viewWait : Style.Style -> Play.Size -> Model -> Html.Html Msg
+viewWait _ _ _ =
+    Html.div []
+        [ Html.text "start game?"
+        , Html.button [ HtmlE.onClick (User UserStart) ] [ Html.text "start" ]
+        ]
+
+
+viewPlay : Style.Style -> Play.Size -> Model -> Html.Html Msg
+viewPlay style maxSize model =
     Html.map User <|
         Play.viewGame
             { style = style

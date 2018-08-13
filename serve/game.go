@@ -466,7 +466,7 @@ func (r *Room) loop() {
 					res, score, upd := g.claimNomatch(cl.Name(), cmd.Cards)
 					send(upd)
 					send(EventClaimed{
-						Name:   cl.blob.FirstName,
+						Name:   cl.Name(),
 						Type:   cmd.Type,
 						Result: res,
 						Score:  score,
