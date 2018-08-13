@@ -121,7 +121,7 @@ view model =
 
 
 type Msg
-    = Go Game.GameDef
+    = Go Game.GameDef String
     | MenuMsg Menu.Msg
     | NewGame Game.GameDef Game.Game
     | GetTimeAndThen (Time.Time -> Msg)
@@ -129,7 +129,7 @@ type Msg
     | MultiPlayMsg MultiPlay.Msg
     | Ignore
     | APIWinResult (Result Http.Error String)
-    | APINewResult Game.GameDef (Result Http.Error String)
+    | APINewResult Msg (Result Http.Error String)
     | Resize Size
 
 
@@ -148,7 +148,7 @@ update msg model =
             in
             ( model, Cmd.none )
 
-        ( APINewResult def r, _ ) ->
+        ( APINewResult deferredMsg r, _ ) ->
             let
                 _ =
                     Debug.log "api result (new)" r
@@ -162,7 +162,7 @@ update msg model =
                         newModel =
                             { model | params = { oldParams | key = Just key } }
                     in
-                    update (Go def) newModel
+                    update deferredMsg newModel
 
                 Err _ ->
                     ( model, Cmd.none )
@@ -179,21 +179,18 @@ update msg model =
         ( MenuMsg mmsg, Menu menu ) ->
             ( { model | page = Menu (Menu.update mmsg menu) }, Cmd.none )
 
-        ( Go def, _ ) ->
+        ( Go def name, _ ) ->
             if def.multi then
                 case model.params.key of
                     Just k ->
                         let
-                            n =
-                                Maybe.withDefault "anon" model.params.name
-
                             m =
-                                MultiPlay.init (Game.empty def) (joinUrl model.location ++ "?key=" ++ k ++ "&name=" ++ n)
+                                MultiPlay.init (Game.empty def) (joinUrl model.location ++ "?key=" ++ k ++ "&name=" ++ name)
                         in
                         ( { model | page = MultiPlay m }, Cmd.none )
 
                     Nothing ->
-                        ( { model | page = Waiting }, newMulti model.location def )
+                        ( { model | page = Waiting }, newMulti model.location (Game.gameId def) (Go def name) )
 
             else
                 ( model, Cmd.batch [ Random.generate (NewGame def) (Game.init def), Task.perform (PlayMsg Play.StartGame) Time.now ] )
@@ -341,13 +338,13 @@ sendScore location key score =
                 ++ toString score
 
 
-newMulti : Navigation.Location -> Game.GameDef -> Cmd Msg
-newMulti location def =
-    Http.send (APINewResult def) <|
+newMulti : Navigation.Location -> String -> Msg -> Cmd Msg
+newMulti location game deferredMsg =
+    Http.send (APINewResult deferredMsg) <|
         Http.getString <|
             newUrl location
                 ++ "?game="
-                ++ Game.gameId def
+                ++ game
 
 
 type alias MatchStats =

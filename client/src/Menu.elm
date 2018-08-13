@@ -31,6 +31,7 @@ type alias Model =
 
 type Msg
     = ToggleDetails
+    | NameChange String
 
 
 update : Msg -> Model -> Model
@@ -39,8 +40,16 @@ update msg model =
         ToggleDetails ->
             { model | scoreDetails = not model.scoreDetails }
 
+        NameChange n ->
+            case n of
+                "" ->
+                    { model | name = Nothing }
 
-view : (Msg -> msg) -> (Game.GameDef -> msg) -> Model -> Html.Html msg
+                _ ->
+                    { model | name = Just n }
+
+
+view : (Msg -> msg) -> (Game.GameDef -> String -> msg) -> Model -> Html.Html msg
 view wrap go model =
     let
         addScore h =
@@ -68,6 +77,13 @@ view wrap go model =
             case model.game of
                 Nothing ->
                     "Choose a game"
+                        ++ (case model.name of
+                                Just n ->
+                                    ", " ++ n ++ "!"
+
+                                Nothing ->
+                                    "!"
+                           )
 
                 Just d ->
                     "Welcome"
@@ -90,24 +106,32 @@ view wrap go model =
 
         def =
             { type_ = Game.Triples, short = False, multi = False }
+
+        gogo def =
+            go def (Maybe.withDefault "nobody" model.name)
     in
     Html.div [ HtmlA.id "menu" ] <|
         addScore
             [ Html.div
                 [ HtmlA.class "msg", HtmlA.style [ ( "background", trd model.style.colors.symbols ) ] ]
                 [ Html.text prompt ]
+            , Html.div
+                [ HtmlA.class "msg", HtmlA.style [ ( "background", trd model.style.colors.symbols ) ] ]
+                [ Html.span [] [ Html.text "Change your name" ]
+                , Html.input [ HtmlA.value (Maybe.withDefault "" model.name), HtmlE.onInput <| wrap << NameChange ] []
+                ]
             , case model.game of
                 Nothing ->
                     Html.div [ HtmlA.class "buttons" ] <|
-                        [ Html.button [ HtmlE.onClick <| go def ] [ Html.text "Classic" ]
-                        , Html.button [ HtmlE.onClick <| go { def | short = True } ] [ Html.text "Classic (short)" ]
-                        , Html.button [ HtmlE.onClick <| go { def | multi = True } ] [ Html.text "Classic (multiplayer)" ]
-                        , Html.button [ HtmlE.onClick <| go { def | type_ = Game.Quadruples } ] [ Html.text "Super" ]
-                        , Html.button [ HtmlE.onClick <| go { def | type_ = Game.Quadruples, short = True } ] [ Html.text "Super (short)" ]
-                        , Html.button [ HtmlE.onClick <| go { def | type_ = Game.Quadruples, multi = True } ] [ Html.text "Super (multiplayer)" ]
+                        [ Html.button [ HtmlE.onClick <| gogo def ] [ Html.text "Classic" ]
+                        , Html.button [ HtmlE.onClick <| gogo { def | short = True } ] [ Html.text "Classic (short)" ]
+                        , Html.button [ HtmlE.onClick <| gogo { def | multi = True }, HtmlA.disabled (model.name == Nothing) ] [ Html.text "Classic (multiplayer)" ]
+                        , Html.button [ HtmlE.onClick <| gogo { def | type_ = Game.Quadruples } ] [ Html.text "Super" ]
+                        , Html.button [ HtmlE.onClick <| gogo { def | type_ = Game.Quadruples, short = True } ] [ Html.text "Super (short)" ]
+                        , Html.button [ HtmlE.onClick <| gogo { def | type_ = Game.Quadruples, multi = True }, HtmlA.disabled (model.name == Nothing) ] [ Html.text "Super (multiplayer)" ]
                         ]
 
                 Just d ->
                     Html.div [ HtmlA.class "button" ] <|
-                        [ Html.button [ HtmlE.onClick <| go d ] [ Html.text "Play!" ] ]
+                        [ Html.button [ HtmlE.onClick <| gogo d ] [ Html.text "Play!" ] ]
             ]
