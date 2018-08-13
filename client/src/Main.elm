@@ -53,6 +53,7 @@ type alias Model =
 
 type Page
     = Menu Menu.Model
+    | Waiting
     | Play Play.Model
     | MultiPlay MultiPlay.Model
 
@@ -106,6 +107,9 @@ view model =
             [ case model.page of
                 Menu menu ->
                     Menu.view MenuMsg Go menu
+
+                Waiting ->
+                    Html.div [] [ Html.text "waiting" ]
 
                 Play game ->
                     Html.map (\m -> GetTimeAndThen (PlayMsg m)) <| Play.view model.params.style maxSize game
@@ -177,14 +181,19 @@ update msg model =
 
         ( Go def, _ ) ->
             if def.multi then
-                let
-                    k =
-                        Maybe.withDefault "" model.params.key
+                case model.params.key of
+                    Just k ->
+                        let
+                            n =
+                                Maybe.withDefault "anon" model.params.name
 
-                    m =
-                        MultiPlay.init (Game.empty def) (joinUrl model.location ++ "?key=" ++ k)
-                in
-                ( { model | page = MultiPlay m }, Cmd.none )
+                            m =
+                                MultiPlay.init (Game.empty def) (joinUrl model.location ++ "?key=" ++ k ++ "&name=" ++ n)
+                        in
+                        ( { model | page = MultiPlay m }, Cmd.none )
+
+                    Nothing ->
+                        ( { model | page = Waiting }, newMulti model.location def )
 
             else
                 ( model, Cmd.batch [ Random.generate (NewGame def) (Game.init def), Task.perform (PlayMsg Play.StartGame) Time.now ] )
