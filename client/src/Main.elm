@@ -124,19 +124,44 @@ type Msg
     | PlayMsg Play.Msg Time.Time
     | MultiPlayMsg MultiPlay.Msg
     | Ignore
-    | APIResult (Result Http.Error String)
+    | APIWinResult (Result Http.Error String)
+    | APINewResult Game.GameDef (Result Http.Error String)
     | Resize Size
+
+
+type APICall
+    = APIWin
+    | APINew
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case ( msg, model.page ) of
-        ( APIResult r, _ ) ->
+        ( APIWinResult r, _ ) ->
             let
                 _ =
-                    Debug.log "api result" r
+                    Debug.log "api result (win)" r
             in
             ( model, Cmd.none )
+
+        ( APINewResult def r, _ ) ->
+            let
+                _ =
+                    Debug.log "api result (new)" r
+            in
+            case r of
+                Ok key ->
+                    let
+                        oldParams =
+                            model.params
+
+                        newModel =
+                            { model | params = { oldParams | key = Just key } }
+                    in
+                    update (Go def) newModel
+
+                Err _ ->
+                    ( model, Cmd.none )
 
         ( Ignore, _ ) ->
             ( model, Cmd.none )
@@ -278,6 +303,11 @@ winUrl loc =
     loc.protocol ++ "//" ++ loc.host ++ loc.pathname </> "api/win"
 
 
+newUrl : Navigation.Location -> String
+newUrl loc =
+    loc.protocol ++ "//" ++ loc.host ++ loc.pathname </> "api/new"
+
+
 joinUrl : Navigation.Location -> String
 joinUrl loc =
     let
@@ -293,13 +323,22 @@ joinUrl loc =
 
 sendScore : Navigation.Location -> String -> Int -> Cmd Msg
 sendScore location key score =
-    Http.send APIResult <|
+    Http.send APIWinResult <|
         Http.getString <|
             winUrl location
                 ++ "?key="
                 ++ key
                 ++ "&score="
                 ++ toString score
+
+
+newMulti : Navigation.Location -> Game.GameDef -> Cmd Msg
+newMulti location def =
+    Http.send (APINewResult def) <|
+        Http.getString <|
+            newUrl location
+                ++ "?game="
+                ++ Game.gameId def
 
 
 type alias MatchStats =

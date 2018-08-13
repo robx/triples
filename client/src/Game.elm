@@ -79,6 +79,34 @@ lookupDef name =
             Nothing
 
 
+gameId : GameDef -> String
+gameId def =
+    let
+        t =
+            case def.type_ of
+                Triples ->
+                    "triples"
+
+                Quadruples ->
+                    "quadruples"
+
+        s =
+            if def.short then
+                "sprint"
+
+            else
+                ""
+
+        m =
+            if def.multi then
+                "multi"
+
+            else
+                ""
+    in
+    t ++ s ++ m
+
+
 deckEmpty : Game -> Bool
 deckEmpty g =
     List.isEmpty g.deck
