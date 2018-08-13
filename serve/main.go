@@ -286,16 +286,18 @@ func multiHandler(rooms *Rooms) httprouter.Handle {
 			http.Error(w, "missing parameter `key`", http.StatusBadRequest)
 			return
 		}
+		name := r.FormValue("name")
+		if name == "" {
+			http.Error(w, "missing parameter `name`", http.StatusBadRequest)
+			return
+		}
 		blob, err := decode(key)
 		if err != nil {
 			log.Printf("decoding blob %q: %s", key, err)
 			http.Error(w, "bad key", http.StatusBadRequest)
 			return
 		}
-		if blob.FirstName != "" {
-			blob.FirstName = r.FormValue("name")
-		}
-		rooms.Get(blob).Serve(blob, w, r)
+		rooms.Get(blob).Serve(blob, name, w, r)
 	}
 }
 

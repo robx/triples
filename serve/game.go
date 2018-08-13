@@ -58,12 +58,13 @@ type cmd struct {
 
 type client struct {
 	blob    Blob
+	name    string
 	updates chan<- Update
 	sendId  chan<- int
 }
 
 func (c client) Name() string {
-	return c.blob.FirstName
+	return c.name
 }
 
 func newRoom(blob Blob) *Room {
@@ -612,12 +613,13 @@ func makeFull(g *Game, typ int, present map[string]struct{}) Update {
 	}
 }
 
-func (r *Room) connect(b Blob) (<-chan Update, chan<- *cmd, <-chan int) {
-	log.Printf("player connecting: %s", b.FirstName)
+func (r *Room) connect(b Blob, name string) (<-chan Update, chan<- *cmd, <-chan int) {
+	log.Printf("player connecting: %s", name)
 	updates := make(chan Update)
 	sendId := make(chan int)
 	r.connects <- &client{
 		blob:    b,
+		name:    name,
 		updates: updates,
 		sendId:  sendId,
 	}
@@ -635,7 +637,7 @@ func init() {
 	}
 }
 
-func (r *Room) Serve(b Blob, w http.ResponseWriter, req *http.Request) {
+func (r *Room) Serve(b Blob, name string, w http.ResponseWriter, req *http.Request) {
 	conn, err := upgrader.Upgrade(w, req, nil)
 	if err != nil {
 		log.Printf("websocket upgrade: %s", err)
@@ -643,7 +645,7 @@ func (r *Room) Serve(b Blob, w http.ResponseWriter, req *http.Request) {
 	}
 	defer conn.Close()
 
-	updates, cmds, getId := r.connect(b)
+	updates, cmds, getId := r.connect(b, name)
 
 	go func() {
 		clientId := <-getId
@@ -661,7 +663,7 @@ func (r *Room) Serve(b Blob, w http.ResponseWriter, req *http.Request) {
 			}
 			switch t {
 			case websocket.TextMessage:
-				log.Printf("receiving message from %s", b.FirstName)
+				log.Printf("receiving message from %s", name)
 				d := edn.NewDecoder(r)
 				d.UseTagMap(&commandTagMap)
 				var c Command
@@ -680,7 +682,7 @@ func (r *Room) Serve(b Blob, w http.ResponseWriter, req *http.Request) {
 	}()
 
 	for u := range updates {
-		log.Printf("sending message to %s", b.FirstName)
+		log.Printf("sending message to %s", name)
 		if err := writeUpdate(conn, u); err != nil {
 			log.Print(err)
 		}
