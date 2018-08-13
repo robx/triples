@@ -184,8 +184,17 @@ update msg model =
                 case model.params.key of
                     Just k ->
                         let
+                            game =
+                                Game.gameId def
+
+                            ws =
+                                joinUrl model.location ++ "?key=" ++ k ++ "&name=" ++ name
+
+                            share =
+                                shareUrl model.location ++ "?key=" ++ k ++ "&game=" ++ game
+
                             m =
-                                MultiPlay.init (Game.empty def) (joinUrl model.location ++ "?key=" ++ k ++ "&name=" ++ name)
+                                MultiPlay.init (Game.empty def) ws share
                         in
                         ( { model | page = MultiPlay m }, Cmd.none )
 
@@ -302,6 +311,11 @@ parseParams loc =
 
         _ ->
             a ++ "/" ++ b
+
+
+shareUrl : Navigation.Location -> String
+shareUrl loc =
+    loc.protocol ++ "//" ++ loc.host ++ loc.pathname
 
 
 winUrl : Navigation.Location -> String

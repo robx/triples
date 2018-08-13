@@ -26,6 +26,7 @@ import WebSocket
 
 type alias Model =
     { wsURL : String
+    , joinLink : String
     , game : Game.GameView
     , scores : Dict.Dict String Status
     , selected : List Game.Pos
@@ -33,9 +34,10 @@ type alias Model =
     }
 
 
-init : Game.GameView -> String -> Model
-init game wsURL =
+init : Game.GameView -> String -> String -> Model
+init game wsURL joinLink =
     { wsURL = wsURL
+    , joinLink = joinLink
     , game = game
     , scores = Dict.empty
     , selected = []
@@ -57,17 +59,60 @@ type Msg
 view : Style.Style -> Play.Size -> Model -> Html.Html Msg
 view style maxSize model =
     if Dict.size model.game.table == 0 then
-        viewWait style maxSize model
+        viewWait style model
 
     else
         viewPlay style maxSize model
 
 
-viewWait : Style.Style -> Play.Size -> Model -> Html.Html Msg
-viewWait _ _ _ =
-    Html.div []
-        [ Html.text "start game?"
-        , Html.button [ HtmlE.onClick (User UserStart) ] [ Html.text "start" ]
+viewWait : Style.Style -> Model -> Html.Html Msg
+viewWait style model =
+    let
+        listScores scores =
+            Html.table []
+                ([ Html.thead []
+                    [ Html.tr []
+                        [ Html.th [] [ Html.text "Name" ]
+                        , Html.th [] [ Html.text "Score" ]
+                        , Html.th [] [ Html.text "Online" ]
+                        ]
+                    ]
+                 ]
+                    ++ List.map
+                        (\( n, s ) ->
+                            Html.tr []
+                                [ Html.td [] [ Html.text n ]
+                                , Html.td [] [ Html.text <| toString s.score ]
+                                , Html.td []
+                                    [ Html.text <|
+                                        if s.present then
+                                            "yes"
+
+                                        else
+                                            "no"
+                                    ]
+                                ]
+                        )
+                        scores
+                )
+
+        listEvents events =
+            List.map (\e -> Html.div [ HtmlA.class "event" ] [ Html.text e ]) events
+
+        ( _, bg1, bg2 ) =
+            style.colors.symbols
+    in
+    Html.div [ HtmlA.id "menu" ]
+        [ Html.div [ HtmlA.class "msg", HtmlA.style [ ( "background", bg2 ) ] ]
+            [ Html.div [] [ Html.text "Share this link with other players" ]
+            , Html.div [ HtmlA.class "share" ] [ Html.text model.joinLink ]
+            ]
+        , Html.div [ HtmlA.class "button" ]
+            [ Html.button [ HtmlE.onClick (User UserStart) ] [ Html.text "Start game!" ] ]
+        , Html.div [ HtmlA.class "msg", HtmlA.style [ ( "background", bg1 ) ] ]
+            [ listScores <| scoreTable model.scores ]
+        , Html.div [ HtmlA.class "msg", HtmlA.style [ ( "background", bg2 ) ] ]
+            (listEvents <| model.log)
         ]
 
 
