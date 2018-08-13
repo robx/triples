@@ -323,7 +323,7 @@ func newHandler() httprouter.Handle {
 		}
 		b := Blob{
 			Game:         game,
-			ChatInstance: randHex(50),
+			ChatInstance: randHex(20),
 		}
 		key := encode(b)
 		io.WriteString(w, key)
