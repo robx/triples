@@ -32,21 +32,21 @@ func newRooms() *Rooms {
 	}
 }
 
-func (rs *Rooms) Get(blob Blob) *Room {
-	key := [2]string{blob.Game, blob.ChatInstance}
+func (rs *Rooms) Get(game, room string) *Room {
+	key := [2]string{game, room}
 	rs.mu.Lock()
 	defer rs.mu.Unlock()
-	room := rs.rooms[key]
-	if room != nil {
-		return room
+	rm := rs.rooms[key]
+	if rm != nil {
+		return rm
 	}
-	rs.rooms[key] = newRoom(blob)
+	rs.rooms[key] = newRoom(game, room)
 	return rs.rooms[key]
 }
 
 type Room struct {
 	game     int
-	creator  Blob
+	room     string
 	connects chan *client
 	cmds     chan *cmd
 }
@@ -57,7 +57,6 @@ type cmd struct {
 }
 
 type client struct {
-	blob    Blob
 	name    string
 	updates chan<- Update
 	sendId  chan<- int
@@ -67,14 +66,14 @@ func (c client) Name() string {
 	return c.name
 }
 
-func newRoom(blob Blob) *Room {
-	game := GameTriples
-	if blob.Game == "quadruplesmulti" {
-		game = GameQuadruples
+func newRoom(game, room string) *Room {
+	gm := GameTriples
+	if game == "quadruplesmulti" {
+		gm = GameQuadruples
 	}
 	r := &Room{
-		game:     game,
-		creator:  blob,
+		game:     gm,
+		room:     room,
 		connects: make(chan *client),
 		cmds:     make(chan *cmd),
 	}
@@ -367,7 +366,7 @@ func makeRevealCount(count int) Update {
 }
 
 func (r *Room) loop() {
-	log.Printf("starting new room: %s %s", r.creator.Game, r.creator.FirstName)
+	log.Printf("starting new room: %d %s", r.game, r.room)
 	var (
 		clientId int
 		clients  = map[int]*client{}
@@ -613,12 +612,11 @@ func makeFull(g *Game, typ int, present map[string]struct{}) Update {
 	}
 }
 
-func (r *Room) connect(b Blob, name string) (<-chan Update, chan<- *cmd, <-chan int) {
+func (r *Room) connect(name string) (<-chan Update, chan<- *cmd, <-chan int) {
 	log.Printf("player connecting: %s", name)
 	updates := make(chan Update)
 	sendId := make(chan int)
 	r.connects <- &client{
-		blob:    b,
 		name:    name,
 		updates: updates,
 		sendId:  sendId,
@@ -637,7 +635,7 @@ func init() {
 	}
 }
 
-func (r *Room) Serve(b Blob, name string, w http.ResponseWriter, req *http.Request) {
+func (r *Room) Serve(name string, w http.ResponseWriter, req *http.Request) {
 	conn, err := upgrader.Upgrade(w, req, nil)
 	if err != nil {
 		log.Printf("websocket upgrade: %s", err)
@@ -645,7 +643,7 @@ func (r *Room) Serve(b Blob, name string, w http.ResponseWriter, req *http.Reque
 	}
 	defer conn.Close()
 
-	updates, cmds, getId := r.connect(b, name)
+	updates, cmds, getId := r.connect(name)
 
 	go func() {
 		clientId := <-getId

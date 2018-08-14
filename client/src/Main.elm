@@ -61,6 +61,7 @@ type Page
 type alias Params =
     { style : Style.Style
     , key : Maybe String
+    , room : Maybe String
     , name : Maybe String
     , game : Maybe Game.GameDef
     , scored : Bool
@@ -154,13 +155,13 @@ update msg model =
                     Debug.log "api result (new)" r
             in
             case r of
-                Ok key ->
+                Ok room ->
                     let
                         oldParams =
                             model.params
 
                         newModel =
-                            { model | params = { oldParams | key = Just key } }
+                            { model | params = { oldParams | room = Just room } }
                     in
                     update deferredMsg newModel
 
@@ -181,17 +182,17 @@ update msg model =
 
         ( Go def name, _ ) ->
             if def.multi then
-                case model.params.key of
-                    Just k ->
+                case model.params.room of
+                    Just r ->
                         let
                             game =
                                 Game.gameId def
 
                             ws =
-                                joinUrl model.location ++ "?key=" ++ k ++ "&name=" ++ name
+                                joinUrl model.location ++ "?room=" ++ r ++ "&game=" ++ game ++ "&name=" ++ name
 
                             share =
-                                shareUrl model.location ++ "?key=" ++ k ++ "&game=" ++ game
+                                shareUrl model.location ++ "?room=" ++ r ++ "&game=" ++ game
 
                             m =
                                 MultiPlay.init (Game.empty def) ws share
@@ -259,6 +260,7 @@ parseParams loc =
             UrlParser.top
                 <?> UrlParser.stringParam "style"
                 <?> UrlParser.stringParam "key"
+                <?> UrlParser.stringParam "room"
                 <?> UrlParser.stringParam "name"
                 <?> UrlParser.stringParam "game"
                 <?> UrlParser.stringParam "scored"
@@ -266,7 +268,7 @@ parseParams loc =
         parseParams parser location =
             UrlParser.parseHash parser { location | hash = "" }
 
-        f s k n g sc =
+        f s k r n g sc =
             { style =
                 case Maybe.withDefault "square" s of
                     "classic" ->
@@ -278,6 +280,7 @@ parseParams loc =
                     _ ->
                         Style.square
             , key = k
+            , room = r
             , name = n
             , game =
                 case g of

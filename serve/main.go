@@ -33,6 +33,8 @@ var (
 		"quadruples",
 		"triplessprint",
 		"quadruplessprint",
+	}
+	multigames = []string{
 		"triplesmulti",
 		"quadruplesmulti",
 	}
@@ -46,7 +48,10 @@ func main() {
 	if *bot {
 		var callbacks []CallbackHandler
 		for _, g := range games {
-			callbacks = append(callbacks, handleGame(g, *baseURL+"?scored=1&game="+g))
+			callbacks = append(callbacks, handleGame(g, *baseURL))
+		}
+		for _, g := range multigames {
+			callbacks = append(callbacks, handleMultiGame(g, *baseURL))
 		}
 		go runBot(os.Getenv("TELEGRAM_TOKEN"), callbacks, actions)
 	}
@@ -230,12 +235,34 @@ func handleGame(shortname, u string) CallbackHandler {
 		}
 		key := encode(b)
 		var v = url.Values{}
+		v.Add("game", shortname)
+		v.Add("scored", "1")
 		v.Add("key", key)
 		v.Add("name", q.From.FirstName)
 		log.Printf("game callback: %s: %+v", shortname, b)
 		return &tgbotapi.CallbackConfig{
 			CallbackQueryID: q.ID,
-			URL:             u + "&" + v.Encode(),
+			URL:             u + "?" + v.Encode(),
+		}
+	}
+}
+
+func handleMultiGame(shortname, u string) CallbackHandler {
+	return func(q *tgbotapi.CallbackQuery) *tgbotapi.CallbackConfig {
+		if g := q.GameShortName; g != shortname {
+			return nil
+		}
+
+		room := base64.RawURLEncoding.EncodeToString([]byte(q.ChatInstance))
+
+		var v = url.Values{}
+		v.Add("game", shortname)
+		v.Add("room", room)
+		v.Add("name", q.From.FirstName)
+		log.Printf("multi game callback: %s", shortname)
+		return &tgbotapi.CallbackConfig{
+			CallbackQueryID: q.ID,
+			URL:             u + "?" + v.Encode(),
 		}
 	}
 }
@@ -281,9 +308,14 @@ func winHandler(actions chan<- BotAction) httprouter.Handle {
 
 func multiHandler(rooms *Rooms) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		key := r.FormValue("key")
-		if key == "" {
-			http.Error(w, "missing parameter `key`", http.StatusBadRequest)
+		room := r.FormValue("room")
+		if room == "" {
+			http.Error(w, "missing parameter `room`", http.StatusBadRequest)
+			return
+		}
+		game := r.FormValue("game")
+		if game == "" {
+			http.Error(w, "missing parameter `game`", http.StatusBadRequest)
 			return
 		}
 		name := r.FormValue("name")
@@ -291,13 +323,7 @@ func multiHandler(rooms *Rooms) httprouter.Handle {
 			http.Error(w, "missing parameter `name`", http.StatusBadRequest)
 			return
 		}
-		blob, err := decode(key)
-		if err != nil {
-			log.Printf("decoding blob %q: %s", key, err)
-			http.Error(w, "bad key", http.StatusBadRequest)
-			return
-		}
-		rooms.Get(blob).Serve(blob, name, w, r)
+		rooms.Get(game, room).Serve(name, w, r)
 	}
 }
 
@@ -316,16 +342,7 @@ func randHex(n int) string {
 
 func newHandler() httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		game := r.FormValue("game")
-		if game == "" {
-			http.Error(w, "missing parameter `game`", http.StatusBadRequest)
-			return
-		}
-		b := Blob{
-			Game:         game,
-			ChatInstance: randHex(20),
-		}
-		key := encode(b)
-		io.WriteString(w, key)
+		room := randHex(20)
+		io.WriteString(w, room)
 	}
 }
