@@ -73,13 +73,16 @@ init loc =
     let
         params =
             parseParams loc
+        genRoom = case params.room of
+           Nothing -> [ Random.generate SetRoom (randHex 6) ]
+           Just _ -> []
     in
     ( { location = loc
       , params = params
       , page = newMenu params Nothing
       , size = { w = 0, h = 0 }
       }
-    , getSize ()
+    , Cmd.batch <| getSize () :: genRoom
     )
 
 
@@ -132,6 +135,7 @@ type Msg
     | APIWinResult (Result Http.Error String)
     | APINewResult Msg (Result Http.Error String)
     | Resize Size
+    | SetRoom String
 
 
 type APICall
@@ -149,25 +153,6 @@ update msg model =
             in
             ( model, Cmd.none )
 
-        ( APINewResult deferredMsg r, _ ) ->
-            let
-                _ =
-                    Debug.log "api result (new)" r
-            in
-            case r of
-                Ok room ->
-                    let
-                        oldParams =
-                            model.params
-
-                        newModel =
-                            { model | params = { oldParams | room = Just room } }
-                    in
-                    update deferredMsg newModel
-
-                Err _ ->
-                    ( model, Cmd.none )
-
         ( Ignore, _ ) ->
             ( model, Cmd.none )
 
@@ -182,25 +167,22 @@ update msg model =
 
         ( Go def name, _ ) ->
             if def.multi then
-                case model.params.room of
-                    Just r ->
-                        let
-                            game =
-                                Game.gameId def
+                let
+                    room = Maybe.withDefault "veryunlikely" model.params.room
 
-                            ws =
-                                joinUrl model.location ++ "?room=" ++ r ++ "&game=" ++ game ++ "&name=" ++ name
+                    game =
+                        Game.gameId def
 
-                            share =
-                                shareUrl model.location ++ "?room=" ++ r ++ "&game=" ++ game
+                    ws =
+                        joinUrl model.location ++ "?room=" ++ room ++ "&game=" ++ game ++ "&name=" ++ name
 
-                            m =
-                                MultiPlay.init (Game.empty def) ws share
-                        in
-                        ( { model | page = MultiPlay m }, Cmd.none )
+                    share =
+                        shareUrl model.location ++ "?room=" ++ room ++ "&game=" ++ game
 
-                    Nothing ->
-                        ( { model | page = Waiting }, newMulti model.location (Game.gameId def) (Go def name) )
+                    m =
+                        MultiPlay.init (Game.empty def) ws share
+                in
+                ( { model | page = MultiPlay m }, Cmd.none )
 
             else
                 ( model, Cmd.batch [ Random.generate (NewGame def) (Game.init def), Task.perform (PlayMsg Play.StartGame) Time.now ] )
@@ -248,6 +230,12 @@ update msg model =
                     MultiPlay.update pmsg pmodel
             in
             ( { model | page = MultiPlay newpmodel }, cmd )
+
+        ( SetRoom room, _ ) ->
+            let
+               oldParams = model.params
+            in
+               ( { model | params = { oldParams | room = Just room } }, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
@@ -353,15 +341,6 @@ sendScore location key score =
                 ++ key
                 ++ "&score="
                 ++ toString score
-
-
-newMulti : Navigation.Location -> String -> Msg -> Cmd Msg
-newMulti location game deferredMsg =
-    Http.send (APINewResult deferredMsg) <|
-        Http.getString <|
-            newUrl location
-                ++ "?game="
-                ++ game
 
 
 type alias MatchStats =
@@ -579,3 +558,19 @@ after time msg =
                     )
     in
     Task.perform msg task
+
+--| Generate n random bytes, hex encoded
+randHex : Int -> Random.Generator String
+randHex n =
+    let
+       hex i = case i of
+          10 -> "a"
+          11 -> "b"
+          12 -> "c"
+          13 -> "d"
+          14 -> "e"
+          15 -> "f"
+          _ -> toString i
+       one = Random.int 0 15 |> Random.map hex
+    in
+       Random.list (2*n) one |> Random.map String.concat

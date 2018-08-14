@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"math/rand"
 	"net/http"
@@ -70,7 +69,6 @@ func mux(actions chan<- BotAction, static string) *httprouter.Router {
 	}
 	r.GET("/api/win", winHandler(actions))
 	r.GET("/api/join", multiHandler(newRooms()))
-	r.GET("/api/new", newHandler())
 	return r
 }
 
@@ -324,25 +322,5 @@ func multiHandler(rooms *Rooms) httprouter.Handle {
 			return
 		}
 		rooms.Get(game, room).Serve(name, w, r)
-	}
-}
-
-func randHex(n int) string {
-	bs := make([]byte, n)
-	_, err := rand.Read(bs)
-	if err != nil {
-		panic(err)
-	}
-	var s string
-	for _, b := range bs {
-		s += fmt.Sprintf("%02x", b)
-	}
-	return s
-}
-
-func newHandler() httprouter.Handle {
-	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		room := randHex(20)
-		io.WriteString(w, room)
 	}
 }
