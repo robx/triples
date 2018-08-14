@@ -120,10 +120,10 @@ view wrap go model =
                     Html.div [ HtmlA.class "buttons" ] <|
                         [ Html.button [ HtmlE.onClick <| gogo def ] [ Html.text "Classic" ]
                         , Html.button [ HtmlE.onClick <| gogo { def | short = True } ] [ Html.text "Classic (short)" ]
-                        , Html.button [ HtmlE.onClick <| gogo { def | multi = True }, HtmlA.disabled (model.name == Nothing) ] [ Html.text "Classic (multiplayer)" ]
+                        , Html.button [ HtmlE.onClick <| gogo { def | multi = True }, HtmlA.disabled (model.name == Nothing) ] [ Html.text "Classic (multi)" ]
                         , Html.button [ HtmlE.onClick <| gogo { def | type_ = Game.Quadruples } ] [ Html.text "Super" ]
                         , Html.button [ HtmlE.onClick <| gogo { def | type_ = Game.Quadruples, short = True } ] [ Html.text "Super (short)" ]
-                        , Html.button [ HtmlE.onClick <| gogo { def | type_ = Game.Quadruples, multi = True }, HtmlA.disabled (model.name == Nothing) ] [ Html.text "Super (multiplayer)" ]
+                        , Html.button [ HtmlE.onClick <| gogo { def | type_ = Game.Quadruples, multi = True }, HtmlA.disabled (model.name == Nothing) ] [ Html.text "Super (multi)" ]
                         ]
 
                 Just d ->
