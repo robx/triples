@@ -73,9 +73,14 @@ init loc =
     let
         params =
             parseParams loc
-        genRoom = case params.room of
-           Nothing -> [ Random.generate SetRoom (randHex 6) ]
-           Just _ -> []
+
+        genRoom =
+            case params.room of
+                Nothing ->
+                    [ Random.generate SetRoom (randHex 6) ]
+
+                Just _ ->
+                    []
     in
     ( { location = loc
       , params = params
@@ -168,7 +173,8 @@ update msg model =
         ( Go def name, _ ) ->
             if def.multi then
                 let
-                    room = Maybe.withDefault "veryunlikely" model.params.room
+                    room =
+                        Maybe.withDefault "veryunlikely" model.params.room
 
                     game =
                         Game.gameId def
@@ -233,9 +239,10 @@ update msg model =
 
         ( SetRoom room, _ ) ->
             let
-               oldParams = model.params
+                oldParams =
+                    model.params
             in
-               ( { model | params = { oldParams | room = Just room } }, Cmd.none )
+            ( { model | params = { oldParams | room = Just room } }, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
@@ -559,18 +566,38 @@ after time msg =
     in
     Task.perform msg task
 
+
+
 --| Generate n random bytes, hex encoded
+
+
 randHex : Int -> Random.Generator String
 randHex n =
     let
-       hex i = case i of
-          10 -> "a"
-          11 -> "b"
-          12 -> "c"
-          13 -> "d"
-          14 -> "e"
-          15 -> "f"
-          _ -> toString i
-       one = Random.int 0 15 |> Random.map hex
+        hex i =
+            case i of
+                10 ->
+                    "a"
+
+                11 ->
+                    "b"
+
+                12 ->
+                    "c"
+
+                13 ->
+                    "d"
+
+                14 ->
+                    "e"
+
+                15 ->
+                    "f"
+
+                _ ->
+                    toString i
+
+        one =
+            Random.int 0 15 |> Random.map hex
     in
-       Random.list (2*n) one |> Random.map String.concat
+    Random.list (2 * n) one |> Random.map String.concat
