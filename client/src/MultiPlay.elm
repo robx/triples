@@ -111,7 +111,7 @@ viewWait style model =
             [ Html.button [ HtmlE.onClick (User UserStart) ] [ Html.text "Start game!" ] ]
         , Html.div [ HtmlA.class "msg", HtmlA.style [ ( "background", bg1 ) ] ]
             [ listScores <| scoreTable model.scores ]
-        , Html.div [ HtmlA.class "msg", HtmlA.style [ ( "background", bg2 ) ] ]
+        , Html.div [ HtmlA.class "msg", HtmlA.class "log", HtmlA.style [ ( "background", bg2 ) ] ]
             (listEvents <| model.log)
         ]
 

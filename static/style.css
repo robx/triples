@@ -51,6 +51,11 @@ div.msg input {
     margin-left: 10px;
 }
 
+div.log {
+    max-height: 150px;
+    overflow-y: scroll;
+}
+
 div.event {
     font-style: italic;
 }
