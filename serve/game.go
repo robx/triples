@@ -32,23 +32,45 @@ func newRooms() *Rooms {
 	}
 }
 
-func (rs *Rooms) Get(game, room string) *Room {
+func (rs *Rooms) Serve(game, room, name string, w http.ResponseWriter, req *http.Request) {
+	r := rs.get(game, room)
+	r.Serve(name, w, req)
+	rs.release(game, room)
+}
+
+func (rs *Rooms) get(game, room string) *Room {
+	key := [2]string{game, room}
+	rs.mu.Lock()
+	defer rs.mu.Unlock()
+	if _, ok := rs.rooms[key]; !ok {
+		rs.rooms[key] = newRoom(game, room)
+	}
+	rs.rooms[key].count += 1
+	return rs.rooms[key]
+}
+
+func (rs *Rooms) release(game, room string) {
 	key := [2]string{game, room}
 	rs.mu.Lock()
 	defer rs.mu.Unlock()
 	rm := rs.rooms[key]
-	if rm != nil {
-		return rm
+	if rm == nil {
+		return
 	}
-	rs.rooms[key] = newRoom(game, room)
-	return rs.rooms[key]
+	rm.count -= 1
+	if rm.count <= 0 {
+		delete(rs.rooms, key)
+		rm.close()
+	}
 }
 
 type Room struct {
 	game     int
 	room     string
+	quit     chan struct{}
 	connects chan *client
 	cmds     chan *cmd
+	count    int
 }
 
 type cmd struct {
@@ -74,6 +96,7 @@ func newRoom(game, room string) *Room {
 	r := &Room{
 		game:     gm,
 		room:     room,
+		quit:     make(chan struct{}),
 		connects: make(chan *client),
 		cmds:     make(chan *cmd),
 	}
@@ -393,6 +416,11 @@ func (r *Room) loop() {
 	}
 	for {
 		select {
+		case <-r.quit:
+			for _, cl := range clients {
+				close(cl.updates)
+			}
+			return
 		case cl := <-r.connects:
 			cl.sendId <- clientId
 			_, alreadyThere := present()[cl.Name()]
@@ -610,6 +638,11 @@ func makeFull(g *Game, typ int, present map[string]struct{}) Update {
 		Cards:     cards,
 		Players:   players,
 	}
+}
+
+func (r *Room) close() {
+	log.Printf("closing room: %s", r.room)
+	close(r.quit)
 }
 
 func (r *Room) connect(name string) (<-chan Update, chan<- *cmd, <-chan int) {

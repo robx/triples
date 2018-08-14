@@ -321,6 +321,6 @@ func multiHandler(rooms *Rooms) httprouter.Handle {
 			http.Error(w, "missing parameter `name`", http.StatusBadRequest)
 			return
 		}
-		rooms.Get(game, room).Serve(name, w, r)
+		rooms.Serve(game, room, name, w, r)
 	}
 }
