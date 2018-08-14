@@ -55,10 +55,12 @@ div.event {
     font-style: italic;
 }
 
-div.share {
+.share {
+    display: block;
+    color: black;
     font-family: monospace;
+    text-decoration: none;
     overflow-wrap: break-word;
-    text-align: left;
     margin: 5px;
 }
 

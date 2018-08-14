@@ -105,7 +105,7 @@ viewWait style model =
     Html.div [ HtmlA.id "menu" ]
         [ Html.div [ HtmlA.class "msg", HtmlA.style [ ( "background", bg2 ) ] ]
             [ Html.div [] [ Html.text "Share this link with other players" ]
-            , Html.div [ HtmlA.class "share" ] [ Html.text model.joinLink ]
+            , Html.a [ HtmlA.class "share", HtmlA.href model.joinLink ] [ Html.text model.joinLink ]
             ]
         , Html.div [ HtmlA.class "button" ]
             [ Html.button [ HtmlE.onClick (User UserStart) ] [ Html.text "Start game!" ] ]
