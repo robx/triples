@@ -1,4 +1,4 @@
-## Triples (and Quadruples)
+# Triples (and Quadruples)
 
 Triples is a card game where you try to spot triples of
 cards as quickly as possible.
@@ -12,7 +12,7 @@ on mobile and desktop. Single player works fully client-side.
 There is a Go backend included that supports multiplayer games
 and the Telegram integration.
 
-# Game rules
+## Game rules
 
 Every card has four properties: color, count, shape, filling.
 
@@ -32,7 +32,7 @@ If this gets boring, you can move on to quadruples. For those games,
 four cards ABCD form a *quadruple* if there exists a fifth card X
 such that ABX and CDX are triples.
 
-# Deploying
+## Deploying
 
 Here's an nginx config fragment to make things work for the backend.
 
