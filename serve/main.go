@@ -42,12 +42,14 @@ var (
 func main() {
 	flag.Parse()
 
+	blobKey := genKey()
+
 	actions := make(chan BotAction)
 
 	if *bot {
 		var callbacks []CallbackHandler
 		for _, g := range games {
-			callbacks = append(callbacks, handleGame(g, *baseURL))
+			callbacks = append(callbacks, handleGame(g, *baseURL, blobKey))
 		}
 		for _, g := range multigames {
 			callbacks = append(callbacks, handleMultiGame(g, *baseURL))
@@ -56,10 +58,10 @@ func main() {
 	}
 
 	log.Printf("listening on %s...\n", *listen)
-	log.Fatal(http.ListenAndServe(*listen, mux(actions, *static)))
+	log.Fatal(http.ListenAndServe(*listen, mux(actions, *static, blobKey)))
 }
 
-func mux(actions chan<- BotAction, static string) *httprouter.Router {
+func mux(actions chan<- BotAction, static string, blobKey [32]byte) *httprouter.Router {
 	r := httprouter.New()
 	if static != "" {
 		r.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -67,7 +69,7 @@ func mux(actions chan<- BotAction, static string) *httprouter.Router {
 		})
 		r.ServeFiles("/static/*filepath", http.Dir(static))
 	}
-	r.GET("/api/win", winHandler(actions))
+	r.GET("/api/win", winHandler(actions, blobKey))
 	r.GET("/api/join", multiHandler(newRooms()))
 	return r
 }
@@ -177,11 +179,7 @@ type Blob struct {
 	InlineMessageID string `json:"iid,omitempty"`
 }
 
-var (
-	key = [32]byte{0x49, 0xf3, 0xae, 0x3f, 0x82, 0x26, 0x72, 0x6d, 0xf4, 0x5c, 0xf4, 0x3c, 0x36, 0x66, 0x12, 0xdf, 0x8a, 0xc1, 0x2b, 0xe9, 0x94, 0x87, 0x92, 0x47, 0x8e, 0xfa, 0xcf, 0xb9, 0xcc, 0x77, 0xf7, 0x3d}
-)
-
-func encode(b Blob) string {
+func encode(b Blob, key [32]byte) string {
 	js, err := json.Marshal(b)
 	if err != nil {
 		panic(err)
@@ -197,7 +195,7 @@ func encode(b Blob) string {
 	return base64.RawURLEncoding.EncodeToString(bs)
 }
 
-func decode(s string) (Blob, error) {
+func decode(s string, key [32]byte) (Blob, error) {
 	bs, err := base64.RawURLEncoding.DecodeString(s)
 	if err != nil {
 		return Blob{}, err
@@ -214,7 +212,16 @@ func decode(s string) (Blob, error) {
 	return b, json.Unmarshal(js, &b)
 }
 
-func handleGame(shortname, u string) CallbackHandler {
+func genKey() [32]byte {
+	var key [32]byte
+	_, err := rand.Read(key[:])
+	if err != nil {
+		panic(err)
+	}
+	return key
+}
+
+func handleGame(shortname, u string, key [32]byte) CallbackHandler {
 	return func(q *tgbotapi.CallbackQuery) *tgbotapi.CallbackConfig {
 		if g := q.GameShortName; g != shortname {
 			return nil
@@ -231,7 +238,7 @@ func handleGame(shortname, u string) CallbackHandler {
 			b.MessageID = msg.MessageID
 			b.ChatID = msg.Chat.ID
 		}
-		key := encode(b)
+		key := encode(b, key)
 		var v = url.Values{}
 		v.Add("game", shortname)
 		v.Add("scored", "1")
@@ -282,7 +289,7 @@ func sendScore(blob Blob, score int) BotAction {
 	}
 }
 
-func winHandler(actions chan<- BotAction) httprouter.Handle {
+func winHandler(actions chan<- BotAction, blobKey [32]byte) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		key := r.FormValue("key")
 		if key == "" {
@@ -294,7 +301,7 @@ func winHandler(actions chan<- BotAction) httprouter.Handle {
 			http.Error(w, "missing/bad parameter `score`", http.StatusBadRequest)
 			return
 		}
-		blob, err := decode(key)
+		blob, err := decode(key, blobKey)
 		if err != nil {
 			log.Printf("decoding blob %q: %s", key, err)
 			http.Error(w, "bad key", http.StatusBadRequest)
