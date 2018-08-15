@@ -45,6 +45,7 @@ main =
 
 type alias Model =
     { location : Navigation.Location
+    , style : Style.Style
     , params : Params
     , size : Size
     , page : Page
@@ -59,8 +60,7 @@ type Page
 
 
 type alias Params =
-    { style : Style.Style
-    , key : Maybe String
+    { key : Maybe String
     , room : Maybe String
     , name : Maybe String
     , game : Maybe Game.GameDef
@@ -81,24 +81,28 @@ init loc =
 
                 Just _ ->
                     []
+
+        style =
+            Style.square
     in
     ( { location = loc
       , params = params
-      , page = newMenu params Nothing
+      , style = style
+      , page = newMenu style params Nothing
       , size = { w = 0, h = 0 }
       }
     , Cmd.batch <| getSize () :: genRoom
     )
 
 
-newMenu : Params -> Maybe Menu.Score -> Page
-newMenu params score =
+newMenu : Style.Style -> Params -> Maybe Menu.Score -> Page
+newMenu style params score =
     Menu
         { score = score
         , scoreDetails = False
         , name = params.name
         , game = params.game
-        , style = params.style
+        , style = style
         }
 
 
@@ -108,7 +112,7 @@ view model =
         maxSize =
             { w = min model.size.w 800, h = model.size.h }
     in
-    Html.div [ HtmlA.id "container", HtmlA.style [ ( "background", model.params.style.colors.table ) ] ]
+    Html.div [ HtmlA.id "container", HtmlA.style [ ( "background", model.style.colors.table ) ] ]
         [ Html.div
             [ HtmlA.id "main"
             , HtmlA.style [ ( "width", toString maxSize.w ++ "px" ), ( "height", toString maxSize.h ++ "px" ) ]
@@ -121,10 +125,10 @@ view model =
                     Html.div [] [ Html.text "waiting" ]
 
                 Play game ->
-                    Html.map (\m -> GetTimeAndThen (PlayMsg m)) <| Play.view model.params.style maxSize game
+                    Html.map (\m -> GetTimeAndThen (PlayMsg m)) <| Play.view model.style maxSize game
 
                 MultiPlay game ->
-                    Html.map MultiPlayMsg <| MultiPlay.view model.params.style maxSize game
+                    Html.map MultiPlayMsg <| MultiPlay.view model.style maxSize game
             ]
         ]
 
@@ -228,7 +232,7 @@ update msg model =
                             else
                                 Cmd.none
                     in
-                    ( { model | page = newMenu model.params (Just sc.messages) }, send )
+                    ( { model | page = newMenu model.style model.params (Just sc.messages) }, send )
 
         ( MultiPlayMsg pmsg, MultiPlay pmodel ) ->
             let
@@ -253,7 +257,6 @@ parseParams loc =
     let
         parser =
             UrlParser.top
-                <?> UrlParser.stringParam "style"
                 <?> UrlParser.stringParam "key"
                 <?> UrlParser.stringParam "room"
                 <?> UrlParser.stringParam "name"
@@ -263,18 +266,8 @@ parseParams loc =
         parseParams parser location =
             UrlParser.parseHash parser { location | hash = "" }
 
-        f s k r n g sc =
-            { style =
-                case Maybe.withDefault "square" s of
-                    "classic" ->
-                        Style.classic
-
-                    "modified" ->
-                        Style.modified
-
-                    _ ->
-                        Style.square
-            , key = k
+        f k r n g sc =
+            { key = k
             , room = r
             , name = n
             , game =
