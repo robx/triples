@@ -12,6 +12,10 @@ import (
 	"gopkg.in/edn.v1"
 )
 
+const (
+	closeDelay = 30 * time.Second
+)
+
 func init() {
 	rand.Seed(time.Now().UTC().UnixNano())
 }
@@ -59,9 +63,25 @@ func (rs *Rooms) release(game, room string) {
 	}
 	rm.count -= 1
 	if rm.count <= 0 {
-		delete(rs.rooms, key)
-		rm.close()
+		go rs.maybeClose(key)
 	}
+}
+
+// maybeClose closes an empty room after a delay,
+// assuming it is still empty (or accidentally again empty).
+func (rs *Rooms) maybeClose(key [2]string) {
+	time.Sleep(closeDelay)
+	rs.mu.Lock()
+	defer rs.mu.Unlock()
+	rm := rs.rooms[key]
+	if rm == nil {
+		return
+	}
+	if rm.count > 0 {
+		return
+	}
+	delete(rs.rooms, key)
+	rm.close()
 }
 
 type Room struct {
