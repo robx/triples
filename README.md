@@ -3,6 +3,8 @@
 Triples is a card game where you try to spot triples of
 cards as quickly as possible.
 
+![Triples](screenshot.png)
+
 Play it live at [triples.vllmrt.net](https://triples.vllmrt.net)
 or via Telegram [@TriplesBot](https://telegram.me/TriplesBot).
 
