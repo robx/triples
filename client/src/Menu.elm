@@ -1,11 +1,10 @@
-module Menu
-    exposing
-        ( Model
-        , Msg(..)
-        , Score
-        , update
-        , view
-        )
+module Menu exposing
+    ( Model
+    , Msg(..)
+    , Score
+    , update
+    , view
+    )
 
 import Game
 import Graphics.Style as Style

@@ -1,14 +1,13 @@
-module Graphics.SvgPath
-    exposing
-        ( dA
-        , dC
-        , dL
-        , dM
-        , dS
-        , dZ
-        , dl
-        , dm
-        )
+module Graphics.SvgPath exposing
+    ( dA
+    , dC
+    , dL
+    , dM
+    , dS
+    , dZ
+    , dl
+    , dm
+    )
 
 
 ptos ( x, y ) =

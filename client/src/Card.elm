@@ -1,4 +1,10 @@
-module Card exposing (..)
+module Card exposing
+    ( Card
+    , fromInt
+    , quadruple
+    , toInt
+    , triple
+    )
 
 import List.Extra
 

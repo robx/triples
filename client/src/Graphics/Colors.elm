@@ -1,4 +1,9 @@
-module Graphics.Colors exposing (..)
+module Graphics.Colors exposing
+    ( Scheme
+    , classic
+    , play
+    , playv
+    )
 
 
 colors =

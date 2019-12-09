@@ -1,4 +1,9 @@
-module Graphics.Style exposing (..)
+module Graphics.Style exposing
+    ( Style
+    , classic
+    , modified
+    , square
+    )
 
 import Graphics.Colors as Colors
 import Graphics.Layout as Layout

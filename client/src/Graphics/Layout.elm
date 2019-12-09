@@ -1,9 +1,8 @@
-module Graphics.Layout
-    exposing
-        ( Layout
-        , card
-        , square
-        )
+module Graphics.Layout exposing
+    ( Layout
+    , card
+    , square
+    )
 
 import Graphics.Lib as Lib
 

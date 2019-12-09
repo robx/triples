@@ -1,12 +1,11 @@
-module MultiPlay
-    exposing
-        ( Model
-        , Msg(..)
-        , init
-        , subscriptions
-        , update
-        , view
-        )
+module MultiPlay exposing
+    ( Model
+    , Msg(..)
+    , init
+    , subscriptions
+    , update
+    , view
+    )
 
 import Card
 import Decode

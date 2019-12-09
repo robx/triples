@@ -1,10 +1,9 @@
-module Graphics.Shapes
-    exposing
-        ( Shapes
-        , classic
-        , squared
-        , variant
-        )
+module Graphics.Shapes exposing
+    ( Shapes
+    , classic
+    , squared
+    , variant
+    )
 
 import Graphics.SvgPath as D
 import Svg exposing (..)

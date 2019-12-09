@@ -1,17 +1,16 @@
-module Play
-    exposing
-        ( Event(..)
-        , LogEntry
-        , Model
-        , Msg(..)
-        , Result(..)
-        , Size
-        , UserMsg(..)
-        , init
-        , update
-        , view
-        , viewGame
-        )
+module Play exposing
+    ( Event(..)
+    , LogEntry
+    , Model
+    , Msg(..)
+    , Result(..)
+    , Size
+    , UserMsg(..)
+    , init
+    , update
+    , view
+    , viewGame
+    )
 
 import Card
 import Dict

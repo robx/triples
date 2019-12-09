@@ -1,4 +1,29 @@
-module Game exposing (..)
+module Game exposing
+    ( Action(..)
+    , Game
+    , GameDef
+    , GameType(..)
+    , GameView
+    , Pos
+    , compact
+    , count
+    , deal
+    , dealMore
+    , empty
+    , gameId
+    , gameMatchSize
+    , init
+    , lookupDef
+    , over
+    , posEmpty
+    , randomMatch
+    , selectedApply
+    , take
+    , toView
+    , viewApply
+    , viewColumns
+    , viewPosEmpty
+    )
 
 import Card exposing (..)
 import Dict exposing (Dict)

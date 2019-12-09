@@ -1,9 +1,8 @@
-module Graphics.Lib
-    exposing
-        ( ngon
-        , rotate
-        , scale
-        )
+module Graphics.Lib exposing
+    ( ngon
+    , rotate
+    , scale
+    )
 
 
 ngon : Int -> List ( Float, Float )
