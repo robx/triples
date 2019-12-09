@@ -108,9 +108,28 @@ view wrap go model =
 
         gogo def =
             go def (Maybe.withDefault "nobody" model.name)
+
+        name =
+            Html.div
+                [ HtmlA.class "msg", HtmlA.style [ ( "background", trd model.style.colors.symbols ) ] ]
+                [ Html.span [] [ Html.text "Set your name (for multiplayer)" ]
+                , Html.input [ HtmlA.value (Maybe.withDefault "" model.name), HtmlE.onInput <| wrap << NameChange ] []
+                ]
+
+        maybeName =
+            case model.game of
+                Nothing ->
+                    [ name ]
+
+                Just d ->
+                    if d.multi then
+                        [ name ]
+
+                    else
+                        []
     in
     Html.div [ HtmlA.id "menu" ] <|
-        addScore
+        addScore <|
             [ Html.div
                 [ HtmlA.class "msg", HtmlA.style [ ( "background", trd model.style.colors.symbols ) ] ]
                 [ Html.text prompt ]
@@ -128,9 +147,5 @@ view wrap go model =
                 Just d ->
                     Html.div [ HtmlA.class "button" ] <|
                         [ Html.button [ HtmlE.onClick <| gogo d ] [ Html.text "Play!" ] ]
-            , Html.div
-                [ HtmlA.class "msg", HtmlA.style [ ( "background", trd model.style.colors.symbols ) ] ]
-                [ Html.span [] [ Html.text "Set your name (for multiplayer)" ]
-                , Html.input [ HtmlA.value (Maybe.withDefault "" model.name), HtmlE.onInput <| wrap << NameChange ] []
-                ]
             ]
+                ++ maybeName
