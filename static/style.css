@@ -24,6 +24,23 @@ html, body, #container {
     flex-direction: column;
     width: 100%;
     margin: 0;
+    font-size: 1.1em;
+    font-family: sans-serif;
+    font-weight: lighter;
+    line-height: 1.5;
+}
+
+#menu button {
+    -webkit-appearance: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+    margin: 3px;
+}
+
+#menu input {
+    font-size: 0.9em;
+    font-weight: lighter;
 }
 
 div.msg {
@@ -31,6 +48,12 @@ div.msg {
     margin: 5px;
     text-align: center;
     width: 100%;
+}
+
+/* fix the vertical centering */
+div.msg > span {
+    display: inline-block;
+    margin-bottom: -3px;
 }
 
 div.msg table {
@@ -44,7 +67,10 @@ div.msg td {
 }
 
 div.msg h4 {
+    font-weight: normal;
     cursor: pointer;
+    margin-top: 23.4px;
+    margin-bottom: 20.4px;
 }
 
 div.msg input {

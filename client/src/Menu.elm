@@ -60,7 +60,7 @@ view wrap go model =
                     let
                         details =
                             if model.scoreDetails then
-                                sc.details |> List.map (\m -> Html.p [] [ Html.text m ])
+                                sc.details |> List.map (\m -> Html.div [] [ Html.text m ])
 
                             else
                                 []
@@ -127,21 +127,22 @@ view wrap go model =
 
                     else
                         []
+        buttonStyle = HtmlA.style [ ( "background", snd model.style.colors.symbols ) ]
     in
     Html.div [ HtmlA.id "menu" ] <|
         addScore <|
             [ Html.div
                 [ HtmlA.class "msg", HtmlA.style [ ( "background", trd model.style.colors.symbols ) ] ]
-                [ Html.text prompt ]
+                [ Html.span [] [ Html.text prompt ] ]
             , case model.game of
                 Nothing ->
                     Html.div [ HtmlA.class "buttons" ] <|
-                        [ Html.button [ HtmlE.onClick <| gogo def ] [ Html.text "Classic" ]
-                        , Html.button [ HtmlE.onClick <| gogo { def | short = True } ] [ Html.text "Classic (short)" ]
-                        , Html.button [ HtmlE.onClick <| gogo { def | multi = True }, HtmlA.disabled (model.name == Nothing) ] [ Html.text "Classic (multi)" ]
-                        , Html.button [ HtmlE.onClick <| gogo { def | type_ = Game.Quadruples } ] [ Html.text "Super" ]
-                        , Html.button [ HtmlE.onClick <| gogo { def | type_ = Game.Quadruples, short = True } ] [ Html.text "Super (short)" ]
-                        , Html.button [ HtmlE.onClick <| gogo { def | type_ = Game.Quadruples, multi = True }, HtmlA.disabled (model.name == Nothing) ] [ Html.text "Super (multi)" ]
+                        [ Html.button [ buttonStyle, HtmlE.onClick <| gogo def ] [ Html.text "Classic" ]
+                        , Html.button [ buttonStyle, HtmlE.onClick <| gogo { def | short = True } ] [ Html.text "Classic (short)" ]
+                        , Html.button [ buttonStyle, HtmlE.onClick <| gogo { def | multi = True }, HtmlA.disabled (model.name == Nothing) ] [ Html.text "Classic (multi)" ]
+                        , Html.button [ buttonStyle, HtmlE.onClick <| gogo { def | type_ = Game.Quadruples } ] [ Html.text "Super" ]
+                        , Html.button [ buttonStyle, HtmlE.onClick <| gogo { def | type_ = Game.Quadruples, short = True } ] [ Html.text "Super (short)" ]
+                        , Html.button [ buttonStyle, HtmlE.onClick <| gogo { def | type_ = Game.Quadruples, multi = True }, HtmlA.disabled (model.name == Nothing) ] [ Html.text "Super (multi)" ]
                         ]
 
                 Just d ->
