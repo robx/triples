@@ -21,7 +21,7 @@ func TestBlob(t *testing.T) {
 func TestBlobShort(t *testing.T) {
 	k := genKey()
 	_, err := decode("short", k)
-	if err != nil {
+	if err == nil {
 		t.Error("expected error")
 	}
 }
