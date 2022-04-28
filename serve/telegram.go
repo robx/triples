@@ -234,7 +234,7 @@ func sendScore(blob Blob, score int) BotAction {
 	sc := tgbotapi.SetGameScoreConfig{
 		UserID:          blob.UserID,
 		Score:           score,
-		ChatID:          blob.ChatID,
+		ChatID:          int(blob.ChatID),
 		MessageID:       blob.MessageID,
 		InlineMessageID: blob.InlineMessageID,
 	}
