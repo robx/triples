@@ -1,15 +1,16 @@
 { pkgs ? import <nixpkgs> {},
-  foo ? "hello",
-  old ? import (builtins.fetchTarball "https://nixos.org/channels/nixos-18.03/nixexprs.tar.xz") {}
+  version ? "dev",
+  elm18 ? (
+    import (builtins.fetchTarball "https://nixos.org/channels/nixos-18.03/nixexprs.tar.xz") {}
+  ).elmPackages.elm
 }:
 
-pkgs.stdenv.mkDerivation rec {
+pkgs.stdenv.mkDerivation {
   name    = "triples-client-${version}";
-  version = "xxx";
 
   src = ./.;
 
-  buildInputs = [ old.elmPackages.elm ];
+  buildInputs = [ elm18 ];
 
   buildPhase = ''
     elm-make src/Main.elm --yes --output main.js
