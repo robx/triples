@@ -17,7 +17,7 @@ pkgs.stdenv.mkDerivation {
   '';
 
   installPhase = ''
-    mkdir -p $out
-    cp main.js $out/main.js
+    mkdir -p $out/share
+    cp index.html main.js $out/share/
   '';
 }
