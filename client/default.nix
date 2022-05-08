@@ -8,16 +8,17 @@
 pkgs.stdenv.mkDerivation {
   name    = "triples-client-${version}";
 
-  src = ./.;
+  src = ../.; # FIXME
 
   buildInputs = [ elm18 ];
 
   buildPhase = ''
+    cd client
     elm-make src/Main.elm --yes --output main.js
   '';
 
   installPhase = ''
     mkdir -p $out/share
-    cp index.html main.js $out/share/
+    cp main.js ../static/index.html ../static/style.css $out/share/
   '';
 }
