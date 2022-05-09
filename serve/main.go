@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/julienschmidt/httprouter"
 )
@@ -46,6 +47,9 @@ func main() {
 func mux(static string, score ScoreHandler) *httprouter.Router {
 	r := httprouter.New()
 	if static != "" {
+		if !strings.HasSuffix(static, "/") {
+			static += "/"
+		}
 		r.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 			http.ServeFile(w, r, static+"index.html")
 		})
