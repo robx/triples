@@ -23,6 +23,10 @@ func init() {
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		log.Printf("checking origin, h=%q u=%q o=%q", r.Host, r.URL, r.Header.Get("Origin"))
+		return true
+	},
 }
 
 type Rooms struct {
