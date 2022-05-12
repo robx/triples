@@ -55,7 +55,7 @@
                 mkdir -p $out/
                 cp $src/static/* $out/
                 cp ${triples-client}/main.js $out/
-                exit 0
+                exit 0 # because nix is insane: https://github.com/NixOS/nix/issues/2176
               ''
             ];
           };
