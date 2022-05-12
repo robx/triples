@@ -12,7 +12,10 @@ in {
     enable = mkEnableOption "triples server";
 
     nginx = mkOption {
-      type = types.submodule (import "${modulesPath}/services/web-servers/nginx/vhost-options.nix" {inherit config lib;});
+      type = types.submodule
+        (import "${modulesPath}/services/web-servers/nginx/vhost-options.nix" {
+          inherit config lib;
+        });
       default = {};
       description = "Extra configuration for the nginx virtual host of triples.";
     };
@@ -24,18 +27,15 @@ in {
       wantedBy = ["multi-user.target"];
       after = ["networking.target"];
       serviceConfig = {
-        ExecStart = "${pkgs.triples-serve}/bin/serve -bot=false -static=${pkgs.triples-static}/";
+        ExecStart = "${pkgs.triples-serve}/bin/serve -listen=localhost:8080 -bot=false -static=${pkgs.triples-static}/";
         Restart = "always";
       };
     };
     services.nginx = {
-      enable = true;
       upstreams.triples-backend.servers."localhost:8080" = {};
       virtualHosts."localhost" = mkMerge [
         cfg.nginx
         {
-          #          default = true;
-          # root = mkForce "${cfg.package}/share/fluidd/htdocs";
           locations = {
             "/api/join" = {
               proxyWebsockets = true;
