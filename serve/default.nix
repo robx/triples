@@ -1,4 +1,8 @@
-{ pkgs, version }:
+{
+  pkgs ? import (builtins.fetchTarball https://nixos.org/channels/nixos-21.11/nixexprs.tar.xz) { },
+  version ? "dev"
+}:
+
 pkgs.buildGoModule {
   pname = "triples-serve";
   inherit version;
