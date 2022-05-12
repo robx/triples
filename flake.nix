@@ -55,6 +55,7 @@
                 mkdir -p $out/
                 cp $src/static/* $out/
                 cp ${triples-client}/main.js $out/
+                exit 0
               ''
             ];
           };
