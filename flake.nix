@@ -60,8 +60,6 @@
             ];
           };
         });
-      nixosModules = {
-        triples = import ./triples.nix;
-      };
+      nixosModule = import ./nix/module.nix;
     };
 }
