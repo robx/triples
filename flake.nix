@@ -35,13 +35,24 @@
           pkgs = nixpkgsFor.${system};
           elm18pkgs = elm18nixpkgsFor.${system};
         in
-        {
+        rec {
           triples-serve = pkgs.callPackage ./serve/default.nix {
             inherit version;
           };
           triples-client = pkgs.callPackage ./client/default.nix {
             elm18 = elm18pkgs.elmPackages.elm;
             inherit version;
+          };
+          triples-static = pkgs.stdenv.mkDerivation {
+            name = "triples-static";
+            src = self;
+            buildInputs = [ triples-client ];
+            phases = [ "unpackPhase" "installPhase" ];
+            installPhase = ''
+              mkdir -p $out/
+              cp static/* $out/
+              cp $buildInputs/main.js $out/ # fixme
+            '';
           };
         });
     };
