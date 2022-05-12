@@ -43,16 +43,20 @@
             elm18 = elm18pkgs.elmPackages.elm;
             inherit version;
           };
-          triples-static = pkgs.stdenv.mkDerivation {
+          triples-static = derivation {
+            inherit system;
             name = "triples-static";
             src = self;
-            buildInputs = [ triples-client ];
-            phases = [ "unpackPhase" "installPhase" ];
-            installPhase = ''
-              mkdir -p $out/
-              cp static/* $out/
-              cp $buildInputs/main.js $out/ # fixme
-            '';
+            builder = "${pkgs.bash}/bin/bash";
+            args = [
+              "-c"
+              ''
+                PATH=${pkgs.coreutils}/bin:$PATH
+                mkdir -p $out/
+                cp $src/static/* $out/
+                cp ${triples-client}/main.js $out/
+              ''
+            ];
           };
         });
     };
