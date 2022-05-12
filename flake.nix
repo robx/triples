@@ -60,5 +60,8 @@
             ];
           };
         });
+      nixosModules = {
+        triples = import ./triples.nix;
+      };
     };
 }
