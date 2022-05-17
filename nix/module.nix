@@ -33,7 +33,7 @@ in {
     };
     services.nginx = {
       upstreams.triples-backend.servers."localhost:8080" = {};
-      virtualHosts."localhost" = mkMerge [
+      virtualHosts."triples.vllmrt.net" = mkMerge [
         cfg.nginx
         {
           locations = {
