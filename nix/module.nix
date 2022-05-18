@@ -11,6 +11,12 @@ in {
   options.services.triples = {
     enable = mkEnableOption "triples server";
 
+    hostName = mkOption {
+      type = types.str;
+      default = "localhost";
+      description = "Hostname to serve triples on";
+    };
+
     nginx = mkOption {
       type = types.submodule
         (import "${modulesPath}/services/web-servers/nginx/vhost-options.nix" {
@@ -33,7 +39,7 @@ in {
     };
     services.nginx = {
       upstreams.triples-backend.servers."localhost:8080" = {};
-      virtualHosts."triples.vllmrt.net" = mkMerge [
+      virtualHosts."${cfg.hostName}" = mkMerge [
         cfg.nginx
         {
           locations = {
