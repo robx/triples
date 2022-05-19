@@ -46,11 +46,11 @@ in {
             "/api/join" = {
               proxyWebsockets = true;
               proxyPass = "http://triples-backend/api/join";
+              # to make this work with host:port, switch to
+              # $http_host (but see nix nginx config checks)
               extraConfig = ''
                 # go websocket origin check
-                # ($http_host instead of $host because the latter strips
-                # port number, relevant for local vm test)
-                proxy_set_header Host $http_host;
+                proxy_set_header Host $host;
               '';
             };
             "/" = {
