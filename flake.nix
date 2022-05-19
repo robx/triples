@@ -28,7 +28,7 @@
       elm18nixpkgsFor = forAllSystems (system: import elm18nixpkgs { inherit system; });
 
     in
-    {
+    rec {
       # Provide some binary packages for selected system types.
       packages = forAllSystems (system:
         let
@@ -61,5 +61,14 @@
           };
         });
       nixosModule = import ./nix/module.nix;
+      nixosConfigurations.test = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        modules = [
+          ({config, pkgs, ...}: {
+            boot.isContainer = true;
+          })
+          nixosModule
+        ];
+      };
     };
 }
