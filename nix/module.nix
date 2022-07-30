@@ -28,15 +28,23 @@ in {
   };
 
   config = mkIf cfg.enable {
+    users.users.triples = {
+      isSystemUser = true;
+      group = "triples";
+      description = "triples service user";
+    };
+
     systemd.services.triples = {
       description = "Run triples backend";
       wantedBy = ["multi-user.target"];
       after = ["networking.target"];
       serviceConfig = {
+        User = "triples";
         ExecStart = "${pkgs.triples-serve}/bin/serve -listen=localhost:8080 -bot=false -static=${pkgs.triples-static}/";
         Restart = "always";
       };
     };
+
     services.nginx = {
       upstreams.triples-backend.servers."localhost:8080" = {};
       virtualHosts."${cfg.hostName}" = mkMerge [
