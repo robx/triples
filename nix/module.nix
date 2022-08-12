@@ -11,6 +11,12 @@ in {
   options.services.triples = {
     enable = mkEnableOption "triples server";
 
+    user = mkOption {
+      type = types.str;
+      default = "triples";
+      description = lib.mdDoc "User account under which triples runs";
+    };
+
     hostName = mkOption {
       type = types.str;
       default = "localhost";
@@ -28,11 +34,13 @@ in {
   };
 
   config = mkIf cfg.enable {
-    users.users.triples = {
+    users.users.triples = mkIf (cfg.user == "triples") {
+      name = "triples";
       isSystemUser = true;
       group = "triples";
       description = "triples service user";
     };
+    users.groups.triples = mkIf (cfg.user == "triples") {};
 
     systemd.services.triples = {
       description = "Run triples backend";
